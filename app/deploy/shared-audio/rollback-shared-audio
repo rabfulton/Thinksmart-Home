@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+backup=/opt/thinksmart/shared-audio-rollback
+systemctl stop thinksmart-home.service
+rm -f /etc/thinksmart/shared-audio.enabled /etc/systemd/system/thinksmart-home.service.d/shared-audio.conf
+cp "$backup/asound.conf" /etc/asound.conf
+install -m755 "$backup/thinksmart-home" /usr/local/bin/thinksmart-home
+if [ -f "$backup/thinksmart-voice-audio" ]; then install -m755 "$backup/thinksmart-voice-audio" /usr/local/libexec/thinksmart-voice-audio; fi
+systemctl daemon-reload
+systemctl disable --now thinksmart-audio-routing.service thinksmart-wireplumber.service thinksmart-pipewire.service || true
+systemctl start thinksmart-home.service

@@ -1,0 +1,15 @@
+{
+  "navidrome": {
+    "url": "",
+    "apiKey": "",
+    "username": "",
+    "password": "",
+    "allowHttp": false
+  },
+  "jellyfin": {
+    "url": "",
+    "accessToken": "",
+    "userId": "",
+    "allowHttp": false
+  }
+}

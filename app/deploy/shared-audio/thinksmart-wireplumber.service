@@ -1,0 +1,17 @@
+[Unit]
+Description=ThinkSmart audio stream policy
+Requires=thinksmart-pipewire.service
+After=thinksmart-pipewire.service
+PartOf=thinksmart-pipewire.service
+[Service]
+User=thinksmart
+Group=thinksmart
+Environment=XDG_RUNTIME_DIR=/run/thinksmart-audio
+Environment=PIPEWIRE_RUNTIME_DIR=/run/thinksmart-audio
+Environment=WIREPLUMBER_CONFIG_DIR=/etc/thinksmart/shared-audio
+Environment=LANG=C.UTF-8
+ExecStart=/usr/bin/wireplumber
+Restart=on-failure
+RestartSec=2
+[Install]
+WantedBy=multi-user.target

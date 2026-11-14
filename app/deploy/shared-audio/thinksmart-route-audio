@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+import subprocess,time
+pairs=[('thinksmart.media:monitor_MONO','thinksmart.mix:playback_MONO'),('thinksmart.mix:monitor_MONO','thinksmart.speaker:playback_FL'),('thinksmart.mix:monitor_MONO','thinksmart.speaker:playback_FR')]
+for attempt in range(40):
+    ports=subprocess.run(['pw-link','-io'],text=True,capture_output=True).stdout
+    if all(a in ports and b in ports for a,b in pairs):break
+    time.sleep(.25)
+else:raise SystemExit('ThinkSmart audio ports did not appear')
+for source,target in pairs:
+    result=subprocess.run(['pw-link',source,target],text=True,capture_output=True)
+    if result.returncode and 'File exists' not in result.stderr:
+        raise SystemExit(result.stderr.strip())

@@ -1,0 +1,4 @@
+FROM thinksmart-audio-builder:debian13
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libpipewire-0.3-dev:amd64 libpipewire-0.3-dev:arm64 \
+ && rm -rf /var/lib/apt/lists/*

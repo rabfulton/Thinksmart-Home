@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "modules": {
+    "assistant": true,
+    "radio": true,
+    "weather": true,
+    "news": true,
+    "chess": true,
+    "bluetooth": true,
+    "vrm": false,
+    "navidrome": false,
+    "jellyfin": false
+  },
+  "weather": {
+    "name": "London",
+    "latitude": 51.5074,
+    "longitude": -0.1278,
+    "timezone": "Europe/London"
+  }
+}

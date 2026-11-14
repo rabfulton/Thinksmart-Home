@@ -1,0 +1,38 @@
+FROM thinksmart-builder:debian13
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    cmake ninja-build g++ \
+    qt6-base-dev:amd64 qt6-base-dev:arm64 \
+    qt6-declarative-dev:amd64 qt6-declarative-dev:arm64 \
+    qt6-base-dev-tools:amd64 qt6-declarative-dev-tools:amd64 \
+    qml6-module-qtquick:amd64 qml6-module-qtquick-controls:amd64 \
+    qml6-module-qtquick-layouts:amd64 qml6-module-qtquick-window:amd64 \
+    qml6-module-qtqml-workerscript:amd64 \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace
+
+# Kept in a separate layer to reuse the established cross compiler image.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends qt6-websockets-dev:amd64 qt6-websockets-dev:arm64 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Bake Qt Quick shaders on the host; Xvfb/Mesa are only for native visual checks.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    qt6-shadertools-dev:amd64 qt6-shadertools-dev:arm64 qt6-shader-baker:amd64 \
+    xvfb xauth libgl1-mesa-dri:amd64 \
+ && rm -rf /var/lib/apt/lists/*
+
+# libmpv's API headers are architecture independent. Avoid installing both
+# libmpv-dev dependency trees: Debian libcdio-dev is not co-installable.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libmpv2:amd64 libmpv2:arm64 \
+ && cd /tmp && apt-get download libmpv-dev:amd64 \
+ && dpkg-deb -x libmpv-dev_*.deb /tmp/mpv-api \
+ && cp -a /tmp/mpv-api/usr/include/mpv /usr/include/ \
+ && rm -rf /tmp/mpv-api /tmp/libmpv-dev_*.deb /var/lib/apt/lists/*
+# SVG chess-piece decoding for native UI previews/tests.
+RUN apt-get update && apt-get install -y --no-install-recommends libqt6svg6:amd64 && rm -rf /var/lib/apt/lists/*
+# Match the Qt 6.8.2 image ABI without downloading the complete apt indexes again.
+ADD https://deb.debian.org/debian/pool/main/q/qt6-svg/qt6-svg-plugins_6.8.2-3_amd64.deb /tmp/qt6-svg-plugins.deb
+RUN dpkg -i /tmp/qt6-svg-plugins.deb && rm /tmp/qt6-svg-plugins.deb

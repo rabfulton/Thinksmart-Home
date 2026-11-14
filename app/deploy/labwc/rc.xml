@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<labwc_config>
+  <core><gap>0</gap><decoration>server</decoration></core>
+  <theme><cornerRadius>0</cornerRadius></theme>
+  <keyboard><default /></keyboard>
+  <mouse><default /></mouse>
+  <touch mapToOutput="DSI-1" mouseEmulation="no" />
+  <windowRules>
+    <windowRule identifier="*"><serverDecoration>no</serverDecoration></windowRule>
+  </windowRules>
+</labwc_config>

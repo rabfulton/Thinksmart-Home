@@ -1,0 +1,7 @@
+{
+  "provider": "openai",
+  "apiKey": "",
+  "model": "gpt-realtime-2.1-mini",
+  "voice": "marin",
+  "liveBackendModel": "gpt-6-luna"
+}

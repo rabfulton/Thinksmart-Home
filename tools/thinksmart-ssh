@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project_dir=$(cd -- "$(dirname -- "$0")/.." && pwd)
+declare -A ssh_overrides=()
+for ssh_option_name in THINKSMART_HOST THINKSMART_USER THINKSMART_SSH_KEY THINKSMART_KNOWN_HOSTS THINKSMART_SSH_PORT THINKSMART_HOST_KEY_ALIAS; do
+    if [[ -v $ssh_option_name ]]; then ssh_overrides[$ssh_option_name]=${!ssh_option_name}; fi
+done
+if [[ -f $project_dir/private/ssh.env ]]; then source "$project_dir/private/ssh.env"; fi
+for ssh_option_name in "${!ssh_overrides[@]}"; do printf -v "$ssh_option_name" '%s' "${ssh_overrides[$ssh_option_name]}"; done
+: "${THINKSMART_HOST:?Set THINKSMART_HOST or create private/ssh.env from config/ssh.env.example}"
+ssh_options=()
+if [[ -n ${THINKSMART_HOST_KEY_ALIAS:-} ]]; then ssh_options+=(-o "HostKeyAlias=$THINKSMART_HOST_KEY_ALIAS"); fi
+exec ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 \
+    -o ServerAliveCountMax=3 -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile="${THINKSMART_KNOWN_HOSTS:-$project_dir/private/known_hosts}" \
+    -i "${THINKSMART_SSH_KEY:-$HOME/.ssh/id_ed25519}" -o IdentitiesOnly=yes \
+    -p "${THINKSMART_SSH_PORT:-22}" "${ssh_options[@]}" \
+    "${THINKSMART_USER:-root}@$THINKSMART_HOST" "$@"

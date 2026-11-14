@@ -1,0 +1,19 @@
+[Unit]
+Description=ThinkSmart shared speaker graph
+After=sound.target thinksmart-audio.service
+[Service]
+User=thinksmart
+Group=thinksmart
+SupplementaryGroups=audio
+RuntimeDirectory=thinksmart-audio
+RuntimeDirectoryMode=0700
+Environment=XDG_RUNTIME_DIR=/run/thinksmart-audio
+Environment=PIPEWIRE_RUNTIME_DIR=/run/thinksmart-audio
+Environment=LANG=C.UTF-8
+ExecStart=/usr/bin/pipewire -c /etc/thinksmart/shared-audio/thinksmart.conf
+Restart=on-failure
+RestartSec=2
+LimitRTPRIO=88
+LimitMEMLOCK=67108864
+[Install]
+WantedBy=multi-user.target

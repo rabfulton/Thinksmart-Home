@@ -1,0 +1,6 @@
+#!/bin/sh
+# Keep the compositor alive while recovering the home application.
+while true; do
+    /usr/local/bin/thinksmart-home
+    sleep 2
+done

@@ -1,0 +1,15 @@
+[Unit]
+Description=ThinkSmart fixed audio bus links
+Requires=thinksmart-pipewire.service
+After=thinksmart-pipewire.service
+PartOf=thinksmart-pipewire.service
+[Service]
+Type=oneshot
+User=thinksmart
+Group=thinksmart
+Environment=XDG_RUNTIME_DIR=/run/thinksmart-audio
+Environment=PIPEWIRE_RUNTIME_DIR=/run/thinksmart-audio
+ExecStart=/usr/local/libexec/thinksmart-route-audio
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

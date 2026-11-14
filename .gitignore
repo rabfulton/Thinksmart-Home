@@ -1,0 +1,17 @@
+/private/
+/artifacts/
+/build/
+/upstream/
+/.venv*/
+__pycache__/
+*.pyc
+*.img
+*.img.gz
+*.onnx
+*.tflite
+*.wav
+*.pem
+*.key
+/admin.md
+/SETUP.md
+/spec.md

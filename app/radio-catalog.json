@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "stations": [
+    {
+      "id": "radio4",
+      "name": "BBC Radio 4",
+      "genres": [
+        "speech",
+        "news"
+      ],
+      "description": "News, current affairs, drama and conversation",
+      "pinned": true,
+      "url": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/uk/audio_syndication_high_sbr_v1/cfs/bbc_radio_fourfm.m3u8"
+    },
+    {
+      "id": "commons",
+      "name": "House of Commons",
+      "genres": [
+        "parliament",
+        "speech"
+      ],
+      "description": "Live when sitting, otherwise the latest recorded sitting",
+      "pinned": true,
+      "resolver": "commons"
+    },
+    {
+      "id": "lords",
+      "name": "House of Lords",
+      "genres": [
+        "parliament",
+        "speech"
+      ],
+      "description": "Live when sitting, otherwise the latest recorded sitting",
+      "pinned": true,
+      "resolver": "lords"
+    },
+    {
+      "id": "world-service",
+      "name": "BBC World Service",
+      "genres": [
+        "news",
+        "speech"
+      ],
+      "description": "World news and international perspectives",
+      "pinned": false,
+      "url": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/uk/audio_syndication_high_sbr_v1/cfs/bbc_world_service.m3u8"
+    },
+    {
+      "id": "radio-scotland",
+      "name": "BBC Radio Scotland",
+      "genres": [
+        "speech",
+        "news"
+      ],
+      "description": "Scotland: news, conversation and culture",
+      "pinned": false,
+      "url": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/uk/audio_syndication_high_sbr_v1/cfs/bbc_radio_scotland_fm.m3u8"
+    },
+    {
+      "id": "radio3",
+      "name": "BBC Radio 3",
+      "genres": [
+        "classical",
+        "jazz"
+      ],
+      "description": "Classical music, concerts and late-night jazz",
+      "pinned": false,
+      "url": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/uk/audio_syndication_high_sbr_v1/cfs/bbc_radio_three.m3u8"
+    },
+    {
+      "id": "6music",
+      "name": "BBC Radio 6 Music",
+      "genres": [
+        "rock"
+      ],
+      "description": "Alternative music and discoveries",
+      "pinned": false,
+      "url": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/uk/audio_syndication_high_sbr_v1/cfs/bbc_6music.m3u8"
+    },
+    {
+      "id": "radio4-extra",
+      "name": "BBC Radio 4 Extra",
+      "genres": [
+        "speech"
+      ],
+      "description": "Comedy, drama and archive favourites",
+      "pinned": false,
+      "url": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/uk/audio_syndication_high_sbr_v1/cfs/bbc_radio_four_extra.m3u8"
+    },
+    {
+      "id": "folk-forward",
+      "name": "Folk Forward",
+      "genres": [
+        "folk"
+      ],
+      "description": "SomaFM \u00b7 indie folk and alt-folk",
+      "pinned": false,
+      "url": "https://ice2.somafm.com/folkfwd-128-mp3"
+    },
+    {
+      "id": "boot-liquor",
+      "name": "Boot Liquor",
+      "genres": [
+        "folk"
+      ],
+      "description": "SomaFM \u00b7 Americana and roots",
+      "pinned": false,
+      "url": "https://ice2.somafm.com/bootliquor-128-mp3"
+    },
+    {
+      "id": "sonic-universe",
+      "name": "Sonic Universe",
+      "genres": [
+        "jazz"
+      ],
+      "description": "SomaFM \u00b7 modern and adventurous jazz",
+      "pinned": false,
+      "url": "https://ice2.somafm.com/sonicuniverse-128-mp3"
+    },
+    {
+      "id": "illinois-street",
+      "name": "Illinois Street Lounge",
+      "genres": [
+        "jazz"
+      ],
+      "description": "SomaFM \u00b7 lounge and vintage exotica",
+      "pinned": false,
+      "url": "https://ice2.somafm.com/illstreet-128-mp3"
+    },
+    {
+      "id": "indie-pop",
+      "name": "Indie Pop Rocks!",
+      "genres": [
+        "rock"
+      ],
+      "description": "SomaFM \u00b7 new and classic indie",
+      "pinned": false,
+      "url": "https://ice2.somafm.com/indiepop-128-mp3"
+    },
+    {
+      "id": "metal-detector",
+      "name": "Metal Detector",
+      "genres": [
+        "rock"
+      ],
+      "description": "SomaFM \u00b7 metal and heavier discoveries",
+      "pinned": false,
+      "url": "https://ice2.somafm.com/metal-128-mp3"
+    },
+    {
+      "id": "adagio",
+      "name": "Adagio.FM",
+      "genres": [
+        "classical"
+      ],
+      "description": "Community-supported orchestral music",
+      "pinned": false,
+      "url": "http://hi5.adagio.fm/"
+    }
+  ]
+}

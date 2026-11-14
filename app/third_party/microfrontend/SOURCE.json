@@ -1,0 +1,6 @@
+{
+  "source": "https://github.com/rhasspy/pymicro-features",
+  "revision": "96bd69cfad79aa67697e176570d3dd87052c3def",
+  "frontend": "TensorFlow Lite Micro fixed-point frontend, Apache-2.0",
+  "fft": "KissFFT fixed-point, retain its bundled license"
+}

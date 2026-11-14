@@ -1,0 +1,8 @@
+FROM thinksmart-qt-builder:debian13
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    pkg-config libasound2-dev:amd64 libasound2-dev:arm64 \
+    libwebrtc-audio-processing-dev:amd64 libwebrtc-audio-processing-dev:arm64 \
+    libspeexdsp-dev:amd64 libspeexdsp-dev:arm64 espeak-ng \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace

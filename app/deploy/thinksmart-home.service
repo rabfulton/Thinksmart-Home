@@ -1,0 +1,30 @@
+[Unit]
+Description=ThinkSmart home screen
+Wants=seatd.service thinksmart-power.service bluetooth.service bluealsa.service
+After=seatd.service thinksmart-audio.service thinksmart-power.service bluetooth.service bluealsa.service
+Conflicts=getty@tty1.service
+StartLimitIntervalSec=0
+
+[Service]
+User=thinksmart
+Group=thinksmart
+SupplementaryGroups=audio video render input bluetooth
+RuntimeDirectory=thinksmart-ui
+RuntimeDirectoryMode=0700
+Environment=LANG=C.UTF-8
+Environment=XDG_RUNTIME_DIR=/run/thinksmart-ui
+Environment=LIBSEAT_BACKEND=seatd
+Environment=WLR_BACKENDS=drm,libinput
+Environment=WLR_DRM_DEVICES=/dev/dri/card0
+Environment=QT_QPA_PLATFORM=wayland
+Environment=QSG_RHI_BACKEND=opengl
+Environment=QT_QUICK_CONTROLS_STYLE=Basic
+Environment=QSG_INFO=1
+ExecStart=/usr/bin/labwc -C /etc/thinksmart/labwc -s /usr/local/libexec/thinksmart-session
+Restart=always
+RestartSec=2
+TimeoutStopSec=5
+KillMode=control-group
+
+[Install]
+WantedBy=graphical.target
