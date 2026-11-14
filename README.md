@@ -24,7 +24,9 @@ this device's calibration and identities, and verify SSH, touch, audio and start
 ```
 
 An existing Debian device with working graphics/audio is the quickest route.
-Stock-firmware installation follows the linked upstream device-specific guide.
+For a completely custom image, [m0s4ik/thinksmart-view-debian](https://github.com/m0s4ik/thinksmart-view-debian)
+is a very useful starting point: it provides the Debian base and image-building
+tools used by this project, ready for your own software and interface.
 
 **Guides:** [Install](docs/INSTALL.md) · [Configuration](docs/CONFIGURATION.md) ·
 [Optional modules](docs/MODULES.md) · [Voice and audio](docs/VOICE.md) ·
