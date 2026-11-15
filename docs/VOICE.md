@@ -54,6 +54,29 @@ and interruptions through its own protocol. Live's backend handles reasoning and
 tool selection using the allowed local actions. Sessions close on stop, screen
 sleep, quiet timeout or the maximum duration.
 
+## Ending a conversation
+
+Say **“go to sleep”** to dismiss Sheila. Both Realtime and Live have an
+`end_conversation` tool that closes cloud audio and stops queued assistant speech
+without a spoken goodbye. It keeps the assistant enabled for local wake-word
+listening and leaves the screen and media selection/playback unchanged, restoring
+any conversation ducking. This differs from asking to stop the radio or turn off
+the display.
+
+An available user transcript also recognises this standalone command directly;
+Live allows a brief 250 ms for a partial transcript to finish. Realtime normally
+uses the model tool unless input transcripts are already available. This adds no
+separate transcription service. Quoted phrases and Notes dictation remain text.
+
+Both models receive guidance that TV/radio/background speech can accidentally
+trigger the wake word. They may end silently with reason `false_activation` when
+there is good reason to think no one is addressing Sheila. “False alarm” and
+“I wasn't talking to you” are also explicit dismissal requests. Classification is
+model judgement, not a guaranteed distinction between TV and a real request.
+The ordinary quiet timeout and wake sensitivity are unchanged. Dismissal metadata
+records only a bounded reason/source, not audio or transcripts. The policy is
+supplied by the application, preserving SSH-edited prompt files.
+
 ## Local voice previews
 
 Public source does not include third-party voice recordings without provenance.

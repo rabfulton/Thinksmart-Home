@@ -33,9 +33,9 @@ QJsonObject VoiceAssistant::liveConfiguration()const{
     // explicitly permit the optional arguments already used by our dispatcher.
     QJsonArray functions=liveTools();
     for(int i=0;i<functions.size();i++){auto f=functions[i].toObject();f.insert("strict",false);functions[i]=f;}
-    return {{"model","gpt-live-1"},{"store",false},{"instructions",m_prompts.liveInstructions()+personalInstructions()},
+    return {{"model","gpt-live-1"},{"store",false},{"instructions",m_prompts.liveInstructions()+personalInstructions()+conversationInstructions(true)},
         {"audio",QJsonObject{{"format",QJsonObject{{"type","audio/pcm"},{"rate",24000}}},{"output",QJsonObject{{"voice",m_voice}}}}},
-        {"delegation",QJsonObject{{"type","responses"},{"responses",QJsonObject{{"model",m_backendModel},{"instructions",m_prompts.backendInstructions()+personalInstructions()},{"tools",functions},
+        {"delegation",QJsonObject{{"type","responses"},{"responses",QJsonObject{{"model",m_backendModel},{"instructions",m_prompts.backendInstructions()+personalInstructions()+conversationInstructions()},{"tools",functions},
             {"tool_choice","auto"},{"parallel_tool_calls",false},{"reasoning",QJsonObject{{"effort","low"}}},{"max_output_tokens",2048}}}}}};
 }
 void VoiceAssistant::sendMicrophone(const QString &audio){
@@ -142,6 +142,7 @@ void VoiceAssistant::receiveLive(const QJsonObject &event){
             const auto item=nested.value("item").toObject();
             if(item.value("type")=="function_call"&&!m_calls.contains(item.value("call_id").toString())){
                 if(responseId.isEmpty()||m_liveCompleted.contains(responseId)||item.value("call_id").toString().isEmpty())return;
+                if(handleEndConversation(item))return;
                 auto &calls=m_liveToolCalls[responseId];
                 if(calls.size()>=32){fail("Live requested too many local tool calls.");return;}
                 calls.append(item);
@@ -151,6 +152,7 @@ void VoiceAssistant::receiveLive(const QJsonObject &event){
             m_liveCompleted.insert(responseId);m_liveResponses.remove(responseId);
             const auto calls=m_liveToolCalls.take(responseId);
             const bool continued=dispatchTools(calls,[this](){send({{"type","response.create"},{"event_id",eventId()}});m_responseDeadline.start(45000);updateMode();});
+            if(!m_active)return;
             if(!continued){m_responseActive=!m_liveResponses.isEmpty();if(!m_responseActive)m_responseDeadline.stop();}
             m_activity.restart();updateMode();
         }else if(kind=="response.failed"||kind=="response.incomplete"){

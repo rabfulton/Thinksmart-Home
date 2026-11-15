@@ -114,6 +114,10 @@ private:
     static QStringList voiceChoices(bool live);
     QJsonArray liveTools()const;
     QString personalInstructions()const;
+    QString conversationInstructions(bool liveFrontend=false)const;
+    bool handleEndConversation(const QJsonObject &call);
+    void endConversation(const QString &reason,const QString &source);
+    void considerDismissal(const QString &text,bool streaming);
     void fail(const QString &message);
     void connectApi();
     void send(QJsonObject event);
@@ -146,7 +150,7 @@ private:
     VoicePreview m_preview;
     QString m_previewProblem,m_configVoice="marin";
     std::unique_ptr<QWebSocket> m_socket;
-    QTimer m_wait,m_startDeadline,m_killTimer,m_idleTimer,m_limit,m_responseDeadline,m_wakePolicy,m_duckRelease;
+    QTimer m_wait,m_startDeadline,m_killTimer,m_idleTimer,m_limit,m_responseDeadline,m_wakePolicy,m_duckRelease,m_dismissTimer;
     QElapsedTimer m_waitClock,m_activity,m_turnClock;
     QByteArray m_audioBuffer;
     QString m_status="Assistant disabled",m_problem,m_mode="ready";

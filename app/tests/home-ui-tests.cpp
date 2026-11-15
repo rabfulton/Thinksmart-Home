@@ -776,6 +776,90 @@ exec sleep 20
             QTRY_VERIFY_WITH_TIMEOUT(client.bytesAvailable()>0,5000);QVERIFY(QJsonDocument::fromJson(client.readAll()).object().value("ok").toBool());
         }
     }
+    void voiceDismissal_data(){
+        QTest::addColumn<bool>("live");QTest::addColumn<QString>("method");
+        for(bool live:{false,true})for(const auto &method:{"transcript","early-tool","batched-tool","false-activation","invalid-arguments"})
+            QTest::newRow(qPrintable(QString(live?"live-":"realtime-")+method))<<live<<QString(method);
+    }
+    void voiceDismissal(){
+        QFETCH(bool,live);QFETCH(QString,method);
+        qputenv("THINKSMART_SHARED_AUDIO","1");auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        prepareWakeAssets();screen->wake();
+        QWebSocketServer server("dismissal-mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));
+        qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QPointer<QWebSocket> peer;QList<QJsonObject> requests;
+        auto cleanup=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        auto send=[&](QJsonObject event){QVERIFY(peer);peer->sendTextMessage(QString::fromUtf8(QJsonDocument(event).toJson(QJsonDocument::Compact)));};
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &message){
+            const auto event=QJsonDocument::fromJson(message.toUtf8()).object();requests.append(event);
+            if(event.value("type")=="session.update")send({{"type","session.updated"}});
+            if(event.value("type")=="session.start")send({{"type","session.started"}});
+            if(event.value("type")=="session.close"){
+                // Calls/audio on a retiring connection must never revive it.
+                send({{"type","response.event"},{"delegation_id","dismiss"},{"event",QJsonObject{{"type","response.output_item.done"},{"item",QJsonObject{{"type","function_call"},{"name","device_action"},{"call_id","late-volume"},{"arguments","{\"action\":\"media.volume\",\"percent\":1}"}}}}}});
+                send({{"type","session.closed"},{"usage",QJsonObject{{"seconds",2.5}}}});
+            }
+        });if(!live)send({{"type","session.created"}});});
+        auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();
+        QTRY_VERIFY(peer&&voice->active()&&voice->inputLevel()>0);
+        const auto session=requests.first().value("session").toObject();
+        const auto toolOwner=live?session.value("delegation").toObject().value("responses").toObject():session;
+        const auto tools=toolOwner.value("tools").toArray();
+        QVERIFY(std::any_of(tools.cbegin(),tools.cend(),[](auto v){return v.toObject().value("name")=="end_conversation";}));
+        QVERIFY(session.value("instructions").toString().contains("go to sleep"));QVERIFY(toolOwner.value("instructions").toString().contains("TV, radio or background conversation"));
+        const auto volume=media->volume();const auto source=media->source(),station=media->radioId();
+        QSignalSpy stopMedia(media.get(),&Controller::cancelDiscoveryRequested);
+        const auto audio=QString::fromLatin1(QByteArray(24000,'\0').toBase64());
+        if(live)send({{"type","session.output_audio.delta"},{"delta",audio}});
+        else{send({{"type","response.created"},{"response",QJsonObject{{"id","speech"}}}});send({{"type","response.output_audio.delta"},{"response_id","speech"},{"item_id","speech-item"},{"delta",audio}});}
+        QTRY_VERIFY(voice->outputLevel()>0);QVERIFY(voice->snapshot().value("mediaDucked").toBool());
+        auto nested=[&](QJsonObject event){send({{"type","response.event"},{"delegation_id","dismiss"},{"event",event}});};
+        auto call=[](const QString &id,const QString &name,const QString &args){return QJsonObject{{"type","function_call"},{"call_id",id},{"name",name},{"arguments",args}};};
+        auto transcript=[&](const QString &id,const QString &text,int start){
+            if(live)send({{"type","session.input_transcript.delta"},{"event_id",id},{"delta",text},{"start_ms",start},{"end_ms",start+300}});
+            else send({{"type","conversation.item.input_audio_transcription.completed"},{"item_id",id},{"transcript",text}});
+        };
+        if(method=="transcript"){
+            transcript("quoted","The phrase is 'go to sleep'.",0);QTest::qWait(300);QVERIFY(voice->active());
+            if(live){
+                transcript("longer-a","Go to sleep",3000);QTest::qWait(40);transcript("longer-b"," is just an example.",3300);
+                QTest::qWait(300);QVERIFY(voice->active());
+                transcript("command-a","Sheila, please go to ",6000);QTest::qWait(30);QVERIFY(voice->active());
+                transcript("command-b","sleep.",6300);
+            }else{
+                send({{"type","response.output_audio_transcript.delta"},{"response_id","speech"},{"item_id","speech-item"},{"delta","Go to sleep."}});
+                QTest::qWait(60);QVERIFY(voice->active());transcript("command","Sheila, please go to sleep.",6000);
+            }
+        }else{
+            const QString args=method=="false-activation"?"{\"reason\":\"false_activation\"}":"{\"reason\":\"user_request\"}";
+            if(method=="invalid-arguments"){
+                auto invalid=call("invalid","end_conversation","{\"reason\":\"shutdown\"}");
+                if(live){nested({{"type","response.created"},{"response",QJsonObject{{"id","invalid"}}}});nested({{"type","response.output_item.done"},{"item",invalid}});nested({{"type","response.completed"},{"response",QJsonObject{{"id","invalid"}}}});}
+                else send({{"type","response.done"},{"response",QJsonObject{{"id","invalid"},{"status","completed"},{"output",QJsonArray{invalid}}}}});
+                QTRY_VERIFY(std::any_of(requests.cbegin(),requests.cend(),[](auto r){return r.value("item").toObject().value("call_id")=="invalid";}));
+                QTRY_VERIFY(std::any_of(requests.cbegin(),requests.cend(),[](auto r){return r.value("type")=="response.create";}));
+                QVERIFY(voice->active());requests.clear();
+            }
+            const auto ending=call("end","end_conversation",args);
+            const auto other=call("volume","device_action","{\"action\":\"media.volume\",\"percent\":1}");
+            if(live){
+                nested({{"type","response.created"},{"response",QJsonObject{{"id","dismiss"}}}});
+                if(method=="batched-tool")nested({{"type","response.output_item.done"},{"item",other}});
+                nested({{"type","response.output_item.done"},{"item",ending}});
+                // No response.completed: terminal tools must work immediately.
+            }else if(method=="batched-tool")send({{"type","response.done"},{"response",QJsonObject{{"id","dismiss"},{"status","completed"},{"output",QJsonArray{other,ending}}}}});
+            else send({{"type","response.output_item.done"},{"response_id","dismiss"},{"item",ending}});
+        }
+        QTRY_VERIFY_WITH_TIMEOUT(!voice->active(),1500);QVERIFY(voice->enabled());QVERIFY(voice->wakeListening());
+        QVERIFY(!screen->sleeping());QCOMPARE(media->volume(),volume);QCOMPARE(media->source(),source);QCOMPARE(media->radioId(),station);QCOMPARE(stopMedia.count(),0);
+        QCOMPARE(voice->outputLevel(),0.);QVERIFY(!voice->snapshot().value("mediaDucked").toBool());
+        const auto diagnostic=voice->snapshot().value("lastTool").toObject();QCOMPARE(diagnostic.value("action").toString(),QString("conversation.end"));
+        QCOMPARE(diagnostic.value("reason").toString(),method=="false-activation"?QString("false_activation"):QString("user_request"));
+        QTRY_VERIFY(peer->state()==QAbstractSocket::UnconnectedState);
+        QVERIFY(!std::any_of(requests.cbegin(),requests.cend(),[](auto r){return r.value("type")=="response.create";}));
+        const auto count=requests.size();QTest::qWait(80);QCOMPARE(requests.size(),count);
+        voice->setEnabled(false);QTRY_VERIFY(voice->released());
+    }
     void personalNotesThemesRoutinesAndTouchControls(){
         screen->wake();click("notesPageButton");QTest::qWait(300);
         QVERIFY(object("notesPage"));QVERIFY(!object("dictateNoteButton")->property("enabled").toBool());
@@ -830,6 +914,9 @@ exec sleep 20
         const auto session=requests.first().value("session").toObject();const auto toolOwner=live?session.value("delegation").toObject().value("responses").toObject():session;
         const auto tools=toolOwner.value("tools").toArray();QCOMPARE(tools.size(),1);QCOMPARE(tools.first().toObject().value("name").toString(),QString("personal_action"));
         QVERIFY(session.value("instructions").toString().contains("DICTATION MODE"));QVERIFY(toolOwner.value("instructions").toString().contains("DICTATION MODE"));
+        if(live)send({{"type","session.input_transcript.delta"},{"event_id","dictated-command"},{"delta","Go to sleep."},{"start_ms",0},{"end_ms",500}});
+        else send({{"type","conversation.item.input_audio_transcription.completed"},{"item_id","dictated-command"},{"transcript","Go to sleep."}});
+        QTest::qWait(300);QVERIFY(voice->active());QVERIFY(voice->noteDictation());
         auto dispatch=[&](const QString &id,const QString &name,const QJsonObject &args){
             const QJsonObject call{{"type","function_call"},{"call_id",id},{"name",name},{"arguments",QString::fromUtf8(QJsonDocument(args).toJson(QJsonDocument::Compact))}};
             if(live){
