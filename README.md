@@ -32,8 +32,7 @@ tools used by this project, ready for your own software and interface.
 [Optional modules](docs/MODULES.md) · [Voice and audio](docs/VOICE.md) ·
 [Administration](docs/ADMIN.md) · [Personal actions](docs/PERSONAL.md) · [Development](docs/DEVELOPMENT.md)
 
-<details>
-<summary>More screenshots</summary>
+## Screenshots
 
 | Voice assistant | News and Hacker News |
 | --- | --- |
@@ -43,7 +42,6 @@ tools used by this project, ready for your own software and interface.
 | --- | --- |
 | ![Chess](docs/screenshots/chess.png) | ![Portrait dashboard](docs/screenshots/home-portrait.png) |
 
-</details>
 
 The launcher supports dark themes, screen sleep/wake and physical volume keys.
 Optional integrations include OpenAI Realtime/Live, Navidrome, Jellyfin, Bluetooth
