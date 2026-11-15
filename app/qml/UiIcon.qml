@@ -17,6 +17,7 @@ Canvas {
         function line(x,y,a,b) { c.moveTo(x,y); c.lineTo(a,b) }
         c.beginPath()
         switch(name) {
+        case "wifi": c.arc(12,20,17,-2.15,-0.99); c.moveTo(5,10); c.arc(12,20,12,-2.15,-0.99); c.moveTo(8,15); c.arc(12,20,7,-2.15,-0.99); c.moveTo(13,20); c.arc(12,20,1,0,Math.PI*2); break
         case "trash": line(4,6,20,6); line(9,3,15,3); line(6,6,7,21); line(7,21,17,21); line(17,21,18,6); line(10,10,10,17); line(14,10,14,17); break
         case "notes": c.rect(5,3,14,18); line(8,8,16,8); line(8,12,16,12); line(8,16,13,16); break
         case "alarm": c.arc(12,13,8,0,Math.PI*2); line(12,8,12,13); line(12,13,16,15); line(3,5,6,2); line(18,2,21,5); break
@@ -25,6 +26,15 @@ Canvas {
         case "previous": line(7,5,7,19); c.moveTo(19,5); c.lineTo(10,12); c.lineTo(19,19); c.closePath(); break
         case "moon": c.arc(12,12,8,0.35,5.1); c.quadraticCurveTo(7,9,12,4); break
         case "power": c.arc(12,13,8,-0.8,3.95); line(12,2,12,11); break
+        case "settings":
+            for (let i = 0; i < 32; i++) {
+                const angle = -Math.PI / 2 + i * Math.PI / 16
+                const radius = i % 4 < 2 ? 9.5 : 7.5
+                const x = 12 + Math.cos(angle) * radius, y = 12 + Math.sin(angle) * radius
+                if (i === 0) c.moveTo(x,y); else c.lineTo(x,y)
+            }
+            c.closePath(); c.moveTo(15,12); c.arc(12,12,3,0,Math.PI*2)
+            break
         case "radio":
             c.lineWidth = 0.5
             c.moveTo(4,8); c.lineTo(20,8); c.quadraticCurveTo(22,8,22,10)

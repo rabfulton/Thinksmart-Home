@@ -218,6 +218,7 @@ void Controller::handleClient(QLocalSocket *client){
         else if(request=="wake")m_display->wake();
         else if(request=="power-menu")m_display->showPowerMenu();
         else if(request=="display-settings")m_display->showSettings();
+        else if(request=="wifi-settings"){m_display->wake();m_wifi.show();}
         else if(request=="shutdown")m_display->shutdown();
         else if(request=="restart")m_display->restart();
         else if(request.startsWith("set-brightness ")){bool ok=false;int value=request.mid(15).toInt(&ok);if(ok)m_display->setBrightness(value);else valid=false;}

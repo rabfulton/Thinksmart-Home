@@ -5,6 +5,7 @@ import QtQuick.Layouts
 Item {
     id: dialogs
     required property var hostWindow
+    property real keyboardHeight: 0
     property string confirmation: "shutdown"
     readonly property color ink: Theme.ink
     readonly property color quiet: Theme.muted
@@ -39,14 +40,16 @@ Item {
         objectName: "powerSheet"
         contentItem: ColumnLayout {
             spacing: 16
-            Text { text: "Power & display"; color: dialogs.ink; font.pixelSize: 30; Layout.bottomMargin: 8 }
-            ActionButton { text: "Screen off"; primary: true; Layout.fillWidth: true; onClicked: { powerSheet.close(); screenControl.sleep() } }
+            Text { text: "Device settings"; color: dialogs.ink; font.pixelSize: 30; Layout.bottomMargin: 8 }
+            ActionButton { objectName: "wifiSettingsButton"; text: "Wi-Fi settings"; Layout.fillWidth: true; onClicked: { powerSheet.close(); wifiSheet.open() } }
             ActionButton { objectName: "displaySettingsButton"; text: "Display settings"; Layout.fillWidth: true; onClicked: { powerSheet.close(); settingsSheet.open() } }
             ActionButton { text: "Restart"; Layout.fillWidth: true; onClicked: { dialogs.confirmation = "restart"; powerSheet.close(); confirmSheet.open() } }
             ActionButton { objectName: "shutdownMenuButton"; text: "Shut down for unplugging"; Layout.fillWidth: true; onClicked: { dialogs.confirmation = "shutdown"; powerSheet.close(); confirmSheet.open() } }
             ActionButton { text: "Close"; Layout.fillWidth: true; onClicked: powerSheet.close() }
         }
     }
+    WifiDialog { id: wifiSheet; hostWindow: dialogs.hostWindow; keyboardHeight: dialogs.keyboardHeight }
+    Connections { target: home.wifi; function onOpenRequested() { powerSheet.close(); wifiSheet.open() } }
     Sheet {
         id: settingsSheet
         objectName: "settingsSheet"
@@ -88,11 +91,11 @@ Item {
                 ComboBox {
                     id: offChoice; objectName: "offChoice"; implicitWidth: 240; implicitHeight: 60; font.pixelSize: 22
                     textRole: "label"; valueRole: "seconds"
-                    model: [ {label: "Never", seconds: 0}, {label: "1 minute", seconds: 60}, {label: "2 minutes", seconds: 120}, {label: "5 minutes", seconds: 300}, {label: "10 minutes", seconds: 600}, {label: "30 minutes", seconds: 1800} ]
+                    model: [ {label: "Never", seconds: 0}, {label: "15 seconds", seconds: 15}, {label: "30 seconds", seconds: 30}, {label: "1 minute", seconds: 60}, {label: "2 minutes", seconds: 120}, {label: "5 minutes", seconds: 300}, {label: "10 minutes", seconds: 600}, {label: "30 minutes", seconds: 1800} ]
                 }
             }
             Text { text: "Touch or press a volume button to wake. Audio continues with the screen off."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: dialogs.quiet; font.pixelSize: 19 }
-            Text { visible: !settingsSheet.validTimers; text: "Choose a dim time earlier than screen off."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.danger; font.pixelSize: 19 }
+            Text { visible: !settingsSheet.validTimers; text: "Choose an earlier dim time, or set Dim after to Never."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.danger; font.pixelSize: 19 }
             RowLayout {
                 Layout.fillWidth: true; spacing: 16
                 ActionButton { text: "Cancel"; Layout.fillWidth: true; onClicked: settingsSheet.close() }

@@ -71,6 +71,10 @@ packages; use `apt-get --no-remove` so a driver replacement is not silently acce
 The launcher needs labwc, seatd, mpv/libmpv, ALSA utilities and Qt 6.8 runtimes:
 Core, GUI, Quick, QuickControls2, Network, DBus, WebSockets and OpenGL; the QML
 Quick/Controls/Layouts/Window/WorkerScript modules; and Qt SVG plugins for chess.
+The embedded keyboard also requires `qml6-module-qtquick-virtualkeyboard` and
+`qt6-virtualkeyboard-plugin`, matching the installed Qt version. NetworkManager
+provides Wi-Fi connectivity; the installer adds the narrow `thinksmart-network`
+helper for the unprivileged dashboard. See [Wi-Fi settings](WIFI.md).
 The exact package names/build versions must match the installed Debian image.
 `ldd build/home-arm64/thinksmart-home` is not a host-side cross-architecture
 runtime check; use `ldd` on the staged binary on the device.

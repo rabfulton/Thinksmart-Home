@@ -41,6 +41,13 @@ schedule persistence, missed events, weekday/DST handling and allowed actions.
 The UI tests exercise notes, touch deletion, scheduler execution and dictation
 through local mock Realtime/Live servers. They create no paid sessions.
 
+`network-tests` runs against an isolated D-Bus NetworkManager mock. The Wi-Fi UI
+test uses synthetic access points and actual Qt Virtual Keyboard key taps in
+both orientations. `thinksmart-keyboard-check` is a short standalone device
+probe: a synthetic field and one programmatic keypress, with no Wi-Fi or voice
+activity. The builder creates a user entry for the supplied `BUILDER_UID`/GID so
+the private D-Bus test daemon can authenticate the normal unprivileged test user.
+
 Run those inside the builder with the same offscreen environment. Voice tests
 use a loopback mock WebSocket, dummy credentials and fake audio processes; they
 do not contact OpenAI or capture a microphone. Public tests generate silent WAV

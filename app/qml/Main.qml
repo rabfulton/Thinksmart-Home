@@ -61,8 +61,8 @@ ApplicationWindow {
                     description: "Change colour theme: " + Theme.title
                     onClicked: home.setTheme(Theme.names[(Theme.names.indexOf(home.themeName) + 1) % Theme.names.length])
                 }
-                UiButton { objectName: "screenOffButton"; iconName: "moon"; description: "Screen off"; onClicked: screenControl.sleep() }
-                UiButton { objectName: "powerButton"; iconName: "power"; description: "Power and display settings"; onClicked: screenControl.showPowerMenu() }
+                UiButton { objectName: "powerButton"; iconName: "settings"; description: "Device settings"; onClicked: screenControl.showPowerMenu() }
+                UiButton { objectName: "screenOffButton"; iconName: "power"; description: "Screen off"; onClicked: screenControl.sleep() }
             }
             Row {
                 objectName: "dashboardPageSelector"
@@ -378,7 +378,11 @@ ApplicationWindow {
             UiButton { objectName: "dismissAlarmButton"; text: "Dismiss"; primary: true; Layout.fillWidth: true; onClicked: home.dismissAlarm() }
         }
     }
-    PowerDialogs { hostWindow: window }
+    Loader {
+        id: virtualKeyboard; active: home.virtualKeyboardEnabled
+        Component.onCompleted: if(active)setSource("VirtualKeyboard.qml", {hostWindow: window})
+    }
+    PowerDialogs { hostWindow: window; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0 }
     Rectangle {
         anchors.fill: parent; z: 10000
         visible: screenControl.sleeping || screenControl.powerPending

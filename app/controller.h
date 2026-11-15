@@ -7,6 +7,7 @@
 #include "systemstats.h"
 #include "deviceconfig.h"
 #include "personal.h"
+#include "wifi.h"
 #include <QObject>
 #include <QProcess>
 #include <QLocalSocket>
@@ -28,6 +29,8 @@ class Controller:public QObject {
     Q_PROPERTY(QString themeName READ themeName NOTIFY themeChanged)
     Q_PROPERTY(QVariantMap themePalette READ themePalette NOTIFY themeChanged)
     Q_PROPERTY(PersonalStore *personal READ personal CONSTANT)
+    Q_PROPERTY(WifiController *wifi READ wifi CONSTANT)
+    Q_PROPERTY(bool virtualKeyboardEnabled READ virtualKeyboardEnabled CONSTANT)
     Q_PROPERTY(QString alarmText READ alarmText NOTIFY alarmChanged)
     Q_PROPERTY(int volume READ volume NOTIFY changed)
     Q_PROPERTY(bool muted READ muted NOTIFY changed)
@@ -50,6 +53,8 @@ public:
     QString themeName()const{return m_themeName;}
     QVariantMap themePalette()const{return m_personal.palette(m_themeName).toVariantMap();}
     PersonalStore *personal(){return &m_personal;}
+    WifiController *wifi(){return &m_wifi;}
+    bool virtualKeyboardEnabled()const{return qEnvironmentVariable("QT_IM_MODULE")=="qtvirtualkeyboard";}
     QString alarmText()const{return m_alarmText;}
     Q_INVOKABLE QVariantMap personalAction(const QString &action,const QVariantMap &data={});
     Q_INVOKABLE void dismissAlarm();
@@ -110,6 +115,7 @@ signals:
     void audioSetupRequested();
 private:
     PersonalStore m_personal;
+    WifiController m_wifi;
     QJsonObject personalRequest(const QString &action,const QJsonObject &data);
     QJsonObject executeSteps(const QJsonArray &steps);
     QString checkSteps(const QJsonArray &steps)const;

@@ -32,6 +32,8 @@ class HomeUiTests : public QObject {
     Q_OBJECT
     QTemporaryDir directory;
     QProcess helper;
+    QLocalServer wifiServer;
+    QList<QJsonObject> wifiRequests;
     std::unique_ptr<ScreenController> screen;
     std::unique_ptr<Controller> media;
     std::unique_ptr<VrmClient> energy;
@@ -103,6 +105,20 @@ private slots:
         qputenv("THINKSMART_VOICE_AUDIO",(QCoreApplication::applicationDirPath()+"/fake-voice-audio").toUtf8());
         qputenv("THINKSMART_MEDIA_CONFIG",directory.filePath("no-media.json").toUtf8());
         qputenv("THINKSMART_VRM_CONFIG",directory.filePath("not-configured.json").toUtf8());
+        qputenv("THINKSMART_WIFI_SOCKET",directory.filePath("wifi.sock").toUtf8());
+        QVERIFY(wifiServer.listen(directory.filePath("wifi.sock")));
+        connect(&wifiServer,&QLocalServer::newConnection,this,[this](){while(wifiServer.hasPendingConnections()){
+            auto client=wifiServer.nextPendingConnection();client->setParent(this);connect(client,&QLocalSocket::disconnected,client,&QObject::deleteLater);
+            connect(client,&QLocalSocket::readyRead,this,[this,client](){
+                const auto bytes=client->property("input").toByteArray()+client->readAll();client->setProperty("input",bytes);if(!bytes.contains('\n'))return;
+                const auto request=QJsonDocument::fromJson(bytes.trimmed()).object();wifiRequests.append(request);
+                QJsonObject response{{"ok",true},{"message","Saved"}};
+                if(request.value("action")=="status")response={{"ok",true},{"status","Connected"},{"addresses","192.0.2.10"},{"connecting",false},
+                    {"networks",QJsonArray{QJsonObject{{"id","fixture-access-point"},{"ssid","Studio Wi-Fi"},{"strength",82},{"security","wpa-psk"},{"connected",false},{"savedId",""}}}},
+                    {"saved",QJsonArray{QJsonObject{{"id","fixture-profile"},{"ssid","Saved network"},{"name","Saved network"},{"autoconnect",true},{"priority",100},{"security","wpa-psk"},{"connected",true}}}}};
+                client->write(QJsonDocument(response).toJson(QJsonDocument::Compact)+'\n');client->disconnectFromServer();
+            });
+        }});
         qputenv("THINKSMART_POWER_SOCKET",directory.filePath("control.sock").toUtf8());
         qputenv("THINKSMART_CONTROL_SOCKET",directory.filePath("home.sock").toUtf8());
         write("fake-audio",R"SH(#!/bin/sh
@@ -125,7 +141,7 @@ exec sleep 20
         QVERIFY(helper.waitForStarted());QTRY_VERIFY(QFile::exists(directory.filePath("control.sock")));
     }
     void init() {
-        QSettings settings;settings.clear();settings.sync();warnings.clear();write("action","");
+        QSettings settings;settings.clear();settings.sync();warnings.clear();wifiRequests.clear();write("action","");
         QDir(directory.filePath("personal")).removeRecursively();
         QJsonObject modules;
         if(QByteArray(QTest::currentTestFunction())=="moduleProfiles"){
@@ -321,9 +337,43 @@ exec sleep 20
         screen->wake();click("powerButton");QTRY_VERIFY(object("powerSheet")->property("visible").toBool());
         click("displaySettingsButton");QTRY_VERIFY(object("settingsSheet")->property("visible").toBool());
         QVERIFY(object("dimChoice")->setProperty("currentIndex",3));
-        QVERIFY(object("offChoice")->setProperty("currentIndex",4));
+        QVERIFY(object("offChoice")->setProperty("currentIndex",6));
         click("settingsSaveButton");QTRY_VERIFY(!object("settingsSheet")->property("visible").toBool());
         QCOMPARE(screen->dimSeconds(),120);QCOMPARE(screen->sleepSeconds(),600);
+    }
+    void wifiDialogKeyboardAndSavedPreferences(){
+        if(!media->virtualKeyboardEnabled())QSKIP("Run the isolated Wi-Fi keyboard test to avoid Qt input-context state crossing QML engines.");
+        screen->wake();window->resize(800,1280);click("powerButton");click("wifiSettingsButton");
+        QTRY_VERIFY(object("wifiDialog")->property("visible").toBool());QTRY_COMPARE(media->wifi()->networks().size(),1);
+        QTRY_VERIFY(!media->wifi()->busy());click("wifiSelect0");
+        auto password=qobject_cast<QQuickItem *>(object("wifiPasswordInput"));QVERIFY(password);QVERIFY(password->isVisible());
+        click("wifiPasswordInput");QTRY_VERIFY(object("virtualKeyboard")->property("visible").toBool());
+        QTRY_VERIFY(object("virtualKey_a"));click("virtualKey_a");QTRY_COMPARE(password->property("text").toString(),QString("a"));
+        click("virtualShiftKey");QTRY_VERIFY(object("virtualKey_A"));click("virtualKey_A");QTRY_COMPARE(password->property("text").toString(),QString("aA"));
+        click("virtualBackspaceKey");QTRY_COMPARE(password->property("text").toString(),QString("a"));
+        click("virtualSymbolKey");QTRY_VERIFY(object("virtualKey_1"));click("virtualKey_1");QTRY_COMPARE(password->property("text").toString(),QString("a1"));
+        const auto preview=qEnvironmentVariable("THINKSMART_WIFI_PREVIEW_DIR");
+        if(!preview.isEmpty()){QVERIFY(QDir().mkpath(preview));QVERIFY(window->grabWindow().save(preview+"/wifi-keyboard-portrait.png"));}
+        QVERIFY(password->property("inputMethodHints").toInt()&Qt::ImhNoPredictiveText);QCOMPARE(password->property("echoMode").toInt(),2);
+        window->resize(1280,800);QTest::qWait(150);
+        auto keyboard=qobject_cast<QQuickItem *>(object("virtualKeyboard"));QVERIFY(keyboard);
+        QVERIFY(password->mapToScene(QPointF(0,password->height())).y()<=keyboard->mapToScene(QPointF(0,0)).y());
+        if(!preview.isEmpty())QVERIFY(window->grabWindow().save(preview+"/wifi-keyboard-landscape.png"));
+        click("wifiRevealPassword");QCOMPARE(password->property("echoMode").toInt(),0);
+        password->setProperty("text","fixture-password");QTRY_VERIFY(!media->wifi()->busy());click("wifiConnectButton");
+        QTRY_VERIFY(std::any_of(wifiRequests.cbegin(),wifiRequests.cend(),[](auto r){return r.value("action")=="connect"&&r.value("password")=="fixture-password";}));
+        QTRY_VERIFY(password->property("text").toString().isEmpty());QTRY_VERIFY(!keyboard->isVisible());
+        QTRY_COMPARE(object("wifiDialog")->property("view").toString(),QString("available"));QTRY_VERIFY(!media->wifi()->busy());
+        click("wifiSavedTab");QTRY_VERIFY(!media->wifi()->busy());click("wifiSelect0");
+        object("wifiPriority")->setProperty("value",10);object("wifiAutoconnect")->setProperty("checked",false);
+        click("wifiSavePreferences");QTRY_VERIFY(std::any_of(wifiRequests.cbegin(),wifiRequests.cend(),[](auto r){return r.value("action")=="preferences"&&r.value("priority")==10&&!r.value("autoconnect").toBool();}));
+        QTRY_VERIFY(!media->wifi()->busy());click("wifiHiddenButton");QTRY_VERIFY(object("wifiSsidInput")->property("activeFocus").toBool());
+        QTRY_VERIFY(keyboard->isVisible());object("wifiSsidInput")->setProperty("text","Hidden fixture");
+        object("wifiSecurityChoice")->setProperty("currentIndex",1);QTRY_VERIFY(!media->wifi()->busy());click("wifiConnectButton");
+        QTRY_VERIFY(std::any_of(wifiRequests.cbegin(),wifiRequests.cend(),[](auto r){return r.value("action")=="connect"&&r.value("hidden").toBool()&&r.value("ssid")=="Hidden fixture"&&r.value("security")=="open";}));
+        QTRY_VERIFY(!media->wifi()->busy());
+        click("wifiCloseButton");QVERIFY(!media->wifi()->active());
+        const auto count=wifiRequests.size();QTest::qWait(200);QCOMPARE(wifiRequests.size(),count);
     }
     void shutdownRequiresConfirmationAndUsesHalt() {
         screen->wake();click("powerButton");QTRY_VERIFY(object("powerSheet")->property("visible").toBool());
@@ -1034,5 +1084,10 @@ exec sleep 20
     }
     void cleanupTestCase() {helper.terminate();QVERIFY(helper.waitForFinished(3000));}
 };
-QTEST_MAIN(HomeUiTests)
+int main(int argc,char **argv){
+    QTemporaryDir keyboardConfig;qputenv("XDG_CONFIG_HOME",keyboardConfig.path().toUtf8());
+    bool keyboard=false;for(int i=1;i<argc;i++)if(QByteArray(argv[i])=="wifiDialogKeyboardAndSavedPreferences")keyboard=true;
+    qputenv("QT_IM_MODULE",keyboard?"qtvirtualkeyboard":"none");qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE","1");
+    QGuiApplication app(argc,argv);HomeUiTests tests;return QTest::qExec(&tests,argc,argv);
+}
 #include "home-ui-tests.moc"

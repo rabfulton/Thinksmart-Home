@@ -44,6 +44,8 @@ int main(int argc,char **argv) {
         fwrite(response.data(),1,response.size(),stdout);
         return result.contains("error")||(result.contains("ok")&&!result.value("ok").toBool())?2:0;
     }
+    qputenv("QT_IM_MODULE","qtvirtualkeyboard");
+    qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE","1");
     QGuiApplication app(argc,argv);
     registerVideoTypes();
     app.setOrganizationName("ThinkSmart");

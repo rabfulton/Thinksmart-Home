@@ -46,10 +46,16 @@ thinksmart-home --command stop
 ```
 
 UI restart interrupts playback/conversations. SSH is a separate service.
-Additional services are `thinksmart-power`, `thinksmart-actions` (local scheduling), and optionally `thinksmart-pipewire`,
+Additional services are `thinksmart-power`, `thinksmart-actions` (local scheduling),
+`thinksmart-network` (Wi-Fi settings), and optionally `thinksmart-pipewire`,
 `thinksmart-wireplumber` and `thinksmart-audio-routing`.
 
 ## Wi-Fi and remote access
+
+For touch configuration, open **Settings → Wi-Fi settings**. The embedded Qt
+keyboard supports network names and passwords; saved profiles expose automatic
+connection and priority. See [Wi-Fi settings and keyboard](WIFI.md) for details
+and helper administration. Existing NetworkManager keyfiles remain authoritative.
 
 NetworkManager manages connections. Use `nmcli device status` and
 `nmcli connection show` to identify your profiles. Edit the appropriate keyfile

@@ -17,6 +17,10 @@ drivers, models or linked libraries. Preserve their notices when redistributing.
 
 - **Qt 6:** this project uses the system's Qt libraries. Observe the licences of
   the particular Qt modules/build being distributed; see [Qt licensing](https://doc.qt.io/qt-6/licensing.html).
+- **Qt Virtual Keyboard:** the embedded keyboard uses this separately installed
+  module under its GPLv3 or commercial terms; see the [module notices](https://doc.qt.io/qt-6.8/qtvirtualkeyboard-index.html#licenses-and-attributions).
+  Our original QML keyboard style remains MIT. Preserve the installed module's
+  notices and applicable source/distribution obligations when supplying binaries.
 - **mpv/libmpv:** mpv defaults to GPL-2.0-or-later; an LGPL build is a separate
   build configuration with restrictions described in its [Copyright file](https://github.com/mpv-player/mpv/blob/master/Copyright).
   This application links libmpv. An MIT licence on our source does not make a

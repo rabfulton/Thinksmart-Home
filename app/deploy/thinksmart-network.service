@@ -1,0 +1,23 @@
+[Unit]
+Description=ThinkSmart Wi-Fi settings helper
+Wants=NetworkManager.service
+After=NetworkManager.service
+
+[Service]
+User=root
+Group=thinksmart
+UMask=0077
+Environment=LANG=C.UTF-8
+RuntimeDirectory=thinksmart-network
+RuntimeDirectoryMode=0750
+ExecStart=/usr/local/libexec/thinksmart-network
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
