@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "dusk",
+  "colors": {
+    "background": "#191421",
+    "surface": "#241e30",
+    "raised": "#332a42",
+    "border": "#493c59",
+    "ink": "#f2edf7",
+    "muted": "#bfb0cf",
+    "faint": "#9887ab",
+    "accent": "#c8aff0",
+    "tint": "#3b2c50",
+    "accentInk": "#241930",
+    "secondary": "#eab5a1",
+    "danger": "#f0a1af"
+  }
+}

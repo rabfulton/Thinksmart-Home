@@ -6,6 +6,7 @@
 #include "videoplayer.h"
 #include "systemstats.h"
 #include "deviceconfig.h"
+#include "personal.h"
 #include <QObject>
 #include <QProcess>
 #include <QLocalSocket>
@@ -25,6 +26,9 @@ class Controller:public QObject {
     Q_PROPERTY(VideoPlayer *video READ video CONSTANT)
     Q_PROPERTY(SystemStats *systemStats READ systemStats CONSTANT)
     Q_PROPERTY(QString themeName READ themeName NOTIFY themeChanged)
+    Q_PROPERTY(QVariantMap themePalette READ themePalette NOTIFY themeChanged)
+    Q_PROPERTY(PersonalStore *personal READ personal CONSTANT)
+    Q_PROPERTY(QString alarmText READ alarmText NOTIFY alarmChanged)
     Q_PROPERTY(int volume READ volume NOTIFY changed)
     Q_PROPERTY(bool muted READ muted NOTIFY changed)
     Q_PROPERTY(QString state READ state NOTIFY changed)
@@ -44,6 +48,11 @@ public:
     explicit Controller(ScreenController *display,QObject *parent=nullptr);
     ~Controller();
     QString themeName()const{return m_themeName;}
+    QVariantMap themePalette()const{return m_personal.palette(m_themeName).toVariantMap();}
+    PersonalStore *personal(){return &m_personal;}
+    QString alarmText()const{return m_alarmText;}
+    Q_INVOKABLE QVariantMap personalAction(const QString &action,const QVariantMap &data={});
+    Q_INVOKABLE void dismissAlarm();
     Q_INVOKABLE void setTheme(const QString &name);
     int volume()const{return m_volume;}
     bool muted()const{return m_muted;}
@@ -67,7 +76,7 @@ public:
     VoiceAssistant *assistant(){return &m_assistant;}
     void releaseAudio(bool force=false);
     bool audioReleased()const;
-    bool wakeWordAllowed()const{return !m_audioLab.running()&&(sharedAudioEnabled()||(!m_wantPlay&&!m_switching));}
+    bool wakeWordAllowed()const{return m_alarmText.isEmpty()&&!m_audioLab.running()&&(sharedAudioEnabled()||(!m_wantPlay&&!m_switching));}
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
     Q_INVOKABLE void stop();
@@ -91,6 +100,7 @@ signals:
     void cancelDiscoveryRequested();
     void radioRequested(const QString &id);
     void themeChanged();
+    void alarmChanged();
     void changed();
     void clockChanged();
     void advanceRequested(int delta);
@@ -99,6 +109,15 @@ signals:
     void openAppRequested(const QString &app);
     void audioSetupRequested();
 private:
+    PersonalStore m_personal;
+    QJsonObject personalRequest(const QString &action,const QJsonObject &data);
+    QJsonObject executeSteps(const QJsonArray &steps);
+    QString checkSteps(const QJsonArray &steps)const;
+    void ringAlarm(const QString &text);
+    void playAlarmTone();
+    QProcess m_alarmSound;
+    QTimer m_alarmRepeat,m_alarmLimit;
+    QString m_alarmText;
     SystemStats m_systemStats;
     void beginPlayback();
     void startPlayer();

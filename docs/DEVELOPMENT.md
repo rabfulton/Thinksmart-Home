@@ -36,6 +36,11 @@ build/home-native/home-ui-tests moduleProfiles \
   voiceSessionStreamsInterruptsAndDisables liveManagedToolsAndFullDuplex
 ```
 
+`personal-tests` covers atomic personal-data edits, theme validation/undo,
+schedule persistence, missed events, weekday/DST handling and allowed actions.
+The UI tests exercise notes, touch deletion, scheduler execution and dictation
+through local mock Realtime/Live servers. They create no paid sessions.
+
 Run those inside the builder with the same offscreen environment. Voice tests
 use a loopback mock WebSocket, dummy credentials and fake audio processes; they
 do not contact OpenAI or capture a microphone. Public tests generate silent WAV

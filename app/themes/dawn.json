@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "dawn",
+  "colors": {
+    "background": "#e8e9e3",
+    "surface": "#f5f5ef",
+    "raised": "#dde2da",
+    "border": "#c6cfc5",
+    "ink": "#20312f",
+    "muted": "#5e706b",
+    "faint": "#71847c",
+    "accent": "#357e70",
+    "tint": "#d9ebe1",
+    "accentInk": "#ffffff",
+    "secondary": "#517db1",
+    "danger": "#a74840"
+  }
+}

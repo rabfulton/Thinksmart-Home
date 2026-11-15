@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "autumn",
+  "colors": {
+    "background": "#1c1512",
+    "surface": "#281e19",
+    "raised": "#362922",
+    "border": "#503c30",
+    "ink": "#f5ebe0",
+    "muted": "#c6afa0",
+    "faint": "#a58b79",
+    "accent": "#efa66d",
+    "tint": "#493123",
+    "accentInk": "#24170f",
+    "secondary": "#c9cf8c",
+    "danger": "#f29c91"
+  }
+}

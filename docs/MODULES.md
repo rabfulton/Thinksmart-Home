@@ -10,6 +10,7 @@ Set the `modules` booleans in `private/device.json` before installation, or edit
 | `weather` | Home widget and forecast | Configure weather location/timezone |
 | `news` | International/finance feeds and Hacker News/comments | Internet; cached daily, manual refresh |
 | `chess` | Theme-aware board and local engine | Build/install Arasan for engine play |
+| `notes` | Notes page, dictation, routines and schedule controls | Voice dictation additionally requires Assistant; saved notes work offline |
 | `bluetooth` | Phone speaker mode in Music | BlueZ/BlueALSA on the device |
 | `vrm` | Victron energy/battery card and tools | Read-only VRM credentials |
 | `navidrome` | Local music-library client | Server settings/credentials |
@@ -29,7 +30,7 @@ dependencies. Optional engine/model assets can be omitted entirely.
 For a simple radio/weather display:
 
 ```sh
-python3 tools/configure-device.py --disable assistant --disable news --disable chess \
+python3 tools/configure-device.py --disable assistant --disable news --disable chess --disable notes \
   --disable bluetooth --disable vrm --disable navidrome --disable jellyfin
 ```
 

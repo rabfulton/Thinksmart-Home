@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-MODULES = ('assistant', 'radio', 'weather', 'news', 'chess', 'bluetooth', 'vrm', 'navidrome', 'jellyfin')
+MODULES = ('assistant', 'radio', 'weather', 'news', 'chess', 'notes', 'bluetooth', 'vrm', 'navidrome', 'jellyfin')
 
 
 def validate(config):

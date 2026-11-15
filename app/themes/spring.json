@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "spring",
+  "colors": {
+    "background": "#101c18",
+    "surface": "#182922",
+    "raised": "#23392e",
+    "border": "#365044",
+    "ink": "#edf4e7",
+    "muted": "#afc4b6",
+    "faint": "#849e8c",
+    "accent": "#b5d98a",
+    "tint": "#30452c",
+    "accentInk": "#172414",
+    "secondary": "#e5b4ce",
+    "danger": "#efa49e"
+  }
+}

@@ -6,6 +6,7 @@
     "weather": true,
     "news": true,
     "chess": true,
+    "notes": true,
     "bluetooth": true,
     "vrm": false,
     "navidrome": false,

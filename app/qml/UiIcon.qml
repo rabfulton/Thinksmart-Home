@@ -17,6 +17,9 @@ Canvas {
         function line(x,y,a,b) { c.moveTo(x,y); c.lineTo(a,b) }
         c.beginPath()
         switch(name) {
+        case "trash": line(4,6,20,6); line(9,3,15,3); line(6,6,7,21); line(7,21,17,21); line(17,21,18,6); line(10,10,10,17); line(14,10,14,17); break
+        case "notes": c.rect(5,3,14,18); line(8,8,16,8); line(8,12,16,12); line(8,16,13,16); break
+        case "alarm": c.arc(12,13,8,0,Math.PI*2); line(12,8,12,13); line(12,13,16,15); line(3,5,6,2); line(18,2,21,5); break
         case "bluetooth": line(12,2,12,22); line(12,2,19,8); line(19,8,5,18); line(5,6,19,16); line(19,16,12,22); break
         case "next": line(17,5,17,19); c.moveTo(5,5); c.lineTo(14,12); c.lineTo(5,19); c.closePath(); break
         case "previous": line(7,5,7,19); c.moveTo(19,5); c.lineTo(10,12); c.lineTo(19,19); c.closePath(); break

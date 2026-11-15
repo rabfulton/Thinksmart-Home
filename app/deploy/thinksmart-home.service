@@ -12,6 +12,7 @@ SupplementaryGroups=audio video render input bluetooth
 RuntimeDirectory=thinksmart-ui
 RuntimeDirectoryMode=0700
 Environment=LANG=C.UTF-8
+Environment=THINKSMART_PERSONAL_DIR=/var/lib/thinksmart-home/personal
 Environment=XDG_RUNTIME_DIR=/run/thinksmart-ui
 Environment=LIBSEAT_BACKEND=seatd
 Environment=WLR_BACKENDS=drm,libinput

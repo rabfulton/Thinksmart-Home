@@ -9,6 +9,7 @@
 #include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
+#include <QDataStream>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSocketNotifier>
@@ -25,7 +26,14 @@ Controller::Controller(ScreenController *display,QObject *parent):QObject(parent
     connect(display,&ScreenController::stopping,this,&Controller::stop);
     connect(&m_phone,&BluetoothAudio::changed,this,&Controller::changed);
     m_themeName=m_settings.value("appearance/theme","ember").toString();
-    if(!QStringList{"ember","tide","dawn","autumn","spring","dusk"}.contains(m_themeName))m_themeName="ember";
+    if(!m_personal.themeNames().contains(m_themeName))m_themeName="ember";
+    connect(&m_personal,&PersonalStore::changed,this,[this](){
+        if(!m_personal.themeNames().contains(m_themeName)){m_themeName="ember";m_settings.setValue("appearance/theme",m_themeName);}
+        emit themeChanged();
+    });
+    m_alarmRepeat.setInterval(5000);connect(&m_alarmRepeat,&QTimer::timeout,this,&Controller::playAlarmTone);
+    m_alarmLimit.setSingleShot(true);m_alarmLimit.setInterval(60000);connect(&m_alarmLimit,&QTimer::timeout,this,&Controller::dismissAlarm);
+    connect(&m_alarmSound,&QProcess::readyReadStandardError,this,[this](){m_alarmSound.readAllStandardError();});
     m_volume=qBound(0,m_settings.value("volume",40).toInt(),100);
     QFile stations(qEnvironmentVariable("THINKSMART_STATIONS","/etc/thinksmart/stations.json"));
     if(stations.open(QIODevice::ReadOnly))m_radioUrl=QJsonDocument::fromJson(stations.readAll()).object().value("radio4").toString();m_url=m_radioUrl;
@@ -64,6 +72,7 @@ Controller::Controller(ScreenController *display,QObject *parent):QObject(parent
     connect(&m_server,&QLocalServer::newConnection,this,[this](){while(m_server.hasPendingConnections())handleClient(m_server.nextPendingConnection());});
 }
 Controller::~Controller(){
+    dismissAlarm();
     finishPlayback();m_wantPlay=false;m_player.disconnect(this);m_mixer.disconnect(this);m_ipc.disconnect(this);
     for(auto process:{&m_player,&m_mixer})if(process->state()!=QProcess::NotRunning){process->terminate();if(!process->waitForFinished(500)){process->kill();process->waitForFinished(500);}}
 }
@@ -169,7 +178,7 @@ void Controller::handleClient(QLocalSocket *client){
     connect(client,&QLocalSocket::readyRead,this,[this,client](){
         if(client->property("requestParsed").toBool())return;
         QByteArray buffer=client->property("request").toByteArray()+client->readAll();
-        if(buffer.size()>4096){client->disconnectFromServer();return;}
+        if(buffer.size()>32768){client->disconnectFromServer();return;}
         client->setProperty("request",buffer);if(!buffer.contains('\n'))return;
         client->setProperty("requestParsed",true);
         QString request=QString::fromUtf8(buffer.left(buffer.indexOf('\n'))).trimmed();
@@ -203,7 +212,7 @@ void Controller::handleClient(QLocalSocket *client){
         else if(request=="next")next();else if(request=="previous")previous();
         else if(request.startsWith("open-app ")) {
             const QString app=request.mid(9);
-            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
+            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
         }
         else if(request=="screen-off")m_display->sleep();
         else if(request=="wake")m_display->wake();
@@ -227,7 +236,7 @@ void Controller::handleClient(QLocalSocket *client){
 }
 
 void Controller::setTheme(const QString &name){
-    if(!QStringList{"ember","tide","dawn","autumn","spring","dusk"}.contains(name)||name==m_themeName)return;
+    if(!m_personal.themeNames().contains(name)||name==m_themeName)return;
     m_themeName=name;m_settings.setValue("appearance/theme",name);emit themeChanged();
 }
 
@@ -251,6 +260,8 @@ void Controller::toolRequestAsync(const QJsonObject &request,std::function<void(
 }
 QJsonObject Controller::toolRequest(const QJsonObject &request){
     const QString action=request.value("action").toString();
+    if(PersonalStore::actions().contains(action))return personalRequest(action,request.value("data").toObject());
+    if(action=="automation.execute")return executeSteps(request.value("steps").toArray());
     QJsonObject result{{"ok",true},{"version",1},{"action",action},{"asOf",QDateTime::currentSecsSinceEpoch()}};
     if(request.contains("requestId"))result.insert("requestId",request.value("requestId"));
     auto error=[&](const QString &message){result.insert("ok",false);result.insert("error",message);};
@@ -269,6 +280,8 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         });
         QJsonArray available;for(const auto &value:result.value("actions").toArray())if(DeviceConfig::actionEnabled(value.toObject().value("action").toString()))available.append(value);
         result.insert("actions",available);result.insert("modules",QJsonObject::fromVariantMap(DeviceConfig::modules()));
+        for(const auto &name:PersonalStore::actions())if(DeviceConfig::actionEnabled(name))available.append(QJsonObject{{"action",name},{"optional",QJsonArray{"data"}}});
+        result.insert("actions",available);
     }else if(action.startsWith("video.")&&m_videoLibrary){
         if(action=="video.browse"){if(request.contains("decade"))m_videoLibrary->setDecade(request.value("decade").toInt());else if(request.contains("genre"))m_videoLibrary->setGenre(request.value("genre").toString());else if(request.contains("section"))m_videoLibrary->setSection(request.value("section").toString());m_videoLibrary->refresh();}
         else if(action=="video.more"){m_videoLibrary->loadMore();}
@@ -305,6 +318,70 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
     }else error("Unknown or unavailable action. Use system.capabilities");
     result.insert("media",QJsonObject{{"source",m_source},{"stationId",m_radioId},{"title",title()},{"state",state()},{"message",message()},{"volume",m_volume},{"muted",m_muted}});
     return result;
+}
+
+QVariantMap Controller::personalAction(const QString &action,const QVariantMap &data){return personalRequest(action,QJsonObject::fromVariantMap(data)).toVariantMap();}
+QString Controller::checkSteps(const QJsonArray &steps)const{
+    const auto error=PersonalStore::validateSteps(steps);if(!error.isEmpty())return error;
+    for(const auto &v:steps){
+        const auto step=v.toObject();const auto action=step.value("action").toString();
+        if(!DeviceConfig::actionEnabled(action))return "A required module is disabled: "+action;
+        if(action=="theme.apply"&&!m_personal.themeNames().contains(step.value("id").toString()))return "Unknown theme ID.";
+        if(action=="radio.play"&&!hasRadioStation(step.value("id").toString()))return "Unknown station ID. Use radio.list or radio.search first.";
+        if(action=="radio.random"&&(!m_radio||m_radio->list(step.value("genre").toString(),{}).isEmpty()))return "Unknown or empty curated radio genre.";
+    }
+    return {};
+}
+QJsonObject Controller::personalRequest(const QString &action,const QJsonObject &data){
+    if(!DeviceConfig::actionEnabled(action))return {{"ok",false},{"error","This module is disabled in device.json"}};
+    if((action=="routine.save"||action=="schedule.save")&&data.contains("steps")){
+        const auto error=checkSteps(data.value("steps").toArray());if(!error.isEmpty())return {{"ok",false},{"error",error}};
+    }
+    auto result=m_personal.request(action,data);
+    if(!result.value("ok").toBool())return result;
+    if(action=="theme.list")result.insert("current",m_themeName);
+    if(action=="theme.apply"||action=="theme.undo"||(action=="theme.save"&&data.value("activate").toBool(true)))setTheme(data.value("id").toString());
+    if(action=="routine.run")return executeSteps(result.value("steps").toArray());
+    return result;
+}
+QJsonObject Controller::executeSteps(const QJsonArray &steps){
+    const auto error=checkSteps(steps);if(!error.isEmpty())return {{"ok",false},{"error",error}};
+    QJsonArray results;
+    for(const auto &v:steps){
+        const auto step=v.toObject();const auto action=step.value("action").toString();QJsonObject result{{"ok",true}};
+        if(action=="screen.sleep")m_display->sleep();
+        else if(action=="screen.wake")m_display->wake();
+        else if(action=="alarm.ring")ringAlarm(step.value("text").toString());
+        else if(action=="theme.apply")result=personalRequest(action,{{"id",step.value("id")}});
+        else result=toolRequest(step);
+        results.append(QJsonObject{{"action",action},{"ok",result.value("ok")}});
+        if(!result.value("ok").toBool()){result.insert("results",results);return result;}
+    }
+    return {{"ok",true},{"requested",true},{"results",results}};
+}
+void Controller::ringAlarm(const QString &text){
+    stop();m_assistant.stop();m_alarmText=text;m_display->wake();emit alarmChanged();
+    playAlarmTone();m_alarmRepeat.start();m_alarmLimit.start();
+}
+void Controller::playAlarmTone(){
+    if(m_alarmText.isEmpty()||m_alarmSound.state()!=QProcess::NotRunning)return;
+    QByteArray pcm;QDataStream out(&pcm,QIODevice::WriteOnly);out.setByteOrder(QDataStream::LittleEndian);
+    constexpr double pi=3.141592653589793;
+    for(int i=0;i<48000;i++){
+        const int phase=i%24000;const double envelope=phase<14000?qMin(1.,qMin(phase/960.,(14000-phase)/1920.)):0.;
+        out<<qint16(std::sin(2*pi*(i<24000?660:880)*i/48000.)*9000*envelope);
+    }
+    QString alarmPlayer="aplay";
+#ifdef THINKSMART_VOICE_TESTING
+    alarmPlayer="true";
+#endif
+    m_alarmSound.start(alarmPlayer,{"-q","-t","raw","-f","S16_LE","-r","48000","-c","1"});
+    // QProcess queues input until the player starts; no GUI-thread wait.
+    m_alarmSound.write(pcm);m_alarmSound.closeWriteChannel();
+}
+void Controller::dismissAlarm(){
+    m_alarmRepeat.stop();m_alarmLimit.stop();m_alarmSound.kill();
+    if(!m_alarmText.isEmpty()){m_alarmText.clear();emit alarmChanged();}
 }
 
 void Controller::releaseAudio(bool force){

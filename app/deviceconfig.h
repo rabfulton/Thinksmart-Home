@@ -14,12 +14,12 @@
 class DeviceConfig {
 public:
     static QString path(){return qEnvironmentVariable("THINKSMART_DEVICE_CONFIG","/etc/thinksmart/device.json");}
-    static QStringList names(){return {"assistant","radio","weather","news","chess","bluetooth","vrm","navidrome","jellyfin"};}
+    static QStringList names(){return {"assistant","radio","weather","news","chess","notes","bluetooth","vrm","navidrome","jellyfin"};}
     static void reload(){state()=read();}
     static QString problem(){return state().problem;}
     static bool enabled(const QString &name){return names().contains(name)&&state().data.value("modules").toObject().value(name).toBool(true);}
     static QVariantMap modules(){QVariantMap result;for(const auto &name:names())result.insert(name,enabled(name));return result;}
-    static QStringList pages(){QStringList result;if(enabled("chess"))result<<"chess";if(enabled("news"))result<<"news";return result<<"home";}
+    static QStringList pages(){QStringList result;if(enabled("chess"))result<<"chess";if(enabled("notes"))result<<"notes";if(enabled("news"))result<<"news";return result<<"home";}
     static bool appEnabled(const QString &app){
         if(app=="home")return true;
         if(app=="solar")return enabled("vrm");
@@ -39,6 +39,7 @@ public:
         if(action.startsWith("weather."))return enabled("weather");
         if(action.startsWith("battery."))return enabled("vrm");
         if(action.startsWith("video."))return enabled("jellyfin");
+        if(action.startsWith("notes."))return enabled("notes");
         return true;
     }
     static QString context(){

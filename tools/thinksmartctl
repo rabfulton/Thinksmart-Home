@@ -6,12 +6,12 @@ import socket
 import sys
 
 try:
-    raw = sys.argv[1] if len(sys.argv) == 2 else (sys.stdin.read(4097) if not sys.stdin.isatty() else '{"action":"system.capabilities"}')
+    raw = sys.argv[1] if len(sys.argv) == 2 else (sys.stdin.read(32769) if not sys.stdin.isatty() else '{"action":"system.capabilities"}')
     request = json.loads(raw or '{"action":"system.capabilities"}')
     if not isinstance(request, dict):
         raise ValueError('Expected a JSON request object')
     data = json.dumps(request, separators=(',', ':')).encode() + b'\n'
-    if len(data) > 4096:
+    if len(data) > 32768:
         raise ValueError('Request is too large')
     with socket.socket(socket.AF_UNIX) as client:
         client.settimeout(20 if request.get("action") == "radio.search" else 4)

@@ -93,6 +93,7 @@ private slots:
         qputenv("THINKSMART_CHESS_ENGINE",(QCoreApplication::applicationDirPath()+"/fake-chess-engine").toUtf8());
         qputenv("XDG_CACHE_HOME",directory.filePath("cache").toUtf8());
         qputenv("XDG_DATA_HOME",directory.filePath("data").toUtf8());
+        qputenv("THINKSMART_PERSONAL_DIR",directory.filePath("personal").toUtf8());
         qputenv("THINKSMART_ASSISTANT_DIR",directory.filePath("assistant").toUtf8());
         qputenv("THINKSMART_WAKEWORD_AUDIO",(QCoreApplication::applicationDirPath()+"/fake-wakeword").toUtf8());
         qputenv("THINKSMART_WAKEWORD_MODEL",directory.filePath("wake-model").toUtf8());
@@ -125,6 +126,7 @@ exec sleep 20
     }
     void init() {
         QSettings settings;settings.clear();settings.sync();warnings.clear();write("action","");
+        QDir(directory.filePath("personal")).removeRecursively();
         QJsonObject modules;
         if(QByteArray(QTest::currentTestFunction())=="moduleProfiles"){
             QFETCH(QStringList,enabledModules);for(const auto &name:DeviceConfig::names())modules.insert(name,enabledModules.contains(name));
@@ -196,7 +198,7 @@ exec sleep 20
     void moduleProfiles(){
         QFETCH(QStringList,enabledModules);screen->wake();
         auto pages=object("dashboardPages");QVERIFY(pages);
-        QCOMPARE(pages->property("count").toInt(),1+int(enabledModules.contains("news"))+int(enabledModules.contains("chess")));
+        QCOMPARE(pages->property("count").toInt(),1+int(enabledModules.contains("news"))+int(enabledModules.contains("chess"))+int(enabledModules.contains("notes")));
         for(const auto &name:DeviceConfig::names())QCOMPARE(media->modules().value(name).toBool(),enabledModules.contains(name));
         const auto actions=media->toolRequest({{"action","system.capabilities"}}).value("actions").toArray();
         for(const auto &action:actions)QVERIFY(DeviceConfig::actionEnabled(action.toObject().value("action").toString()));
@@ -216,7 +218,7 @@ exec sleep 20
         write("device.json","{}");DeviceConfig::reload();
     }
     void dashboardPagesButtonsSwipesAndAppReturn() {
-        constexpr int homePage=2,morePage=1;
+        constexpr int homePage=3,morePage=2,notesPage=1;
         screen->wake();window->resize(1280,800);QTest::qWait(50);
         auto pages=qobject_cast<QQuickItem *>(object("dashboardPages"));QVERIFY(pages);
         auto flickable=pages;
@@ -244,8 +246,8 @@ exec sleep 20
         swipe(true);QTRY_COMPARE(pages->property("currentIndex").toInt(),homePage);
         QTRY_VERIFY(!pages->property("transitioning").toBool());
         // Complete the ring in both directions without jumping or duplicating pages.
-        for(int expected:{0,morePage,homePage}){swipe(false);QTRY_COMPARE(pages->property("currentIndex").toInt(),expected);QTRY_VERIFY(!pages->property("transitioning").toBool());}
-        for(int expected:{morePage,0,homePage}){swipe(true);QTRY_COMPARE(pages->property("currentIndex").toInt(),expected);QTRY_VERIFY(!pages->property("transitioning").toBool());}
+        for(int expected:{0,notesPage,morePage,homePage}){swipe(false);QTRY_COMPARE(pages->property("currentIndex").toInt(),expected);QTRY_VERIFY(!pages->property("transitioning").toBool());}
+        for(int expected:{morePage,notesPage,0,homePage}){swipe(true);QTRY_COMPARE(pages->property("currentIndex").toInt(),expected);QTRY_VERIFY(!pages->property("transitioning").toBool());}
         QVERIFY(hackerNews->selected().isEmpty());
         QTRY_VERIFY(!flickable->property("moving").toBool());
         click("radioTile");QCOMPARE(window->property("selectedApp").toString(),QString("radio"));
@@ -287,7 +289,7 @@ exec sleep 20
         sequence.press(0,from,window).commit();QTest::qWait(20);
         for(int i=1;i<=10;i++){sequence.move(0,from+(to-from)*i/10,window).commit();QTest::qWait(20);}
         sequence.release(0,to,window).commit();
-        QCOMPARE(object("dashboardPages")->property("currentIndex").toInt(),1);QTRY_VERIFY(list->property("contentY").toDouble()>0);
+        QCOMPARE(object("dashboardPages")->property("currentIndex").toInt(),media->dashboardPages().indexOf("news"));QTRY_VERIFY(list->property("contentY").toDouble()>0);
         QTRY_VERIFY(!list->property("moving").toBool());list->setProperty("contentY",0);QCoreApplication::processEvents();
         click("headlineRow0");QCOMPARE(object("newsPage")->property("readingArticle").toBool(),true);
         click("headlinesBackButton");QCOMPARE(object("newsPage")->property("readingArticle").toBool(),false);
@@ -295,7 +297,7 @@ exec sleep 20
         click("hnReplies201");QCOMPARE(hackerNews->comments()->rowCount(),2);
         click("hnBackButton");QVERIFY(hackerNews->selected().isEmpty());
         window->resize(800,1280);QTest::qWait(350);QVERIFY(qAbs(left->x()-right->x())<1);QVERIFY(right->y()>left->y()+left->height());
-        media->openAppRequested("home");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),2);
+        media->openAppRequested("home");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),3);
     }
     void chessBoardMovesUndoAndTheme(){
         screen->wake();window->resize(1280,800);click("chessPageButton");QTest::qWait(400);
@@ -304,7 +306,7 @@ exec sleep 20
         click("chessUndoButton");QCOMPARE(chessGame->moveCount(),0);
         media->setTheme("dawn");QCoreApplication::processEvents();media->setTheme("tide");QCoreApplication::processEvents();
         window->resize(800,1280);QTest::qWait(350);auto square=qobject_cast<QQuickItem *>(object("chessSquare_e2"));QVERIFY(square);QVERIFY(square->width()>60);
-        click("homePageButton");QVERIFY(!chessGame->active());QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),2);
+        click("homePageButton");QVERIFY(!chessGame->active());QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),3);
     }
     void chessSideSwitchRatingAndBlackBoardInput(){
         screen->wake();window->resize(1280,800);click("chessPageButton");QTest::qWait(400);
@@ -774,6 +776,78 @@ exec sleep 20
             QTRY_VERIFY_WITH_TIMEOUT(client.bytesAvailable()>0,5000);QVERIFY(QJsonDocument::fromJson(client.readAll()).object().value("ok").toBool());
         }
     }
+    void personalNotesThemesRoutinesAndTouchControls(){
+        screen->wake();click("notesPageButton");QTest::qWait(300);
+        QVERIFY(object("notesPage"));QVERIFY(!object("dictateNoteButton")->property("enabled").toBool());
+        auto added=media->toolRequest({{"action","notes.add"},{"data",QJsonObject{{"text","Remember <b>milk</b> and coffee"}}}});QVERIFY(added.value("ok").toBool());
+        QTRY_COMPARE(object("personalList")->property("count").toInt(),1);
+        window->resize(1280,800);QTest::qWait(50);click("deletePersonal0");QTRY_COMPARE(media->personal()->notes().size(),0);
+        auto theme=media->personalAction("theme.save",{{"id","plum"},{"base","dusk"},{"colors",QVariantMap{{"accent","#e8b568"}}}});QVERIFY(theme.value("ok").toBool());
+        QCOMPARE(media->themeName(),QString("plum"));QCOMPARE(media->themePalette().value("accent").toString(),QString("#e8b568"));
+        QJsonArray steps{QJsonObject{{"action","theme.apply"},{"id","autumn"}},QJsonObject{{"action","media.volume"},{"percent",27}}};
+        QVERIFY(media->toolRequest({{"action","routine.save"},{"data",QJsonObject{{"id","evening"},{"title","Evening"},{"steps",steps}}}}).value("ok").toBool());
+        click("personalSection1");QTest::qWait(50);click("runRoutine0");QCOMPARE(media->volume(),27);QCOMPARE(media->themeName(),QString("autumn"));
+        QVERIFY(media->toolRequest({{"action","schedule.save"},{"data",QJsonObject{{"title","Later"},{"routineId","evening"},{"afterSeconds",600}}}}).value("ok").toBool());
+        click("personalSection2");QTest::qWait(50);click("toggleSchedule0");QVERIFY(!media->personal()->schedules().first().toMap().value("enabled").toBool());
+        click("deletePersonal0");QVERIFY(media->personal()->schedules().isEmpty());
+        click("personalSection1");QTest::qWait(50);click("deletePersonal0");QVERIFY(media->personal()->routines().isEmpty());
+        window->resize(800,1280);QTest::qWait(50);click("personalSection0");
+        QVERIFY(warnings.isEmpty());
+    }
+    void schedulerRunsWithoutAssistantAndAlarmWakesScreen(){
+        QProcess scheduler;scheduler.start(QCoreApplication::applicationDirPath()+"/thinksmart-actions");QVERIFY(scheduler.waitForStarted());
+        auto cleanup=qScopeGuard([&](){scheduler.terminate();scheduler.waitForFinished(2000);});
+        QVERIFY(!media->assistant()->enabled());
+        QJsonArray steps{QJsonObject{{"action","theme.apply"},{"id","autumn"}},QJsonObject{{"action","screen.wake"}}};
+        QVERIFY(media->toolRequest({{"action","schedule.save"},{"data",QJsonObject{{"title","Wake later"},{"steps",steps},{"afterSeconds",1}}}}).value("ok").toBool());
+        screen->sleep();QVERIFY(screen->sleeping());
+        QTRY_VERIFY_WITH_TIMEOUT(!screen->sleeping(),5000);QCOMPARE(media->themeName(),QString("autumn"));
+        QTRY_COMPARE(media->personal()->schedules().first().toMap().value("status").toString(),QString("completed"));
+        QVERIFY(!media->assistant()->active());
+        QTest::qWait(1100);QCOMPARE(media->personal()->schedules().size(),1);
+        const QJsonArray alarm{QJsonObject{{"action","alarm.ring"},{"text","Check the oven"}}};
+        screen->sleep();QVERIFY(media->toolRequest({{"action","automation.execute"},{"steps",alarm}}).value("ok").toBool());
+        QVERIFY(!screen->sleeping());QCOMPARE(media->alarmText(),QString("Check the oven"));QTRY_VERIFY(object("alarmPopup")->property("visible").toBool());
+        click("dismissAlarmButton");QVERIFY(media->alarmText().isEmpty());
+    }
+    void dictationOnlySavesNotes_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
+    void dictationOnlySavesNotes(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        prepareWakeAssets();screen->wake();click("notesPageButton");QTest::qWait(300);
+        QWebSocketServer server("dictation-mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));
+        qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QPointer<QWebSocket> peer;QList<QJsonObject> requests;
+        auto cleanup=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        auto send=[&](QJsonObject o){QVERIFY(peer);peer->sendTextMessage(QString::fromUtf8(QJsonDocument(o).toJson(QJsonDocument::Compact)));};
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &message){
+            const auto event=QJsonDocument::fromJson(message.toUtf8()).object();requests.append(event);
+            if(event.value("type")=="session.update")send({{"type","session.updated"}});
+            if(event.value("type")=="session.start")send({{"type","session.started"}});
+            if(event.value("type")=="session.close")send({{"type","session.closed"},{"usage",QJsonObject{{"seconds",1}}}});
+        });if(!live)send({{"type","session.created"}});});
+        auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);
+        QTRY_VERIFY(voice->wakeListening());click("dictateNoteButton");QTRY_VERIFY(peer&&voice->noteDictation()&&voice->inputLevel()>0);
+        const auto session=requests.first().value("session").toObject();const auto toolOwner=live?session.value("delegation").toObject().value("responses").toObject():session;
+        const auto tools=toolOwner.value("tools").toArray();QCOMPARE(tools.size(),1);QCOMPARE(tools.first().toObject().value("name").toString(),QString("personal_action"));
+        QVERIFY(session.value("instructions").toString().contains("DICTATION MODE"));QVERIFY(toolOwner.value("instructions").toString().contains("DICTATION MODE"));
+        auto dispatch=[&](const QString &id,const QString &name,const QJsonObject &args){
+            const QJsonObject call{{"type","function_call"},{"call_id",id},{"name",name},{"arguments",QString::fromUtf8(QJsonDocument(args).toJson(QJsonDocument::Compact))}};
+            if(live){
+                auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","notes"},{"event",e}});};
+                nested({{"type","response.created"},{"response",QJsonObject{{"id",id}}}});
+                nested({{"type","response.output_item.done"},{"item",call}});
+                nested({{"type","response.completed"},{"response",QJsonObject{{"id",id}}}});
+            }else send({{"type","response.done"},{"response",QJsonObject{{"id",id},{"status","completed"},{"output",QJsonArray{call}}}}});
+        };
+        const auto volume=media->volume();dispatch("blocked","device_action",{{"action","media.volume"},{"percent",1}});
+        QTRY_VERIFY(std::any_of(requests.cbegin(),requests.cend(),[](auto r){return r.value("item").toObject().value("call_id")=="blocked";}));QCOMPARE(media->volume(),volume);
+        dispatch("save","personal_action",{{"action","notes.add"},{"data",QJsonObject{{"text","Stop the radio and remember coffee"}}}});
+        QTRY_COMPARE(media->personal()->notes().size(),1);QCOMPARE(media->personal()->notes().first().toMap().value("text").toString(),QString("Stop the radio and remember coffee"));
+        QTRY_COMPARE(object("personalList")->property("count").toInt(),1);
+        dispatch("duplicate","personal_action",{{"action","notes.add"},{"data",QJsonObject{{"text","Duplicate"}}}});
+        QTRY_VERIFY(std::any_of(requests.cbegin(),requests.cend(),[](auto r){return r.value("item").toObject().value("call_id")=="duplicate";}));QCOMPARE(media->personal()->notes().size(),1);
+        voice->setEnabled(false);QVERIFY(!voice->noteDictation());QTRY_VERIFY(voice->released());
+    }
     void capturePublicScreenshots(){
         const QString destination=qEnvironmentVariable("THINKSMART_PUBLIC_SCREENSHOTS");
         if(destination.isEmpty())QSKIP("Set THINKSMART_PUBLIC_SCREENSHOTS to render public demonstration screenshots");
@@ -808,6 +882,16 @@ exec sleep 20
             QVERIFY(window->grabWindow().save(destination+"/"+name+".png"));
         };
         const QString selected=qEnvironmentVariable("THINKSMART_CAPTURE_APP");
+        if(selected=="personal"){
+            media->toolRequest({{"action","notes.add"},{"data",QJsonObject{{"title","A thought for the weekend"},{"text","Take a walk if the weather clears.\nBring the camera and a flask of coffee."}}}});
+            media->toolRequest({{"action","notes.add"},{"data",QJsonObject{{"title","To pick up"},{"text","Coffee beans, oat milk and something for dinner."}}}});
+            media->toolRequest({{"action","routine.save"},{"data",QJsonObject{{"id","evening"},{"title","Evening radio"},{"steps",QJsonArray{QJsonObject{{"action","theme.apply"},{"id","autumn"}},QJsonObject{{"action","media.volume"},{"percent",30}},QJsonObject{{"action","radio.play"},{"id","radio4"}}}}}}});
+            media->toolRequest({{"action","schedule.save"},{"data",QJsonObject{{"title","Weekday radio"},{"time","09:00"},{"weekdays",QJsonArray{1,2,3,4,5}},{"routineId","evening"}}}});
+            media->openAppRequested("notes");
+            capture("notes-landscape",1280,800);capture("notes-portrait",800,1280);
+            click("personalSection1");capture("routines-landscape",1280,800);
+            click("personalSection2");capture("schedules-portrait",800,1280);return;
+        }
         if(selected=="chess"){
             media->openAppRequested("chess");
             capture("chess-landscape",1280,800);capture("chess-portrait",800,1280);
@@ -816,7 +900,7 @@ exec sleep 20
             capture("chess-black-landscape",1280,800);capture("chess-black-portrait",800,1280);return;
         }
         if(selected=="news"){
-            object("dashboardPages")->setProperty("currentIndex",1);
+            object("dashboardPages")->setProperty("currentIndex",media->dashboardPages().indexOf("news"));
             capture("news-landscape",1280,800);capture("news-portrait",800,1280);
             hackerNews->openStory(0);hackerNews->toggleReplies("201");
             capture("hn-discussion-landscape",1280,800);capture("hn-discussion-portrait",800,1280);return;
@@ -839,10 +923,10 @@ exec sleep 20
         }
         capture("dashboard-ember-landscape",1280,800);
         capture("dashboard-ember-portrait",800,1280);
-        object("dashboardPages")->setProperty("currentIndex",1);
+        object("dashboardPages")->setProperty("currentIndex",media->dashboardPages().indexOf("news"));
         capture("more-apps-landscape",1280,800);
         capture("more-apps-portrait",800,1280);
-        object("dashboardPages")->setProperty("currentIndex",2);
+        object("dashboardPages")->setProperty("currentIndex",media->dashboardPages().indexOf("home"));
         media->setTheme("tide");
         capture("dashboard-tide-landscape",1280,800);
         media->setTheme("dawn");

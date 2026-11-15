@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "ember",
+  "colors": {
+    "background": "#10161c",
+    "surface": "#181f27",
+    "raised": "#222c36",
+    "border": "#303d49",
+    "ink": "#edf2f4",
+    "muted": "#a3b1bc",
+    "faint": "#788996",
+    "accent": "#e8b568",
+    "secondary": "#8ed5cc",
+    "tint": "#373027",
+    "accentInk": "#131c22",
+    "danger": "#ef9b8e"
+  }
+}

@@ -33,9 +33,9 @@ QJsonObject VoiceAssistant::liveConfiguration()const{
     // explicitly permit the optional arguments already used by our dispatcher.
     QJsonArray functions=liveTools();
     for(int i=0;i<functions.size();i++){auto f=functions[i].toObject();f.insert("strict",false);functions[i]=f;}
-    return {{"model","gpt-live-1"},{"store",false},{"instructions",m_prompts.liveInstructions()},
+    return {{"model","gpt-live-1"},{"store",false},{"instructions",m_prompts.liveInstructions()+personalInstructions()},
         {"audio",QJsonObject{{"format",QJsonObject{{"type","audio/pcm"},{"rate",24000}}},{"output",QJsonObject{{"voice",m_voice}}}}},
-        {"delegation",QJsonObject{{"type","responses"},{"responses",QJsonObject{{"model",m_backendModel},{"instructions",m_prompts.backendInstructions()},{"tools",functions},
+        {"delegation",QJsonObject{{"type","responses"},{"responses",QJsonObject{{"model",m_backendModel},{"instructions",m_prompts.backendInstructions()+personalInstructions()},{"tools",functions},
             {"tool_choice","auto"},{"parallel_tool_calls",false},{"reasoning",QJsonObject{{"effort","low"}}},{"max_output_tokens",2048}}}}}};
 }
 void VoiceAssistant::sendMicrophone(const QString &audio){

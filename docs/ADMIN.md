@@ -18,6 +18,7 @@ through display sleep and UI restarts while the device has network connectivity.
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home.conf` | Saved theme, volume, display, model/personality and per-model voice preferences |
 | `/etc/thinksmart/radio-catalog.json` | Curated stations/genres |
 | `/etc/thinksmart/stations.json` | Default/legacy radio URLs |
+| `/var/lib/thinksmart-home/personal/` | Editable themes, notes, routines and schedules; see [personal actions](PERSONAL.md) |
 | `/usr/local/share/thinksmart/voice-previews/` | Optional local WAV previews |
 | `/etc/asound.conf`, `/etc/thinksmart/shared-audio/` | Audio routing and PipeWire graph |
 | `/etc/thinksmart/labwc/rc.xml` | Compositor/input configuration |
@@ -45,7 +46,7 @@ thinksmart-home --command stop
 ```
 
 UI restart interrupts playback/conversations. SSH is a separate service.
-Additional services are `thinksmart-power`, and optionally `thinksmart-pipewire`,
+Additional services are `thinksmart-power`, `thinksmart-actions` (local scheduling), and optionally `thinksmart-pipewire`,
 `thinksmart-wireplumber` and `thinksmart-audio-routing`.
 
 ## Wi-Fi and remote access

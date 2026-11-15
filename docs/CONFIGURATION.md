@@ -78,3 +78,7 @@ conversation; Settings → Reload updates the personality list. No build is need
 Prompt files use UTF-8, at most 32 KiB each and 64 KiB per assembled prompt.
 Keep them readable by `thinksmart` and private. Upgrades seed missing defaults
 and preserve existing prompts. See [ADMIN.md](ADMIN.md) for all file locations.
+
+Themes, notes, routines and schedules live in
+`/var/lib/thinksmart-home/personal/`. They can be edited by the built-in assistant
+or over SSH and survive application upgrades. See [personal actions](PERSONAL.md).

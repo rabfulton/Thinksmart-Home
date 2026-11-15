@@ -24,6 +24,7 @@ class VoiceAssistant:public QObject {
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY changed)
     Q_PROPERTY(bool configured READ configured NOTIFY changed)
     Q_PROPERTY(bool active READ active NOTIFY changed)
+    Q_PROPERTY(bool noteDictation READ noteDictation NOTIFY changed)
     Q_PROPERTY(QString status READ status NOTIFY changed)
     Q_PROPERTY(QString problem READ problem NOTIFY changed)
     Q_PROPERTY(QString mode READ mode NOTIFY changed)
@@ -58,6 +59,8 @@ public:
     void setEnabled(bool value);
     bool configured()const{return m_configured;}
     bool active()const{return m_active;}
+    bool noteDictation()const{return m_noteDictation;}
+    Q_INVOKABLE void startNote();
     bool released()const{return m_audio.state()==QProcess::NotRunning&&m_wake.released()&&!previewPlaying();}
     QString status()const;
     QString problem()const{return m_problem;}
@@ -109,7 +112,8 @@ signals:
 private:
     static QString binary();
     static QStringList voiceChoices(bool live);
-    static QJsonArray liveTools();
+    QJsonArray liveTools()const;
+    QString personalInstructions()const;
     void fail(const QString &message);
     void connectApi();
     void send(QJsonObject event);
@@ -165,7 +169,7 @@ private:
     QSet<QString> m_ignoredResponses,m_calls;
     QVariantList m_transcript;
     QJsonObject m_pendingAction,m_lastTool;
-    bool m_handoffReady=false,m_mediaDucked=false;
+    bool m_handoffReady=false,m_mediaDucked=false,m_noteDictation=false,m_noteSaved=false;
     bool m_enabled=false,m_configured=false,m_active=false,m_sessionReady=false,m_responseActive=false,m_playing=false,m_userSpeaking=false,m_manualTurn=false;
     double m_inputLevel=0,m_outputLevel=0;
 };

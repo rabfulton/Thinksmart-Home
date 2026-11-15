@@ -1,0 +1,21 @@
+[Unit]
+Description=ThinkSmart local timers and scheduled actions
+After=time-sync.target
+Wants=time-sync.target
+
+[Service]
+User=thinksmart
+Group=thinksmart
+Environment=LANG=C.UTF-8
+Environment=THINKSMART_PERSONAL_DIR=/var/lib/thinksmart-home/personal
+ExecStart=/usr/local/libexec/thinksmart-actions
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/thinksmart-home/personal
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

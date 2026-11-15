@@ -3,13 +3,15 @@ set -euo pipefail
 cd -- "$(dirname -- "$0")/.."
 test -x build/home-arm64/thinksmart-home
 test -x build/home-arm64/thinksmart-power
+test -x build/home-arm64/thinksmart-actions
 python3 tools/configure-device.py --config private/device.json --check
 # Transfer only the application and its public configuration.
-tar -C build/home-arm64 -cf - thinksmart-home thinksmart-power | ./tools/thinksmart-ssh 'install -d -m 755 /opt/thinksmart/staging; tar -xf - -C /opt/thinksmart/staging'
+tar -C build/home-arm64 -cf - thinksmart-home thinksmart-power thinksmart-actions | ./tools/thinksmart-ssh 'install -d -m 755 /opt/thinksmart/staging; tar -xf - -C /opt/thinksmart/staging'
 tar -C app/deploy -cf - . | ./tools/thinksmart-ssh 'tar -xf - -C /opt/thinksmart/staging'
 cat private/device.json | ./tools/thinksmart-ssh 'cat > /opt/thinksmart/staging/device.json'
 cat tools/thinksmartctl | ./tools/thinksmart-ssh 'cat > /opt/thinksmart/staging/thinksmartctl'
 cat app/radio-catalog.json | ./tools/thinksmart-ssh 'cat > /opt/thinksmart/staging/radio-catalog.json'
+tar -C app -cf - themes | ./tools/thinksmart-ssh 'tar -xf - -C /opt/thinksmart/staging'
 ./tools/thinksmart-ssh 'sh -s' <<'REMOTE' 
 set -eu
 if ! id thinksmart >/dev/null 2>&1; then
@@ -22,7 +24,7 @@ bluetooth_enabled=$(python3 -c 'import json; print(int(json.load(open("/opt/thin
 if [ "$bluetooth_enabled" = 1 ]; then
     systemctl cat bluealsa.service >/dev/null || { echo 'Bluetooth selected: install and configure BlueALSA first (docs/MODULES.md).'; exit 1; }
 fi
-systemctl stop thinksmart-home.service thinksmart-power.service 2>/dev/null || true
+systemctl stop thinksmart-actions.service thinksmart-home.service thinksmart-power.service 2>/dev/null || true
 install -m 755 /opt/thinksmart/staging/thinksmartctl /usr/local/bin/thinksmartctl
 install -o thinksmart -g thinksmart -m 644 /opt/thinksmart/staging/device.json /etc/thinksmart/device.json
 if [ ! -f /etc/thinksmart/radio-catalog.json ]; then
@@ -39,6 +41,16 @@ for source in /opt/thinksmart/staging/assistant/*.md /opt/thinksmart/staging/ass
     fi
 done
 install -m 755 /opt/thinksmart/staging/thinksmart-home /usr/local/bin/thinksmart-home
+# Keep personal notes, schedules, routines and SSH-edited palettes on upgrades.
+install -d -o thinksmart -g thinksmart -m 700 /var/lib/thinksmart-home/personal /var/lib/thinksmart-home/personal/themes
+for source in /opt/thinksmart/staging/themes/*.json; do
+    target=/var/lib/thinksmart-home/personal/themes/${source##*/}
+    if [ ! -e "$target" ]; then
+        install -o thinksmart -g thinksmart -m 600 "$source" "$target"
+    fi
+done
+install -m 755 /opt/thinksmart/staging/thinksmart-actions /usr/local/libexec/thinksmart-actions
+install -m 644 /opt/thinksmart/staging/thinksmart-actions.service /etc/systemd/system/thinksmart-actions.service
 install -d -m 755 /usr/local/share/thinksmart/voice-previews
 for preview in /opt/thinksmart/staging/voice-previews/*.wav; do
     [ -f "$preview" ] || continue
@@ -59,8 +71,9 @@ if [ "$bluetooth_enabled" = 1 ]; then
     systemctl enable bluetooth.service bluealsa.service
     systemctl restart bluealsa.service
 fi
-systemctl enable seatd.service thinksmart-power.service thinksmart-home.service
+systemctl enable seatd.service thinksmart-power.service thinksmart-home.service thinksmart-actions.service
 systemctl set-default graphical.target
 systemctl disable --now getty@tty1.service
 systemctl start thinksmart-home.service
+systemctl start thinksmart-actions.service
 REMOTE

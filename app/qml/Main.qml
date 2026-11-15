@@ -21,6 +21,8 @@ ApplicationWindow {
     readonly property color gold: Theme.accent
     Connections { target: home; function onOpenAppRequested(app) { if(window.pageIndex(app) >= 0)window.showDashboardPage(window.pageIndex(app));else window.selectedApp = app } }
     Binding { target: Theme; property: "paletteName"; value: home.themeName }
+    Binding { target: Theme; property: "palette"; value: home.themePalette }
+    Binding { target: Theme; property: "names"; value: home.personal.themeNames }
     Binding {
         target: home.systemStats; property: "active"
         value: home.modules.assistant && window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("home") && !dashboardPages.transitioning && !screenControl.sleeping
@@ -65,24 +67,30 @@ ApplicationWindow {
             Row {
                 objectName: "dashboardPageSelector"
                 anchors.centerIn: parent
-                spacing: 8
+                spacing: 6
                 UiButton {
                     objectName: "homePageButton"; text: "Home"
-                    implicitHeight: 54; implicitWidth: 84; font.pixelSize: 17
+                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
                     selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("home")
                     onClicked: window.showDashboardPage(window.pageIndex("home"))
                 }
                 UiButton {
                     objectName: "moreAppsPageButton"; text: "News"; visible: home.modules.news
-                    implicitHeight: 54; implicitWidth: 84; font.pixelSize: 17
+                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
                     selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("news")
                     onClicked: window.showDashboardPage(window.pageIndex("news"))
                 }
                 UiButton {
                     objectName: "chessPageButton"; text: "Chess"; visible: home.modules.chess
-                    implicitHeight: 54; implicitWidth: 84; font.pixelSize: 17
+                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
                     selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("chess")
                     onClicked: window.showDashboardPage(window.pageIndex("chess"))
+                }
+                UiButton {
+                    objectName: "notesPageButton"; text: "Notes"; visible: home.modules.notes
+                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
+                    selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("notes")
+                    onClicked: window.showDashboardPage(window.pageIndex("notes"))
                 }
             }
         }
@@ -93,7 +101,7 @@ ApplicationWindow {
             PathView {
                 id: dashboardPages; objectName: "dashboardPages"
                 clip: true; currentIndex: window.pageIndex("home"); model: window.pageNames.length; pathItemCount: count
-                // Finger left: News -> Home -> Chess -> News; right reverses it.
+                // Finger left: Home -> Chess -> Notes -> News -> Home.
                 preferredHighlightBegin: 0.5; preferredHighlightEnd: 0.5
                 highlightRangeMode: PathView.StrictlyEnforceRange
                 highlightMoveDuration: 220; interactive: false
@@ -139,8 +147,9 @@ ApplicationWindow {
                 delegate: Loader {
                     required property int index
                     width: dashboardPages.width; height: dashboardPages.height
-                    sourceComponent: window.pageNames[index] === "chess" ? chessComponent : window.pageNames[index] === "news" ? newsComponent : homeComponent
+                    sourceComponent: window.pageNames[index] === "chess" ? chessComponent : window.pageNames[index] === "news" ? newsComponent : window.pageNames[index] === "notes" ? notesComponent : homeComponent
                 }
+                Component { id: notesComponent; NotesPage { objectName: "notesPage" } }
                 Component {
                     id: chessComponent
                     ChessPage {
@@ -355,6 +364,20 @@ ApplicationWindow {
         Text { visible: screenControl.error.length > 0; text: screenControl.error; color: Theme.danger; font.pixelSize: 15; Layout.fillWidth: true }
     }
     VideoPlayerOverlay {}
+    Popup {
+        objectName: "alarmPopup"
+        parent: Overlay.overlay; anchors.centerIn: parent
+        width: Math.min(window.width - 48, 560); padding: 28
+        modal: true; closePolicy: Popup.NoAutoClose
+        visible: home.alarmText.length > 0
+        background: Rectangle { color: Theme.surface; radius: Theme.radius; border.color: Theme.accent }
+        contentItem: ColumnLayout {
+            spacing: 24
+            UiIcon { name: "alarm"; tint: Theme.accent; Layout.preferredWidth: 54; Layout.preferredHeight: 54; Layout.alignment: Qt.AlignHCenter }
+            Text { text: home.alarmText; textFormat: Text.PlainText; color: Theme.ink; font.pixelSize: 28; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true }
+            UiButton { objectName: "dismissAlarmButton"; text: "Dismiss"; primary: true; Layout.fillWidth: true; onClicked: home.dismissAlarm() }
+        }
+    }
     PowerDialogs { hostWindow: window }
     Rectangle {
         anchors.fill: parent; z: 10000
