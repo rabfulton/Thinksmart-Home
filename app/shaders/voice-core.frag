@@ -16,8 +16,13 @@ layout(std140, binding = 0) uniform buf {
 };
 const float PI = 3.14159265359;
 float line(float distance, float width) {
-    float d = distance / width;
-    return 1.0 / (1.0 + d * d);
+    // Filter each strand using its screen-space pixel footprint. Thin lines
+    // otherwise disappear between pixels and shimmer as the field rotates.
+    // Preserve their integrated light when widening a subpixel strand.
+    float pixel = fwidth(distance);
+    float filteredWidth = sqrt(width * width + 0.25 * pixel * pixel);
+    float d = distance / filteredWidth;
+    return (width / filteredWidth) / (1.0 + d * d);
 }
 void main() {
     vec2 p = (qt_TexCoord0 - 0.5) * 2.0;

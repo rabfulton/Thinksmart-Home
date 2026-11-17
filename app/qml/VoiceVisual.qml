@@ -15,6 +15,7 @@ Item {
     // Cache the GPU field between updates. Parent page transforms can then move
     // a texture without rerunning the fragment shader while animation is paused.
     layer.enabled: gpu
+    layer.smooth: true
     readonly property real targetLevel: !active ? 0 : level >= 0 ? Math.max(0, Math.min(1, level)) : mode === "speaking" ? 0.45 + 0.22 * Math.sin(phase * 6) : 0.12
     property real envelope: 0
     readonly property color phosphor: Theme.accent
