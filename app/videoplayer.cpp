@@ -68,15 +68,18 @@ bool VideoPlayer::initialize(){
     if(m_handle)return true;m_handle=mpv_create();if(!m_handle)return false;
     for(auto option:{std::pair{"vo","libmpv"},{"ao","alsa"},{"audio-device","alsa/default"},{"audio-format","s16"},{"audio-channels","stereo"},{"hwdec","v4l2m2m-copy"},{"hwdec-codecs","h264,hevc"},{"hwdec-software-fallback","no"},{"terminal","no"},{"msg-level","all=no"},{"input-default-bindings","no"},{"osc","no"},{"idle","yes"},{"cache","yes"},{"demuxer-max-bytes","33554432"},{"network-timeout","15"}})mpv_set_option_string(m_handle,option.first,option.second);
     if(mpv_initialize(m_handle)<0){mpv_terminate_destroy(m_handle);m_handle=nullptr;return false;}
+    mpv_request_log_messages(m_handle,"warn");
     mpv_set_wakeup_callback(m_handle,[](void *data){auto *self=static_cast<VideoPlayer *>(data);QMetaObject::invokeMethod(self,[self](){self->drain();},Qt::QueuedConnection);},this);
     for(const char *name:{"pause","seekable","paused-for-cache","core-idle"})mpv_observe_property(m_handle,0,name,MPV_FORMAT_FLAG);
-    for(const char *name:{"time-pos","duration","demuxer-cache-duration"})mpv_observe_property(m_handle,0,name,MPV_FORMAT_DOUBLE);
+    for(const char *name:{"time-pos","duration","demuxer-cache-duration","container-fps"})mpv_observe_property(m_handle,0,name,MPV_FORMAT_DOUBLE);
+    for(const char *name:{"video-params/w","video-params/h"})mpv_observe_property(m_handle,0,name,MPV_FORMAT_INT64);
+    mpv_observe_property(m_handle,0,"video-codec",MPV_FORMAT_STRING);
     mpv_observe_property(m_handle,0,"hwdec-current",MPV_FORMAT_STRING);mpv_observe_property(m_handle,0,"track-list",MPV_FORMAT_NODE);return true;
 }
-void VideoPlayer::start(const QUrl &url,const QStringList &headers,double position){
+void VideoPlayer::start(const QUrl &url,const QStringList &headers,double position,bool software){
     if(!initialize()){rendererFailed();return;}
-    m_controlError.clear();m_decoder.clear();m_diagnostics={};
-    QJsonObject options{{"http-header-fields",headers.join(',')}};
+    m_controlError.clear();m_decoder.clear();m_diagnostics={{"requestedDecoder",software?"software":"v4l2m2m-copy"}};
+    QJsonObject options{{"http-header-fields",headers.join(',')},{"hwdec",software?"no":"v4l2m2m-copy"},{"hwdec-software-fallback",software?"yes":"no"},{"vd",software?"lavc:h264":""}};
     // An explicit zero seek stalls initial HLS hardware decoding on the tested
     // FFmpeg/Venus stack. Let the demuxer open normally at the beginning.
     // Converted resume offsets are already applied by Jellyfin's stream URL.
@@ -105,6 +108,13 @@ void VideoPlayer::drain(){
     if(!m_handle)return;
     while(auto *e=mpv_wait_event(m_handle,0)){
         if(e->event_id==MPV_EVENT_NONE)break;
+        if(e->event_id==MPV_EVENT_LOG_MESSAGE){
+            const auto *log=static_cast<mpv_event_log_message *>(e->data);
+            QString message=QString::fromUtf8(log->text).simplified().left(600);
+            if(message.contains("http",Qt::CaseInsensitive)||message.contains("authorization",Qt::CaseInsensitive)||message.contains("token",Qt::CaseInsensitive)||message.contains("password",Qt::CaseInsensitive)||message.contains("cookie",Qt::CaseInsensitive))message="Media warning (private details omitted)";
+            auto warnings=m_diagnostics.value("warnings").toArray();if(warnings.size()>=12)warnings.removeFirst();warnings.append(QString::fromUtf8(log->prefix)+": "+message);m_diagnostics.insert("warnings",warnings);continue;
+        }
+
         if(e->event_id==MPV_EVENT_FILE_LOADED)m_diagnostics.insert("fileLoaded",true);
         if((e->event_id==MPV_EVENT_COMMAND_REPLY||e->event_id==MPV_EVENT_SET_PROPERTY_REPLY)&&m_running){m_controlError=e->error<0?QString("Playback control unavailable"):QString();emit changed();}
         if(e->event_id==MPV_EVENT_PLAYBACK_RESTART&&m_running)emit event({{"event","playback-restart"}});
@@ -126,8 +136,9 @@ void VideoPlayer::drain(){
             }
             if(p->format==MPV_FORMAT_FLAG)value=bool(*static_cast<int *>(p->data));
             else if(p->format==MPV_FORMAT_DOUBLE)value=*static_cast<double *>(p->data);
+            else if(p->format==MPV_FORMAT_INT64)value=double(*static_cast<int64_t *>(p->data));
             else if(p->format==MPV_FORMAT_STRING)value=QString::fromUtf8(*static_cast<char **>(p->data));
-            if(QByteArray(p->name)=="pause"||QByteArray(p->name)=="paused-for-cache"||QByteArray(p->name)=="core-idle"||QByteArray(p->name)=="demuxer-cache-duration")m_diagnostics.insert(QString::fromUtf8(p->name),value);
+            if(QByteArray(p->name)=="pause"||QByteArray(p->name)=="paused-for-cache"||QByteArray(p->name)=="core-idle"||QByteArray(p->name)=="demuxer-cache-duration"||QByteArray(p->name)=="container-fps"||QByteArray(p->name)=="video-codec"||QByteArray(p->name)=="video-params/w"||QByteArray(p->name)=="video-params/h")m_diagnostics.insert(QString::fromUtf8(p->name),value);
             if(QByteArray(p->name)=="hwdec-current"){m_decoder=value.toString();emit changed();}
             if(m_running)emit event({{"event","property-change"},{"name",QString::fromUtf8(p->name)},{"data",value}});
         }else if(e->event_id==MPV_EVENT_END_FILE&&m_running){

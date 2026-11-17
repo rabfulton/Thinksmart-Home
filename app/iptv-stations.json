@@ -1,0 +1,105 @@
+{
+  "source": "https://github.com/iptv-org/iptv",
+  "license": "CC0-1.0",
+  "channels": [
+    {
+      "id": "org-7d19e01ff7584ba8e31b6714",
+      "channel": "France24.fr",
+      "feed": "English",
+      "name": "France 24 English",
+      "country": "FR",
+      "categories": [
+        "news"
+      ],
+      "quality": "720p",
+      "labels": [],
+      "url": "https://live.france24.com/hls/live/2037218-b/F24_EN_HI_HLS/master_2300.m3u8",
+      "origin": "curated"
+    },
+    {
+      "id": "org-b5d5e19430cbc8ffc1cf8033",
+      "channel": "DW.de",
+      "feed": "English",
+      "name": "DW English",
+      "country": "DE",
+      "categories": [
+        "news"
+      ],
+      "quality": "1080p",
+      "labels": [],
+      "url": "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8",
+      "origin": "curated"
+    },
+    {
+      "id": "org-0ce9f1f529976941785b7f2d",
+      "channel": "NHKWorldJapan.jp",
+      "feed": "SD",
+      "name": "NHK World-Japan",
+      "country": "JP",
+      "categories": [
+        "news",
+        "culture"
+      ],
+      "quality": "720p",
+      "labels": [],
+      "url": "https://media-tyo.hls.nhkworld.jp/hls/w/live/master.m3u8",
+      "origin": "curated"
+    },
+    {
+      "id": "org-005e27b0f0f10f7a27731acd",
+      "channel": "BloombergTV.us",
+      "feed": "Europe",
+      "name": "Bloomberg TV Europe",
+      "country": "US",
+      "categories": [
+        "business"
+      ],
+      "quality": "720p",
+      "labels": [],
+      "url": "https://bloomberg.com/media-manifest/streams/eu.m3u8",
+      "origin": "curated"
+    },
+    {
+      "id": "org-f27b6e4fc3fed139a9e0ce76",
+      "channel": "EuronewsEnglish.fr",
+      "feed": "SD",
+      "name": "Euronews English",
+      "country": "FR",
+      "categories": [
+        "news"
+      ],
+      "quality": "720p",
+      "labels": [],
+      "url": "https://cdn-euronews.akamaized.net/live/eds/euronews-en/25002/index.m3u8",
+      "origin": "curated"
+    },
+    {
+      "id": "org-1a5dae3fe42cc001dcdcf667",
+      "channel": "AfricanewsEnglish.fr",
+      "feed": "SD",
+      "name": "Africanews English",
+      "country": "FR",
+      "categories": [
+        "news"
+      ],
+      "quality": "720p",
+      "labels": [],
+      "url": "https://cdn-euronews.akamaized.net/live/eds/africanews-en/25049/index.m3u8",
+      "origin": "curated"
+    },
+    {
+      "id": "org-9cafe876b50db0d1a1070db5",
+      "channel": "AlJazeera.qa",
+      "feed": "English",
+      "name": "Al Jazeera English",
+      "country": "QA",
+      "categories": [
+        "news"
+      ],
+      "quality": "1080p",
+      "labels": [],
+      "url": "https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8",
+      "origin": "curated"
+    }
+  ]
+}

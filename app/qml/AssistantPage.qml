@@ -4,6 +4,7 @@ import QtQuick.Layouts
 Rectangle {
     id: page
     property bool active: false
+    property bool backgroundPlayback: false
     property string tab: "conversation"
     readonly property var voices: assistant.voices
     readonly property var vadModes: ["semantic", "server", "manual"]
@@ -31,7 +32,7 @@ Rectangle {
     }
     signal back()
     color: Theme.surface; radius: Theme.radius; border.color: Theme.border
-    onActiveChanged: { if(!active) { audioLab.stop(); assistant.stop() } }
+    onActiveChanged: { if(!active) { audioLab.stop(); if(!backgroundPlayback)assistant.stop() } }
     onTabChanged: assistant.stopVoicePreview()
     Connections { target: home; function onAudioSetupRequested() { page.tab = "audio" } }
     AudioTestPage {

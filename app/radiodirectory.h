@@ -18,7 +18,7 @@ public:
     QJsonObject station(const QString &id)const;
     void clicked(const QString &id);
     static QJsonObject filters(const QJsonObject &request,QString &error);
-    static QJsonArray normalize(const QJsonArray &rows);
+    static QJsonArray normalize(const QJsonArray &rows,int limit=5);
 private:
     struct Search {QString key;QJsonObject filters,stale;QList<Done> callbacks;};
     void servers(std::function<void()> ready);

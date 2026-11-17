@@ -143,6 +143,8 @@ exec sleep 20
     }
     void init() {
         QSettings settings;settings.clear();settings.sync();warnings.clear();wifiRequests.clear();write("action","");
+        qputenv("THINKSMART_DASHBOARD_CONFIG",directory.filePath("dashboard.json").toUtf8());
+        QFile::remove(directory.filePath("dashboard.json"));QFile::remove(directory.filePath("dashboard.json.bak"));
         qputenv("THINKSMART_WAKE_CHIME_PLAYER","/usr/bin/true");
         qputenv("THINKSMART_WAKE_TEST_ARGUMENTS",directory.filePath("wake-arguments.json").toUtf8());
         QFile::remove(directory.filePath("assistant/wakeword.json"));
@@ -151,7 +153,28 @@ exec sleep 20
         if(QByteArray(QTest::currentTestFunction())=="moduleProfiles"){
             QFETCH(QStringList,enabledModules);for(const auto &name:DeviceConfig::names())modules.insert(name,enabledModules.contains(name));
         }
+        if(QByteArray(QTest::currentTestFunction())=="moduleSpeechSchemas")for(const auto &id:{"radio","weather","vrm","notes","iptv"})modules.insert(id,false);
+        const bool iptvTest=QByteArray(QTest::currentTestFunction()).startsWith("iptv") || QByteArray(QTest::currentTestFunction())=="wifiDialogKeyboardAndSavedPreferences";
+        qputenv("THINKSMART_IPTV_FILE",directory.filePath("iptv-favourites.json").toUtf8());
+        qputenv("THINKSMART_IPTV_CACHE",directory.filePath("iptv-cache.json").toUtf8());
+        qputenv("THINKSMART_RADIO_FAVOURITES_FILE",directory.filePath("radio-favourites.json").toUtf8());QFile::remove(directory.filePath("radio-favourites.json"));
+        QFile::remove(directory.filePath("iptv-favourites.json"));QFile::remove(directory.filePath("iptv-cache.json"));
+        if(iptvTest){
+            modules.insert("iptv",true);
+            const QJsonArray rows{QJsonObject{{"id","fixture-tv"},{"name","World News"},{"country","GB"},{"categories",QJsonArray{"news"}},{"quality","720p"},{"labels",QJsonArray{}},{"origin","custom"},{"url","http://127.0.0.1:1/private-test.m3u8?token=fixture-secret"}}};
+            write("iptv-cache.json",QJsonDocument(QJsonObject{{"version",1},{"updated",double(QDateTime::currentSecsSinceEpoch())},{"channels",rows}}).toJson());
+            write("iptv-favourites.json",QJsonDocument(QJsonObject{{"version",1},{"favourites",rows}}).toJson());
+        }
         write("device.json",QJsonDocument(QJsonObject{{"version",1},{"modules",modules}}).toJson());DeviceConfig::reload();
+        if(QByteArray(QTest::currentTestFunction())=="iptvBrowserSavesCustomStreams"){
+            auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();
+            pages.append(QJsonObject{{"id","tv"},{"title","TV"},{"kind","widgets"},{"widgets",QJsonArray{"iptv"}}});config.insert("pages",pages);
+            QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
+        }
+        if(QByteArray(QTest::currentTestFunction())=="configuredPagesRenderAndRouteModules"){
+            const QJsonArray pages{QJsonObject{{"id","home"},{"title","Home"},{"kind","widgets"},{"widgets",QJsonArray{"radio"}}},QJsonObject{{"id","room"},{"title","Room"},{"kind","widgets"},{"widgets",QJsonArray{"assistant","weather"}}},QJsonObject{{"id","games"},{"title","Games"},{"kind","module"},{"module","chess"}},QJsonObject{{"id","games2"},{"title","Second board"},{"kind","module"},{"module","chess"}}};
+            QString error;QVERIFY(DashboardConfig::write({{"version",1},{"modules",QJsonObject{}},{"pages",pages}},error));DeviceConfig::reload();
+        }
         qputenv("THINKSMART_VOICE_PREVIEW_PLAYER",directory.filePath("fake-preview").toUtf8());write("preview.log","");
         QDir().mkpath(directory.filePath("previews"));
         QByteArray preview;QDataStream wav(&preview,QIODevice::WriteOnly);wav.setByteOrder(QDataStream::LittleEndian);
@@ -207,6 +230,107 @@ exec sleep 20
         click("screenOffButton");QVERIFY(!screen->sleeping());
         click("screenOffButton");QVERIFY(screen->sleeping());
     }
+    void layoutEditorDraftAndApply(){
+        screen->wake();click("powerButton");click("modulesSettingsButton");QCOMPARE(window->property("selectedApp").toString(),QString("layout-settings"));
+        auto editor=media->layoutEditor();QCOMPARE(editor->pages().size(),4);QVERIFY(!editor->dirty());
+        click("layoutAddPage");QCOMPARE(editor->pages().size(),5);click("layoutEditPage4");
+        auto name=object("layoutPageName");QVERIFY(name);name->setProperty("text","My page");QVERIFY(QMetaObject::invokeMethod(name,"editingFinished"));QCOMPARE(editor->pages()[4].toMap().value("title").toString(),QString("My page"));
+        click("layoutAddWidget");QCOMPARE(editor->pages()[4].toMap().value("widgets").toList().size(),1);QVERIFY(editor->modules().value("assistant").toBool());
+        click("layoutCancel");QVERIFY(!editor->dirty());QCOMPARE(editor->pages().size(),4);QVERIFY(!QFile::exists(DashboardConfig::path()));
+        media->editLayout();click("layoutModulesTab");auto sw=object("moduleSwitch_radio");QVERIFY(sw);QVERIFY(QMetaObject::invokeMethod(sw,"toggle")); // QML user handler is tested through setModule below.
+        editor->setModule("radio",false);QSignalSpy restart(media.get(),&Controller::dashboardRestartRequested);click("layoutApply");QCOMPARE(restart.size(),1);QVERIFY(QFile::exists(DashboardConfig::path()));QVERIFY(DeviceConfig::enabled("radio")); // Until restart.
+        DeviceConfig::reload();QVERIFY(!DeviceConfig::enabled("radio"));QVERIFY(!media->toolRequest({{"action","radio.play"},{"id","radio4"}}).value("ok").toBool());
+    }
+    void moduleSpeechSchemas_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
+    void moduleSpeechSchemas(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto restore=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QJsonObject session;QPointer<QWebSocket> peer;auto cleanupPeer=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();if(e.value("type")=="session.update"||e.value("type")=="session.start")session=e.value("session").toObject();});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
+        const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;
+        const auto instructions=session.value("instructions").toString()+owner.value("instructions").toString();for(const auto &marker:{"Radio module","Weather module","Vrm module","Notes module","IPTV module","iptv.search","notes.add","radio.search"})QVERIFY(!instructions.contains(marker));
+        bool device=false,personal=false;
+        for(const auto &v:owner.value("tools").toArray()){
+            const auto f=v.toObject();const auto props=f.value("parameters").toObject().value("properties").toObject();
+            if(f.value("name")=="device_action"||f.value("name")=="personal_action"){
+                for(const auto &a:props.value("action").toObject().value("enum").toArray())for(const auto &prefix:{"radio.","weather.","battery.","notes.","iptv."})QVERIFY(!a.toString().startsWith(prefix));
+                if(f.value("name")=="device_action")device=true;
+                else{personal=true;for(const auto &a:props.value("data").toObject().value("properties").toObject().value("steps").toObject().value("items").toObject().value("properties").toObject().value("action").toObject().value("enum").toArray())QVERIFY(!a.toString().startsWith("radio."));}
+            }
+        }
+        QVERIFY(device&&personal);voice->setEnabled(false);QTRY_VERIFY(voice->released());
+    }
+    void iptvBrowserSavesCustomStreams(){
+        screen->wake();
+        auto musicTile=qobject_cast<QQuickItem *>(object("musicTile"));QVERIFY(musicTile);const auto musicSize=musicTile->size();
+        media->openAppRequested("tv");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);QTRY_VERIFY(!object("dashboardPages")->property("transitioning").toBool());
+        auto tvTile=qobject_cast<QQuickItem *>(object("iptvTile"));QVERIFY(tvTile);QVERIFY(std::abs(tvTile->width()-musicSize.width())<2);QVERIFY(std::abs(tvTile->height()-musicSize.height())<2);
+        QVERIFY(!media->iptv()->active());click("iptvTile");QCOMPARE(window->property("selectedApp").toString(),QString("iptv"));
+        QTRY_VERIFY(media->iptv()->active());QVERIFY(!media->iptv()->busy());QCOMPARE(media->iptv()->favourites().size(),1);
+        auto page=object("iptvAppPage");QVERIFY(page);QCOMPARE(page->property("tab").toString(),QString("saved"));
+        auto list=object("iptvChannels");QVERIFY(list);QTRY_COMPARE(list->property("count").toInt(),1);
+        QTRY_VERIFY(object("iptvSave0"));click("iptvSave0");QTRY_COMPARE(list->property("count").toInt(),0);QCOMPARE(media->iptv()->favourites().size(),0);
+        QTest::qWait(30);QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+        QVERIFY(media->iptv()->favourite("fixture-tv",true));QTRY_COMPARE(list->property("count").toInt(),1);
+        page->setProperty("tab","directory");QCOMPARE(list->property("count").toInt(),1);
+        click("iptvSave0");QTest::qWait(30);QCOMPARE(media->iptv()->favourites().size(),0);
+        click("iptvSave0");QTest::qWait(30);QCOMPARE(media->iptv()->favourites().size(),1);
+
+        object("iptvSearch")->setProperty("text","unmatched");QTRY_COMPARE(list->property("count").toInt(),0);
+        object("iptvSearch")->setProperty("text","");QTRY_COMPARE(list->property("count").toInt(),1);
+        click("iptvOptionsButton");click("iptvAddStream");QTRY_VERIFY(object("iptvCustomDialog")->property("visible").toBool());
+        object("iptvCustomName")->setProperty("text","My channel");object("iptvCustomUrl")->setProperty("text","https://example.test/live.m3u8?token=private-fixture");click("iptvCustomSave");
+        QTRY_VERIFY(!object("iptvCustomDialog")->property("visible").toBool());QCOMPARE(media->iptv()->favourites().size(),2);QCOMPARE(page->property("tab").toString(),QString("saved"));
+        const auto json=QJsonDocument(media->toolRequest({{"action","iptv.list"}})).toJson();QVERIFY(!json.contains("private-fixture"));QVERIFY(!json.contains("fixture-secret"));
+        const auto destination=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");
+        if(!destination.isEmpty()){QDir().mkpath(destination);for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(100);QVERIFY(window->grabWindow().save(destination+QString("/iptv-%1.png").arg(size.width())));}}
+        click("iptvBackButton");QCOMPARE(window->property("selectedApp").toString(),QString());QCOMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);
+        window->resize(1280,800);QTest::qWait(50);QVERIFY(tvTile->width()<window->width()/2);QVERIFY(tvTile->height()<window->height()/2);
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void radioDirectorySearchFavouritesAndReturn(){
+        RadioServer server;server.rows={RadioServer::row("Worldwide jazz","https://radio.example.test/jazz")};qputenv("THINKSMART_RADIO_BROWSER_TEST_SERVERS",server.url().toUtf8());auto reset=qScopeGuard([](){qunsetenv("THINKSMART_RADIO_BROWSER_TEST_SERVERS");});
+        screen->wake();window->setProperty("selectedApp","radio");auto page=object("radioAppPage");QVERIFY(page);QCOMPARE(page->property("category").toString(),QString("favourites"));
+        auto list=object("radioResults");QVERIFY(list);QCOMPARE(list->property("count").toInt(),3);QCOMPARE(server.searches(),0);
+        object("radioSearch")->setProperty("text","Jazz");QTRY_VERIFY(server.searches()>0);QTRY_VERIFY(!radio->searchBusy());QTRY_COMPARE(list->property("count").toInt(),1);QTRY_VERIFY(object("radioFavourite0"));click("radioFavourite0");QCOMPARE(radio->favouriteCount(),4);
+        click("radioCategory_favourites");QCOMPARE(list->property("count").toInt(),4);QCOMPARE(server.searches(),1);
+        QCOMPARE(media->toolRequest({{"action","radio.favourites"}}).value("stations").toArray().size(),4);
+        const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");
+        if(!capture.isEmpty()){QDir().mkpath(capture);for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(80);QVERIFY(window->grabWindow().save(capture+QString("/radio-%1.png").arg(size.width())));}}
+        click("radioBackButton");window->setProperty("selectedApp","radio");QCOMPARE(page->property("category").toString(),QString("favourites"));
+        window->resize(1280,800);QTest::qWait(50);QVERIFY(qobject_cast<QQuickItem *>(list)->height()>300);QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void iptvVoiceToolsAndFullscreen_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
+    void iptvVoiceToolsAndFullscreen(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto restore=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QJsonObject session;QList<QJsonObject> messages;QPointer<QWebSocket> peer;auto cleanupPeer=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();messages.append(e);if(e.value("type")=="session.update"||e.value("type")=="session.start"){session=e.value("session").toObject();peer->sendTextMessage(live?"{\"type\":\"session.started\"}":"{\"type\":\"session.updated\"}");}});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        prepareWakeAssets();screen->wake();window->setProperty("selectedApp","assistant");auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
+        const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;
+        QVERIFY(owner.value("instructions").toString().contains("IPTV module"));QVERIFY(QJsonDocument(owner.value("tools").toArray()).toJson().contains("iptv.play"));
+        const QJsonObject item{{"type","function_call"},{"name","device_action"},{"call_id","tv-call"},{"arguments","{\"action\":\"iptv.play\",\"id\":\"fixture-tv\"}"}};
+        auto send=[&](QJsonObject e){peer->sendTextMessage(QString::fromUtf8(QJsonDocument(e).toJson(QJsonDocument::Compact)));};
+        if(live){
+            auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","d1"},{"event",e}});};
+            nested({{"type","response.created"},{"response",QJsonObject{{"id","r-tv"}}}});
+            nested({{"type","response.output_item.done"},{"response_id","r-tv"},{"item",item}});
+            nested({{"type","response.completed"},{"response",QJsonObject{{"id","r-tv"}}}});
+        }else{
+            send({{"type","response.created"},{"response",QJsonObject{{"id","r-tv"}}}});
+            send({{"type","response.done"},{"response",QJsonObject{{"id","r-tv"},{"status","completed"},{"output",QJsonArray{item}}}}});
+        }
+        QTRY_COMPARE(media->source(),QString("iptv"));QTRY_VERIFY(media->video()->visible());QTRY_COMPARE(window->property("selectedApp").toString(),QString("iptv"));QVERIFY(voice->active());
+        QTRY_VERIFY(std::any_of(messages.cbegin(),messages.cend(),[](auto r){return QJsonDocument(r).toJson().contains("tv-call")&&QJsonDocument(r).toJson().contains("accepted");}));
+        media->stop();QVERIFY(!media->video()->visible());QVERIFY(voice->active());voice->setEnabled(false);QTRY_VERIFY(voice->released());
+    }
+    void configuredPagesRenderAndRouteModules(){
+        screen->wake();media->assistant()->setEnabled(true);auto pages=object("dashboardPages");QVERIFY(pages);QCOMPARE(pages->property("count").toInt(),4);QCOMPARE(pages->property("currentIndex").toInt(),0);QVERIFY(!object("moreAppsPageButton"));QVERIFY(!media->systemStats()->active());
+        click("pageButton_room");QTRY_COMPARE(pages->property("currentIndex").toInt(),1);QTRY_VERIFY(!pages->property("transitioning").toBool());QTRY_VERIFY(object("dashboardAssistantVisual")->property("moving").toBool());QVERIFY(media->systemStats()->active());
+        media->openAppRequested("chess");QTRY_COMPARE(pages->property("currentIndex").toInt(),2);QTRY_VERIFY(!pages->property("transitioning").toBool());QVERIFY(!object("dashboardAssistantVisual")->property("moving").toBool());QVERIFY(chessGame->active());
+        window->resize(1280,800);QTest::qWait(50);click("homePageButton");QTRY_COMPARE(pages->property("currentIndex").toInt(),0);
+    }
     void moduleProfiles_data(){
         QTest::addColumn<QStringList>("enabledModules");
         QTest::newRow("core-only")<<QStringList{};
@@ -225,9 +349,9 @@ exec sleep 20
         if(!enabledModules.contains("radio"))QVERIFY(!media->toolRequest({{"action","radio.play"},{"id","radio4"}}).value("ok").toBool());
         if(!enabledModules.contains("weather"))QVERIFY(!media->toolRequest({{"action","weather.refresh"}}).value("ok").toBool());
         if(!enabledModules.contains("assistant")){media->assistant()->setEnabled(true);QVERIFY(!media->assistant()->enabled());QVERIFY(!media->assistant()->configured());}
-        QCOMPARE(object("moreAppsPageButton")->property("visible").toBool(),enabledModules.contains("news"));
-        QCOMPARE(object("chessPageButton")->property("visible").toBool(),enabledModules.contains("chess"));
-        QCOMPARE(object("weatherTile")->property("visible").toBool(),enabledModules.contains("weather"));
+        QCOMPARE(object("moreAppsPageButton")!=nullptr,enabledModules.contains("news"));
+        QCOMPARE(object("chessPageButton")!=nullptr,enabledModules.contains("chess"));
+        QCOMPARE(object("weatherTile")!=nullptr,enabledModules.contains("weather"));
     }
     void deviceConfigurationChangesLocationAndRejectsInvalidFlags(){
         write("device.json",R"({"weather":{"name":"Example city","latitude":1.2,"longitude":-3.4,"timezone":"UTC"}})");DeviceConfig::reload();
@@ -378,6 +502,21 @@ exec sleep 20
         QTRY_VERIFY(!media->wifi()->busy());
         click("wifiCloseButton");QVERIFY(!media->wifi()->active());
         const auto count=wifiRequests.size();QTest::qWait(200);QCOMPARE(wifiRequests.size(),count);
+        media->editLayout();media->layoutEditor()->addPage();object("layoutSettingsPage")->setProperty("selected",4);
+        click("layoutPageName");QTRY_VERIFY(keyboard->isVisible());
+        auto pageName=qobject_cast<QQuickItem *>(object("layoutPageName"));QVERIFY(pageName);
+        QVERIFY(pageName->mapToScene(QPointF(0,pageName->height())).y()<=keyboard->mapToScene(QPointF(0,0)).y());
+        const int oldLength=pageName->property("text").toString().size();
+        if(!object("virtualKey_a"))click("virtualSymbolKey");QTRY_VERIFY(object("virtualKey_a"));click("virtualKey_a");QTRY_COMPARE(pageName->property("text").toString().size(),oldLength+1);
+        click("layoutCancel");QTRY_VERIFY(!keyboard->isVisible());QVERIFY(!QFile::exists(DashboardConfig::path()));
+        media->openAppRequested("iptv");
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(80);click("iptvSearch");QTRY_VERIFY(keyboard->isVisible());
+            object("iptvSearch")->setProperty("text","World News");QTRY_COMPARE(object("iptvChannels")->property("count").toInt(),1);
+            click("virtualEnterKey");QTRY_VERIFY(!keyboard->isVisible());QVERIFY(!object("iptvSearch")->property("activeFocus").toBool());
+            auto channels=qobject_cast<QQuickItem *>(object("iptvChannels"));QVERIFY(channels);QTRY_VERIFY(channels->height()>window->height()*0.65);
+        }
+
     }
     void shutdownRequiresConfirmationAndUsesHalt() {
         screen->wake();click("powerButton");QTRY_VERIFY(object("powerSheet")->property("visible").toBool());

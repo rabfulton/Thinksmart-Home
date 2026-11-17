@@ -43,6 +43,7 @@ Item {
             Text { text: "Device settings"; color: dialogs.ink; font.pixelSize: 30; Layout.bottomMargin: 8 }
             ActionButton { objectName: "wifiSettingsButton"; text: "Wi-Fi settings"; Layout.fillWidth: true; onClicked: { powerSheet.close(); wifiSheet.open() } }
             ActionButton { objectName: "displaySettingsButton"; text: "Display settings"; Layout.fillWidth: true; onClicked: { powerSheet.close(); settingsSheet.open() } }
+            ActionButton { objectName: "modulesSettingsButton"; text: "Pages & modules"; Layout.fillWidth: true; onClicked: { powerSheet.close(); home.editLayout() } }
             ActionButton { text: "Restart"; Layout.fillWidth: true; onClicked: { dialogs.confirmation = "restart"; powerSheet.close(); confirmSheet.open() } }
             ActionButton { objectName: "shutdownMenuButton"; text: "Shut down for unplugging"; Layout.fillWidth: true; onClicked: { dialogs.confirmation = "shutdown"; powerSheet.close(); confirmSheet.open() } }
             ActionButton { text: "Close"; Layout.fillWidth: true; onClicked: powerSheet.close() }

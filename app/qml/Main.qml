@@ -13,39 +13,39 @@ ApplicationWindow {
     readonly property bool wide: width > height
     property string selectedApp: ""
     readonly property var pageNames: home.dashboardPages
+    readonly property var pageDefinitions: home.pageDefinitions
+    function pageForModule(name) { for(let i=0;i<pageDefinitions.length;i++)if(pageDefinitions[i].module === name)return i;return -1 }
     function pageIndex(name) { return pageNames.indexOf(name) }
     function showDashboardPage(index) { if(index < 0)return; selectedApp = ""; dashboardPages.setCurrentIndex(index) }
     function weatherValue(n, unit) { return typeof n === "number" && isFinite(n) ? Math.round(n) + unit : "—" }
     readonly property color ink: Theme.ink
     readonly property color quiet: Theme.muted
     readonly property color gold: Theme.accent
-    Connections { target: home; function onOpenAppRequested(app) { if(window.pageIndex(app) >= 0)window.showDashboardPage(window.pageIndex(app));else window.selectedApp = app } }
+    Connections { target: home; function onOpenAppRequested(app) { if(window.pageIndex(app) >= 0)window.showDashboardPage(window.pageIndex(app));else if(window.pageForModule(app) >= 0)window.showDashboardPage(window.pageForModule(app));else if(["chess","news","notes"].indexOf(app) < 0)window.selectedApp = app } }
     Binding { target: Theme; property: "paletteName"; value: home.themeName }
     Binding { target: Theme; property: "palette"; value: home.themePalette }
     Binding { target: Theme; property: "names"; value: home.personal.themeNames }
     Binding {
         target: home.systemStats; property: "active"
-        value: home.modules.assistant && window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("home") && !dashboardPages.transitioning && !screenControl.sleeping
+        value: home.modules.assistant && window.selectedApp === "" && window.pageDefinitions[dashboardPages.currentIndex] && (window.pageDefinitions[dashboardPages.currentIndex].widgets || []).indexOf("assistant") >= 0 && !dashboardPages.transitioning && !screenControl.sleeping
     }
+    Binding { target: home.iptv; property: "active"; value: home.modules.iptv && !screenControl.sleeping && !home.video.visible && (window.selectedApp === "iptv" || (window.pageRunning && window.currentPage.module === "iptv")) }
+    // Services have one owner even when several pages show the same module.
+    readonly property var currentPage: pageDefinitions[dashboardPages.currentIndex] || ({})
+    readonly property bool browsingTv: selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
+    readonly property bool pageRunning: selectedApp === "" && !dashboardPages.transitioning && !screenControl.sleeping
+    Binding { target: chessGame; property: "active"; value: home.modules.chess && window.pageRunning && window.currentPage.module === "chess" }
+    Binding { target: headlines; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
+    Binding { target: hackerNews; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
 
-    component HomeTile: WidgetTile {
-        property int columnUnits: 1
-        property int rowUnits: 1
-        Layout.columnSpan: Math.min(columnUnits, window.wide ? 3 : 2)
-        Layout.rowSpan: rowUnits
-        Layout.fillWidth: true; Layout.fillHeight: true
-        Layout.preferredWidth: 1; Layout.preferredHeight: 1
-        Layout.minimumHeight: 180
-    }
-    component SmallLabel: Text { color: Theme.muted; font.pixelSize: 17; elide: Text.ElideRight }
-    component BigValue: Text { color: Theme.ink; font.pixelSize: 48; font.weight: Font.Medium }
 
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 24; spacing: 18
+        visible: window.selectedApp !== "layout-settings"
         enabled: !screenControl.sleeping && !screenControl.powerPending
         Item {
             id: topBar
-            visible: window.selectedApp !== "video"
+            visible: window.selectedApp !== "video" && !window.browsingTv
             Layout.fillWidth: true; Layout.preferredHeight: 70
             RowLayout {
                 anchors.fill: parent; spacing: 12
@@ -64,40 +64,33 @@ ApplicationWindow {
                 UiButton { objectName: "powerButton"; iconName: "settings"; description: "Device settings"; onClicked: screenControl.showPowerMenu() }
                 UiButton { objectName: "screenOffButton"; iconName: "power"; description: "Screen off"; onClicked: screenControl.sleep() }
             }
-            Row {
+            Flickable {
                 objectName: "dashboardPageSelector"
                 anchors.centerIn: parent
-                spacing: 6
-                UiButton {
-                    objectName: "homePageButton"; text: "Home"
-                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
-                    selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("home")
-                    onClicked: window.showDashboardPage(window.pageIndex("home"))
-                }
-                UiButton {
-                    objectName: "moreAppsPageButton"; text: "News"; visible: home.modules.news
-                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
-                    selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("news")
-                    onClicked: window.showDashboardPage(window.pageIndex("news"))
-                }
-                UiButton {
-                    objectName: "chessPageButton"; text: "Chess"; visible: home.modules.chess
-                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
-                    selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("chess")
-                    onClicked: window.showDashboardPage(window.pageIndex("chess"))
-                }
-                UiButton {
-                    objectName: "notesPageButton"; text: "Notes"; visible: home.modules.notes
-                    implicitHeight: 54; implicitWidth: 70; font.pixelSize: 17
-                    selected: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("notes")
-                    onClicked: window.showDashboardPage(window.pageIndex("notes"))
+                width: Math.min(pageTabs.implicitWidth, parent.width - 420); height: 54
+                contentWidth: pageTabs.implicitWidth; clip: true; flickableDirection: Flickable.HorizontalFlick
+                Row {
+                    id: pageTabs; spacing: 6
+                    Repeater {
+                        model: window.pageDefinitions
+                        UiButton {
+                            id: pageTab
+                            required property var modelData
+                            required property int index
+                            objectName: modelData.id === "news" ? "moreAppsPageButton" : modelData.id === "home" ? "homePageButton" : modelData.id === "chess" ? "chessPageButton" : modelData.id === "notes" ? "notesPageButton" : "pageButton_" + modelData.id
+                            text: modelData.title; implicitHeight: 54; implicitWidth: Math.max(70, Math.min(180, implicitContentWidth + 24)); font.pixelSize: 17
+                            contentItem: Text { text: pageTab.text; textFormat: Text.PlainText; elide: Text.ElideRight; font: pageTab.font; color: Theme.ink; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            selected: window.selectedApp === "" && dashboardPages.currentIndex === index
+                            onClicked: window.showDashboardPage(index)
+                        }
+                    }
                 }
             }
         }
         Text { visible: home.configProblem.length > 0; text: home.configProblem; color: Theme.danger; wrapMode: Text.WordWrap; Layout.fillWidth: true }
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
-            currentIndex: window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
+            currentIndex: window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
             PathView {
                 id: dashboardPages; objectName: "dashboardPages"
                 clip: true; currentIndex: window.pageIndex("home"); model: window.pageNames.length; pathItemCount: count
@@ -147,186 +140,60 @@ ApplicationWindow {
                 delegate: Loader {
                     required property int index
                     width: dashboardPages.width; height: dashboardPages.height
-                    sourceComponent: window.pageNames[index] === "chess" ? chessComponent : window.pageNames[index] === "news" ? newsComponent : window.pageNames[index] === "notes" ? notesComponent : homeComponent
+                    property var pageData: window.pageDefinitions[index] || ({})
+                    property bool pageActive: window.selectedApp === "" && dashboardPages.currentIndex === index && !screenControl.sleeping
+                    sourceComponent: pageData.kind === "widgets" ? homeComponent : pageData.module === "chess" ? chessComponent : pageData.module === "news" ? newsComponent : pageData.module === "notes" ? notesComponent : pageData.module === "iptv" ? iptvComponent : null
                 }
                 Component { id: notesComponent; NotesPage { objectName: "notesPage" } }
+                Component { id: iptvComponent; IptvPage { objectName: "iptvFullPage"; active: parent.pageActive && !dashboardPages.transitioning; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.showDashboardPage(window.pageIndex("home")) } }
                 Component {
                     id: chessComponent
                     ChessPage {
                         objectName: "chessPage"
-                        active: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("chess") && !dashboardPages.transitioning && !screenControl.sleeping
+                        active: parent.pageActive && !dashboardPages.transitioning
                     }
                 }
                 Component {
                     id: newsComponent
                     NewsPage {
                         objectName: "newsPage"
-                        active: window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("news") && !dashboardPages.transitioning && !screenControl.sleeping
+                        active: parent.pageActive && !dashboardPages.transitioning
                     }
                 }
                 Component {
                     id: homeComponent
-                    GridLayout {
-                        id: dashboard
-                        columns: window.wide ? 3 : 2
-                        rowSpacing: Theme.gap; columnSpacing: Theme.gap
-                        HomeTile {
-                            objectName: "assistantTile"; visible: home.modules.assistant; heading: "Sheila"; iconName: "voice"; indexLabel: assistant.enabled ? "YOUR EVERYDAY COMPANION" : "ASSISTANT OFF"
-                            onClicked: window.selectedApp = "assistant"
-                            VoiceVisual {
-                                objectName: "dashboardAssistantVisual"
-                                anchors.right: parent.right; anchors.rightMargin: -8
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: Math.max(0, parent.width - systemIndicators.width - 4)
-                                height: Math.min(parent.height * 1.25, width * 1.05)
-                                mode: "ready"; idleMotion: true
-                                active: home.modules.assistant && assistant.enabled && window.selectedApp === "" && dashboardPages.currentIndex === window.pageIndex("home") && !screenControl.sleeping
-                                animate: !dashboardPages.transitioning
-                            }
-                            SystemIndicators {
-                                id: systemIndicators; objectName: "systemIndicators"
-                                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                                width: 84; stats: home.systemStats
-                            }
-                        }
-                        HomeTile {
-                            objectName: "weatherTile"; visible: home.modules.weather; heading: weather.location; iconName: "weather";
-                            badge: weather.stale ? "Stale" : ""; badgeColor: Theme.accent; indexLabel: weather.status.toUpperCase()
-                            onClicked: window.selectedApp = "weather"
-                            ColumnLayout {
-                                anchors.fill: parent; spacing: 8
-                                RowLayout {
-                                    BigValue { text: window.weatherValue(weather.current.temperature_2m,"°") }
-                                    Item { Layout.fillWidth: true }
-                                    UiIcon { name: "weather"; Layout.preferredWidth: 72; Layout.preferredHeight: 72; tint: Theme.accent }
-                                }
-                                SmallLabel { text: weather.current.condition || "Forecast unavailable"; Layout.fillWidth: true }
-                                Item { Layout.fillHeight: true }
-                                RowLayout {
-                                    Layout.fillWidth: true; spacing: 8
-                                    Repeater {
-                                        model: weather.hourly.slice(0,6)
-                                        ColumnLayout {
-                                            required property var modelData
-                                            Layout.fillWidth: true; Layout.preferredWidth: 1; Layout.minimumWidth: 0; spacing: 5
-                                            Text { text: modelData.label; color: Theme.faint; font.pixelSize: 13; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                                            Text { text: window.weatherValue(modelData.temperature_2m,"°"); color: Theme.ink; font.pixelSize: 21; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        HomeTile {
-                            objectName: "energyTile"; visible: home.modules.vrm; heading: "Energy"; iconName: "solar"
-                            badge: energy.stale ? "Stale" : (energy.hasData ? "VRM" : "")
-                            badgeColor: energy.stale ? Theme.accent : Theme.faint
-                            indexLabel: energy.hasData ? energy.metrics.soc.age.toUpperCase() : "SOLAR & BATTERY"
-                            onClicked: window.selectedApp = "solar"
-                            ColumnLayout {
-                                anchors.fill: parent; spacing: 10
-                                RowLayout {
-                                    BigValue { text: energy.metrics.soc.text }
-                                    Item { Layout.fillWidth: true }
-                                    SmallLabel {
-                                        text: energy.metrics.batteryPower.available ? (energy.stale ? "Last: " : "") + (energy.metrics.batteryPower.value > 5 ? "charging" : (energy.metrics.batteryPower.value < -5 ? "discharging" : "idle")) : ""
-                                        color: Theme.accent; font.pixelSize: 15
-                                    }
-                                }
-                                Rectangle {
-                                    Layout.fillWidth: true; implicitHeight: 7; radius: 3.5; color: Theme.raised
-                                    Rectangle { width: parent.width * (energy.metrics.soc.available ? Math.max(0,Math.min(100,energy.metrics.soc.value))/100 : 0); height: parent.height; radius: 3.5; color: Theme.accent }
-                                }
-                                Item { Layout.fillHeight: true }
-                                RowLayout {
-                                    Layout.fillWidth: true; spacing: 24
-                                    ColumnLayout {
-                                        Layout.fillWidth: true; spacing: 5
-                                        SmallLabel { text: "Solar"; font.pixelSize: 14 }
-                                        Text { text: energy.metrics.solar.text; color: Theme.ink; font.pixelSize: 23 }
-                                    }
-                                    ColumnLayout {
-                                        Layout.fillWidth: true; spacing: 5
-                                        SmallLabel { text: "DC load"; font.pixelSize: 14 }
-                                        Text { text: energy.metrics.dcLoad.text; color: Theme.ink; font.pixelSize: 23 }
-                                    }
-                                }
-                            }
-                        }
-                        HomeTile {
-                            objectName: "radioTile"; visible: home.modules.radio; heading: "Radio"; iconName: "radio"; indexLabel: "NEWS, SPEECH & LIVE STREAMS"
-                            onClicked: window.selectedApp = "radio"
-                            ColumnLayout {
-                                anchors.fill: parent; spacing: 0
-                                Item {
-                                    Layout.fillWidth: true; Layout.preferredHeight: 82
-                                    UiIcon { anchors.verticalCenter: parent.verticalCenter; name: "radio"; tint: Theme.accent; width: 100; height: 100 }
-                                }
-                                ColumnLayout {
-                                    Layout.fillWidth: true; Layout.topMargin: 24; spacing: 12
-                                    Text { text: home.source === "radio" ? home.title : "BBC Radio 4 & more"; color: Theme.ink; font.pixelSize: 23; Layout.fillWidth: true; elide: Text.ElideRight }
-                                    SmallLabel { text: "Parliament · Folk · Jazz · Rock"; Layout.fillWidth: true }
-                                }
-                                Item { Layout.fillHeight: true }
-                            }
-                        }
-                        HomeTile {
-                            objectName: "musicTile"; visible: home.modules.navidrome || home.modules.bluetooth; heading: "Music"; iconName: "music"; indexLabel: "YOUR COLLECTION"
-                            onClicked: window.selectedApp = "music"
-                            ColumnLayout {
-                                anchors.fill: parent; spacing: 0
-                                Item {
-                                    Layout.fillWidth: true; Layout.preferredHeight: 82
-                                    UiIcon { anchors.verticalCenter: parent.verticalCenter; name: "music"; tint: Theme.accent; width: 100; height: 100 }
-                                }
-                                ColumnLayout {
-                                    Layout.fillWidth: true; Layout.topMargin: 24; spacing: 12
-                                    Text { text: "Library & phone audio"; color: Theme.ink; font.pixelSize: 23; Layout.fillWidth: true; elide: Text.ElideRight }
-                                    SmallLabel { text: "Your collection or Bluetooth"; Layout.fillWidth: true }
-                                }
-                                Item { Layout.fillHeight: true }
-                            }
-                        }
-                        HomeTile {
-                            objectName: "videoTile"; visible: home.modules.jellyfin; heading: "Video"; iconName: "video"; indexLabel: "FILMS & SERIES"
-                            onClicked: window.selectedApp = "video"
-                            ColumnLayout {
-                                anchors.fill: parent; spacing: 0
-                                Item {
-                                    Layout.fillWidth: true; Layout.preferredHeight: 82
-                                    UiIcon { anchors.verticalCenter: parent.verticalCenter; name: "video"; tint: Theme.accent; width: 100; height: 100 }
-                                }
-                                ColumnLayout {
-                                    Layout.fillWidth: true; Layout.topMargin: 24; spacing: 12
-                                    Text { text: "Settle into a story"; color: Theme.ink; font.pixelSize: 23; Layout.fillWidth: true; elide: Text.ElideRight }
-                                    SmallLabel { text: "Browse your film library"; Layout.fillWidth: true }
-                                }
-                                Item { Layout.fillHeight: true }
-                            }
-                        }
+                    WidgetDeck {
+                        hostWindow: window
+                        widgets: parent.pageData.widgets || []
+                        pageActive: parent.pageActive
+                        transitioning: dashboardPages.transitioning
                     }
                 }
             }
+
             AssistantPage {
                 objectName: "assistantPage"
                 active: window.selectedApp === "assistant" && !screenControl.sleeping
+                backgroundPlayback: home.source === "iptv" && home.video.visible
                 onBack: window.selectedApp = ""
             }
             EnergyPage { onBack: window.selectedApp = "" }
             MusicPage { active: window.selectedApp === "music"; onBack: window.selectedApp = "" }
             VideoLibraryPage { library: videoLibrary; heading: "Video"; active: window.selectedApp === "video"; onBack: window.selectedApp = "" }
             WeatherPage { onBack: window.selectedApp = "" }
-            RadioPage { onBack: window.selectedApp = "" }
+            RadioPage { objectName: "radioAppPage"; active: window.selectedApp === "radio" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
+            IptvPage { objectName: "iptvAppPage"; active: window.selectedApp === "iptv" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
         }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 96
-            visible: home.modules.radio || home.modules.bluetooth || home.modules.navidrome || home.modules.jellyfin
+            visible: !window.browsingTv && (home.modules.radio || home.modules.bluetooth || home.modules.navidrome || home.modules.jellyfin || home.modules.iptv)
             color: Theme.surface; border.color: Theme.border; radius: Theme.radius
             RowLayout {
                 anchors.fill: parent; anchors.margins: 16; spacing: 12
                 Rectangle {
                     width: 52; height: 52; radius: 14; color: Theme.tint
                     Text { visible: home.source === "radio" && home.radioId === "radio4"; anchors.centerIn: parent; text: "4"; color: Theme.accent; font.pixelSize: 36 }
-                    UiIcon { visible: home.source !== "radio" || home.radioId !== "radio4"; anchors.centerIn: parent; name: home.source === "radio" ? "radio" : home.source === "bluetooth" ? "bluetooth" : (home.source === "jellyfin" ? "video" : "music"); tint: Theme.accent; width: 30; height: 30 }
+                    UiIcon { visible: home.source !== "radio" || home.radioId !== "radio4"; anchors.centerIn: parent; name: home.source === "radio" ? "radio" : home.source === "bluetooth" ? "bluetooth" : (home.source === "iptv" ? "tv" : home.source === "jellyfin" ? "video" : "music"); tint: Theme.accent; width: 30; height: 30 }
                 }
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.minimumWidth: 100; spacing: 5
@@ -381,6 +248,12 @@ ApplicationWindow {
     Loader {
         id: virtualKeyboard; active: home.virtualKeyboardEnabled
         Component.onCompleted: if(active)setSource("VirtualKeyboard.qml", {hostWindow: window})
+    }
+    LayoutSettingsPage {
+        anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 24
+        height: Math.max(200, window.height - 48 - (virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0))
+        visible: window.selectedApp === "layout-settings"
+        onBack: { Qt.inputMethod.hide(); window.selectedApp = "" }
     }
     PowerDialogs { hostWindow: window; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0 }
     Rectangle {

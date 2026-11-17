@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-MODULES = ('assistant', 'radio', 'weather', 'news', 'chess', 'notes', 'bluetooth', 'vrm', 'navidrome', 'jellyfin')
+MODULES = ('assistant', 'radio', 'weather', 'news', 'chess', 'notes', 'bluetooth', 'vrm', 'navidrome', 'jellyfin', 'iptv')
 
 
 def validate(config):
@@ -59,7 +59,7 @@ def main():
             json.dump(config, output, indent=2)
             output.write('\n')
         os.chmod(args.output, 0o600)
-    print('Validated device configuration. Enabled modules: ' + ', '.join(name for name in MODULES if modules.get(name, True)))
+    print('Validated device configuration. Enabled modules: ' + ', '.join(name for name in MODULES if modules.get(name, name != "iptv")))
 
 
 if __name__ == '__main__':

@@ -91,5 +91,6 @@ int main(int argc,char **argv) {
     engine.rootContext()->setContextProperty("screenControl",&display);
     QObject::connect(&engine,&QQmlApplicationEngine::objectCreationFailed,&app,[](){QCoreApplication::exit(1);},Qt::QueuedConnection);
     engine.load(QUrl("qrc:/qml/Main.qml"));
+    if(QFile::exists(Controller::socketPath()+".wake")){QFile::remove(Controller::socketPath()+".wake");QTimer::singleShot(0,&display,&ScreenController::wake);}
     return app.exec();
 }

@@ -8,8 +8,6 @@ Item {
     property var article: ({})
     readonly property bool readingArticle: article.id !== undefined
     readonly property bool readingDiscussion: hackerNews.selected.id !== undefined
-    Binding { target: headlines; property: "active"; value: page.active }
-    Binding { target: hackerNews; property: "active"; value: page.active }
 
     component SmallButton: UiButton { implicitHeight: 44; font.pixelSize: 15 }
     component Divider: Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Theme.border }

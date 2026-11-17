@@ -17,6 +17,10 @@ Canvas {
         function line(x,y,a,b) { c.moveTo(x,y); c.lineTo(a,b) }
         c.beginPath()
         switch(name) {
+        case "filter": line(3,5,21,5); line(21,5,14,13); line(14,13,14,20); line(14,20,10,22); line(10,22,10,13); line(10,13,3,5); break
+        case "more": for(let i=0;i<3;i++){c.moveTo(13.2,5+i*7);c.arc(12,5+i*7,1.2,0,Math.PI*2)}break
+        case "tv": c.lineWidth = 1.25; c.rect(2,4,20,14); line(7,22,10,18); line(14,18,17,22); break
+        case "star": for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?4:9;const x=12+Math.cos(a)*r,y=12+Math.sin(a)*r;if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}c.closePath(); break
         case "wifi": c.arc(12,20,17,-2.15,-0.99); c.moveTo(5,10); c.arc(12,20,12,-2.15,-0.99); c.moveTo(8,15); c.arc(12,20,7,-2.15,-0.99); c.moveTo(13,20); c.arc(12,20,1,0,Math.PI*2); break
         case "trash": line(4,6,20,6); line(9,3,15,3); line(6,6,7,21); line(7,21,17,21); line(17,21,18,6); line(10,10,10,17); line(14,10,14,17); break
         case "notes": c.rect(5,3,14,18); line(8,8,16,8); line(8,12,16,12); line(8,16,13,16); break

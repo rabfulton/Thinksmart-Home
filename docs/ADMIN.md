@@ -9,9 +9,10 @@ through display sleep and UI restarts while the device has network connectivity.
 
 | Location | Purpose |
 | --- | --- |
-| `/etc/thinksmart/device.json` | Module flags and weather location/timezone |
+| `/etc/thinksmart/device.json` | Deployment module defaults and weather location/timezone |
+| `/var/lib/thinksmart-home/.config/ThinkSmart/Home/dashboard.json` | On-device module overrides and page/widget layout; backup in `.bak` |
 | `/etc/NetworkManager/system-connections/*.nmconnection` | Your Wi-Fi profiles; root-owned, mode 600 |
-| `/etc/thinksmart/assistant/` | `system.md`, `live.md`, `backend.md`, `household.md`, `personalities/*.md`, `wakeword.json` |
+| `/etc/thinksmart/assistant/` | `system.md`, `live.md`, `backend.md`, `household.md`, `personalities/*.md`, `modules/*/*.md`, `wakeword.json` |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home/voice.json` | Private API configuration |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home/media.json` | Private Navidrome/Jellyfin connections |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home/vrm.json` | Private VRM connection |
@@ -26,7 +27,8 @@ through display sleep and UI restarts while the device has network connectivity.
 | `/var/lib/tailscale/` | Tailscale identity, managed by tailscaled |
 
 Application credentials/prompts should be owned by `thinksmart:thinksmart`, mode
-600. Device configuration reloads on restart. Prompts reload at each conversation;
+600. Device configuration reloads on restart. Settings → Pages & modules saves the
+app-owned dashboard override and restarts the dashboard without a device reboot. Prompts reload at each conversation;
 Assistant Settings → Reload refreshes configuration/personality choices.
 Stop the application before directly editing `Home.conf` so it cannot overwrite
 your changes. Saved UI selections take priority over voice.json defaults.
@@ -84,3 +86,17 @@ Keep backups of your private configuration and this device's calibration and
 identities. Shared-audio setup saves its rollback files under
 `/opt/thinksmart/shared-audio-rollback/`. Application-specific update backups may
 be under `/opt/thinksmart/backups/`.
+
+## IPTV
+
+See [IPTV.md](IPTV.md) for browsing, saved/custom streams and local tool commands.
+Favourites and the last selection are private in
+`~thinksmart/.local/share/ThinkSmart/Home/iptv/favourites.json`; the replaceable
+directory is `~thinksmart/.cache/ThinkSmart/Home/iptv/catalogue.json`. Module
+policies live in `/etc/thinksmart/assistant/modules/iptv/`.
+
+## Radio favourites
+
+Saved radio stations: `~thinksmart/.local/share/ThinkSmart/Home/radio/favourites.json`
+(mode 600), separate from `~thinksmart/.cache/ThinkSmart/Home/radio-browser/`.
+See [RADIO.md](RADIO.md) for initial favourites, discovery and AI actions.

@@ -4,6 +4,8 @@
 #include <QTemporaryDir>
 #include <QStandardPaths>
 #include <QFile>
+#include <QDir>
+#include <QFileInfo>
 #include <QSignalSpy>
 #include <QtTest>
 #include <QDateTime>
@@ -15,7 +17,7 @@ class WeatherRadioTests:public QObject {
     QTemporaryDir root;
 private slots:
     void init(){
-        QVERIFY(root.isValid());QCoreApplication::setApplicationName(QUuid::createUuid().toString(QUuid::WithoutBraces));qputenv("XDG_CACHE_HOME",root.path().toUtf8());
+        QVERIFY(root.isValid());QCoreApplication::setApplicationName(QUuid::createUuid().toString(QUuid::WithoutBraces));qputenv("XDG_CACHE_HOME",root.path().toUtf8());qputenv("THINKSMART_RADIO_FAVOURITES_FILE",root.filePath(QCoreApplication::applicationName()+"-favourites.json").toUtf8());
         const auto path=root.filePath("curated.json");QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly));file.write("{\"stations\":[{\"id\":\"radio4\",\"name\":\"BBC Radio 4\",\"genres\":[\"news\"],\"url\":\"https://bbc.example.test/radio4\"}]}");file.close();qputenv("THINKSMART_RADIO_CATALOG",path.toUtf8());
     }
     void cleanup(){qunsetenv("THINKSMART_RADIO_BROWSER_TEST_SERVERS");qunsetenv("THINKSMART_RADIO_CATALOG");}
@@ -46,6 +48,18 @@ private slots:
         QVERIFY(radio.play("radio4"));QCOMPARE(played.size(),2);QCOMPARE(played.last()[1].toUrl(),QUrl("https://bbc.example.test/radio4"));QCOMPARE(server.searches(),1);
         RadioDirectory restored;QVERIFY(!restored.station(id).isEmpty());
         auto path=QStandardPaths::writableLocation(QStandardPaths::CacheLocation)+"/radio-browser/searches.json";QFile file(path);QVERIFY(file.permissions()&QFile::ReadOwner);QVERIFY(!(file.permissions()&QFile::ReadOther));
+    }
+    void uiSearchAndFavouritesSurviveCacheExpiry(){
+        RadioServer server;for(int i=0;i<55;i++)server.rows.append(RadioServer::row("Jazz "+QString::number(i),"https://radio.example.test/"+QString::number(i)));
+        qputenv("THINKSMART_RADIO_BROWSER_TEST_SERVERS",server.url().toUtf8());RadioCatalog radio;
+        radio.searchStations("Jazz");QTRY_VERIFY(!radio.searchBusy());QCOMPARE(radio.resultModel()->rowCount(),50);QCOMPARE(server.searches(),1);
+        const auto entry=radio.resultModel()->data(radio.resultModel()->index(0,0),Qt::UserRole+1).toMap();const auto id=entry.value("id").toString();
+        QSignalSpy reset(radio.resultModel(),&QAbstractItemModel::modelReset),changed(radio.resultModel(),&QAbstractItemModel::dataChanged);
+        QVERIFY(radio.favourite(id,true));QCOMPARE(reset.size(),0);QCOMPARE(changed.size(),1);QCOMPARE(radio.favouriteCount(),1);QVERIFY(!entry.contains("url"));
+        QVERIFY(!(QFileInfo(RadioCatalog::favouritesPath()).permissions()&QFile::ReadOther));
+        QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation)+"/radio-browser").removeRecursively();RadioCatalog restored;QVERIFY(restored.knows(id));QCOMPARE(restored.favouriteCount(),1);QSignalSpy playback(&restored,&RadioCatalog::playRequested);QVERIFY(restored.play(id));QCOMPARE(playback.size(),1);
+        QVERIFY(restored.favourite(id,false));QCOMPARE(restored.favouriteCount(),0);
+        QFile f(RadioCatalog::favouritesPath());QVERIFY(f.open(QIODevice::WriteOnly));f.write("broken");f.close();RadioCatalog corrupt;QVERIFY(!corrupt.favourite("radio4",true));QVERIFY(f.open(QIODevice::ReadOnly));QCOMPARE(f.readAll(),QByteArray("broken"));
     }
     void directoryFailsOverAndRetainsStaleCache(){
         RadioServer bad,good;bad.status=503;good.rows={RadioServer::row()};qputenv("THINKSMART_RADIO_BROWSER_TEST_SERVERS",(bad.url()+";"+good.url()).toUtf8());

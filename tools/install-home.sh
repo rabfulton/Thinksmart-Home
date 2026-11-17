@@ -34,11 +34,12 @@ if [ ! -f /etc/thinksmart/radio-catalog.json ]; then
 fi
 # Seed human-editable prompts without replacing SSH edits on future upgrades.
 install -d -o thinksmart -g thinksmart -m 700 /etc/thinksmart/assistant /etc/thinksmart/assistant/personalities
-for source in /opt/thinksmart/staging/assistant/*.md /opt/thinksmart/staging/assistant/*.json /opt/thinksmart/staging/assistant/personalities/*.md; do
+for source in /opt/thinksmart/staging/assistant/*.md /opt/thinksmart/staging/assistant/*.json /opt/thinksmart/staging/assistant/personalities/*.md /opt/thinksmart/staging/assistant/modules/*/*.md; do
     [ -f "$source" ] || continue
     relative=${source#/opt/thinksmart/staging/assistant/}
     target=/etc/thinksmart/assistant/$relative
     if [ ! -e "$target" ]; then
+        install -d -o thinksmart -g thinksmart -m 700 "$(dirname -- "$target")"
         install -o thinksmart -g thinksmart -m 600 "$source" "$target"
     fi
 done
@@ -48,6 +49,7 @@ install -d -o thinksmart -g thinksmart -m 700 /var/lib/thinksmart-home/personal 
 for source in /opt/thinksmart/staging/themes/*.json; do
     target=/var/lib/thinksmart-home/personal/themes/${source##*/}
     if [ ! -e "$target" ]; then
+        install -d -o thinksmart -g thinksmart -m 700 "$(dirname -- "$target")"
         install -o thinksmart -g thinksmart -m 600 "$source" "$target"
     fi
 done

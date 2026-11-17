@@ -9,14 +9,16 @@ python3 tools/configure-device.py --disable vrm --disable navidrome --disable je
 This copies `config/device.example.json` to ignored `private/device.json`.
 Edit the copy to select modules and set your weather name, latitude, longitude
 and IANA timezone. `true`/`false` values are JSON booleans. Missing module flags
-default to enabled for compatibility. The example explicitly lists every module.
+default to enabled for compatibility, except IPTV which defaults to disabled. The example explicitly lists every module.
 
 ```sh
 python3 tools/configure-device.py --config private/device.json --check
 ```
 
 The installer deploys this non-secret file to `/etc/thinksmart/device.json`.
-Changing it requires an app restart. Invalid configuration disables optional
+Changing it requires an app restart. Device-side edits in Settings → Pages &
+modules save a separate `dashboard.json` override; it takes precedence over the
+deployment module defaults and is preserved on upgrades. Invalid configuration disables optional
 modules and displays an error, leaving SSH available to fix the file.
 
 ## SSH

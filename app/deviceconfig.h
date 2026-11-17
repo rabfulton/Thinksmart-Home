@@ -8,18 +8,21 @@
 #include <QTimeZone>
 #include <QVariantMap>
 #include <cmath>
+#include "dashboardconfig.h"
 
 // Public, non-secret settings. Credentials remain in the existing private files.
 // Immutable during normal operation; reload is used before constructing test fixtures.
 class DeviceConfig {
 public:
     static QString path(){return qEnvironmentVariable("THINKSMART_DEVICE_CONFIG","/etc/thinksmart/device.json");}
-    static QStringList names(){return {"assistant","radio","weather","news","chess","notes","bluetooth","vrm","navidrome","jellyfin"};}
+    static QStringList names(){return ModuleCatalog::names();}
     static void reload(){state()=read();}
     static QString problem(){return state().problem;}
-    static bool enabled(const QString &name){return names().contains(name)&&state().data.value("modules").toObject().value(name).toBool(true);}
+    static bool enabled(const QString &name){return names().contains(name)&&state().data.value("modules").toObject().value(name).toBool(ModuleCatalog::defaultEnabled(name));}
     static QVariantMap modules(){QVariantMap result;for(const auto &name:names())result.insert(name,enabled(name));return result;}
-    static QStringList pages(){QStringList result;if(enabled("chess"))result<<"chess";if(enabled("notes"))result<<"notes";if(enabled("news"))result<<"news";return result<<"home";}
+    static QJsonObject dashboard(){return state().dashboard.isEmpty()?DashboardConfig::defaults(modules()):state().dashboard;}
+    static QJsonArray pageDefinitions(){QJsonArray r;for(const auto &p:dashboard().value("pages").toArray())if(p.toObject().value("kind")=="widgets"||enabled(p.toObject().value("module").toString()))r.append(p);return r;}
+    static QStringList pages(){QStringList r;for(const auto &p:pageDefinitions())r<<p.toObject().value("id").toString();return r;}
     static bool appEnabled(const QString &app){
         if(app=="home")return true;
         if(app=="solar")return enabled("vrm");
@@ -35,11 +38,7 @@ public:
     }
     static QString weatherKey(){return QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(weather()).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex().left(16));}
     static bool actionEnabled(const QString &action){
-        if(action.startsWith("radio."))return enabled("radio");
-        if(action.startsWith("weather."))return enabled("weather");
-        if(action.startsWith("battery."))return enabled("vrm");
-        if(action.startsWith("video."))return enabled("jellyfin");
-        if(action.startsWith("notes."))return enabled("notes");
+        for(const auto &entry:ModuleCatalog::entries())if(!entry.actionPrefix.isEmpty()&&action.startsWith(entry.actionPrefix))return enabled(entry.id);
         return true;
     }
     static QString context(){
@@ -48,13 +47,13 @@ public:
             ". Enabled modules: "+available.join(", ")+". Only the provided tools are available; disabled modules cannot be used. This capability list takes precedence over examples mentioning unavailable services.";
     }
 private:
-    struct State {QJsonObject data;QString problem;};
+    struct State {QJsonObject data;QString problem;QJsonObject dashboard;};
     static State &state(){static State value=read();return value;}
     static State read(){
-        QFile file(path());if(!file.exists())return {};
+        QFile file(path());
         auto invalid=[](){QJsonObject modules;for(const auto &name:names())modules.insert(name,false);return State{{{"modules",modules}},"Invalid device.json. Check module flags and weather coordinates/timezone, then restart."};};
-        if(!file.open(QIODevice::ReadOnly)||file.size()>16384)return invalid();
-        QJsonParseError error;const auto document=QJsonDocument::fromJson(file.readAll(),&error);
+        if(file.exists()&&(!file.open(QIODevice::ReadOnly)||file.size()>16384))return invalid();
+        QJsonParseError error;const auto document=QJsonDocument::fromJson(file.isOpen()?file.readAll():QByteArray("{}"),&error);
         if(error.error!=QJsonParseError::NoError||!document.isObject())return invalid();
         const auto data=document.object();
         for(auto i=data.begin();i!=data.end();++i)if(!QStringList{"version","modules","weather"}.contains(i.key()))return invalid();
@@ -71,6 +70,8 @@ private:
         }
         if(weather.contains("name")&&(!weather.value("name").isString()||weather.value("name").toString().trimmed().isEmpty()||weather.value("name").toString().size()>80))return invalid();
         if(weather.contains("timezone")&&(!weather.value("timezone").isString()||!QTimeZone(weather.value("timezone").toString().toUtf8()).isValid()))return invalid();
-        return {data,{}};
+        auto effective=data;const auto dashboard=DashboardConfig::load();auto flags=data.value("modules").toObject();
+        const auto overrides=dashboard.data.value("modules").toObject();for(auto i=overrides.begin();i!=overrides.end();++i)flags.insert(i.key(),i.value());
+        effective.insert("modules",flags);return {effective,dashboard.problem,dashboard.data};
     }
 };

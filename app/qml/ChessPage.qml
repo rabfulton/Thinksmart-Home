@@ -9,11 +9,11 @@ Rectangle {
     readonly property real boardSize: Math.floor(Math.min(width - (wide ? 300 : 40), height - (wide ? 40 : chessGame.error.length ? 410 : 330)) / 8) * 8
     readonly property var cells: chessGame.squares
     color: Theme.surface; radius: Theme.radius; border.color: Theme.border
-    Binding { target: chessGame; property: "active"; value: page.active }
+    onActiveChanged: { if(active && chessGame.promotionPending)promotion.open();else promotion.close() }
     function pieceName(code) { if(!code)return "empty"; const names={K:"king",Q:"queen",R:"rook",B:"bishop",N:"knight",P:"pawn"};return (code[0]==="w"?"White ":"Black ")+names[code[1]] }
     Connections {
         target: chessGame
-        function onChanged() { if(chessGame.promotionPending)promotion.open();else promotion.close() }
+        function onChanged() { if(page.active && chessGame.promotionPending)promotion.open();else promotion.close() }
     }
     GridLayout {
         anchors.centerIn: parent

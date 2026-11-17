@@ -11,6 +11,7 @@ drivers, models or linked libraries. Preserve their notices when redistributing.
 | `app/third_party/chess/` | Disservin chess-library 0.9.11; MIT | [LICENSE](app/third_party/chess/LICENSE), [SOURCE](app/third_party/chess/SOURCE) |
 | `app/third_party/microfrontend/tensorflow/` | TensorFlow Lite Micro frontend, via pinned rhasspy/pymicro-features; Apache-2.0 | [LICENSE](app/third_party/microfrontend/LICENSE), [provenance](app/third_party/microfrontend/SOURCE.json); copyright headers retained |
 | `app/third_party/microfrontend/kissfft/` | KissFFT; BSD-style licence | [LICENSE](app/third_party/microfrontend/kissfft/LICENSE) |
+| `app/iptv-stations.json` | IPTV-org channel/stream metadata and links; CC0-1.0 | [IPTV-org](https://github.com/iptv-org/iptv), [API](https://github.com/iptv-org/api); no television content bundled |
 | `app/assets/chess/` | Colin M. L. Burnett chess artwork; selected BSD-3-Clause terms | [LICENSE and source links](app/assets/chess/LICENSE) |
 
 ## Dependencies fetched or installed separately

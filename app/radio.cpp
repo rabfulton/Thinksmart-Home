@@ -1,4 +1,9 @@
 #include "radio.h"
+#include "deviceconfig.h"
+#include <QDir>
+#include <QFileInfo>
+#include <QSaveFile>
+#include <QStandardPaths>
 #include <QFile>
 #include <QJsonDocument>
 #include <QNetworkReply>
@@ -12,6 +17,7 @@ const QString parliamentApi="https://exposure.api.redbee.live/v2/customer/UKParl
 QString plain(QString text) { text.remove(QRegularExpression("<[^>]*>")); return text.replace("&amp;","&").replace("&nbsp;"," ").simplified(); }
 }
 RadioCatalog::RadioCatalog(QObject *parent):QObject(parent) {
+    if(!DeviceConfig::enabled("radio"))return;
     QFile file(qEnvironmentVariable("THINKSMART_RADIO_CATALOG","/etc/thinksmart/radio-catalog.json"));
     if(!file.open(QIODevice::ReadOnly)){file.setFileName(":/radio-catalog.json");file.open(QIODevice::ReadOnly);}
     if(file.size()<512*1024)m_stations=QJsonDocument::fromJson(file.readAll()).object().value("stations").toArray();
@@ -21,8 +27,61 @@ RadioCatalog::RadioCatalog(QObject *parent):QObject(parent) {
         const auto url=QJsonDocument::fromJson(legacy.readAll()).object().value("radio4").toString();
         if(!url.isEmpty())for(int i=0;i<m_stations.size();i++){auto row=m_stations.at(i).toObject();if(row.value("id")=="radio4"){row.insert("url",url);m_stations.replace(i,row);}}
     }
+    loadFavourites();updateModels();
 }
 RadioCatalog::~RadioCatalog(){ for(auto r:m_network.findChildren<QNetworkReply *>()){r->disconnect(this);r->abort();} }
+QString RadioCatalog::favouritesPath(){return qEnvironmentVariable("THINKSMART_RADIO_FAVOURITES_FILE",QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/radio/favourites.json");}
+QJsonObject RadioCatalog::summary(QJsonObject row,bool saved){row.remove("url");row.remove("resolver");row.insert("saved",saved);return row;}
+QJsonObject RadioCatalog::station(const QString &id)const{
+    for(const auto &v:m_stations)if(v.toObject().value("id")==id)return v.toObject();
+    const auto fresh=m_directory.station(id);if(!fresh.isEmpty())return fresh;
+    for(const auto &v:m_favourites)if(v.toObject().value("id")==id)return v.toObject();
+    return {};
+}
+QJsonArray RadioCatalog::favourites()const{QJsonArray result;for(const auto &v:m_favourites)result.append(summary(v.toObject(),true));return result;}
+void RadioCatalog::updateModels(){
+    m_favouriteModel.setRows(favourites());QJsonArray rows;
+    for(const auto &v:m_results){const auto r=v.toObject();bool saved=false;for(const auto &f:m_favourites)if(f.toObject().value("id")==r.value("id")){saved=true;break;}rows.append(summary(r,saved));}
+    m_resultModel.setRows(rows);emit searchChanged();
+}
+void RadioCatalog::loadFavourites(){
+    QFile f(favouritesPath());if(!f.exists()){
+        for(const auto &v:m_stations)if(v.toObject().value("pinned").toBool())m_favourites.append(v);
+        return;
+    }
+    if(!f.open(QIODevice::ReadOnly)||f.size()>1024*1024){m_storeHealthy=false;m_searchProblem="Cannot read saved radio stations.";return;}
+    QJsonParseError error;const auto d=QJsonDocument::fromJson(f.readAll(),&error).object();const auto rows=d.value("favourites").toArray();bool valid=error.error==QJsonParseError::NoError&&d.value("version")==1&&d.value("favourites").isArray()&&rows.size()<=100;QStringList ids;
+    for(const auto &v:rows){const auto r=v.toObject();const auto id=r.value("id").toString();const QUrl u(r.value("url").toString());bool curated=false;for(const auto &c:m_stations)if(c.toObject().value("id")==id){curated=true;break;}
+        if(id.isEmpty()||ids.contains(id)||(!curated&&(!id.startsWith("rb:")||!u.isValid()||u.host().isEmpty()||(u.scheme()!="https"&&u.scheme()!="http"))))valid=false;ids<<id;
+    }
+    if(!valid){m_storeHealthy=false;m_searchProblem="Saved radio stations are invalid; the file was left untouched.";return;}m_favourites=rows;
+}
+bool RadioCatalog::favourite(const QString &id,bool saved){
+    if(!DeviceConfig::enabled("radio")||!m_storeHealthy)return false;
+    auto rows=m_favourites;for(int i=rows.size()-1;i>=0;--i)if(rows[i].toObject().value("id")==id)rows.removeAt(i);
+    if(saved){const auto r=station(id);if(r.isEmpty()||rows.size()>=100){m_searchProblem="Choose a known station; at most 100 favourites can be saved.";emit searchChanged();return false;}rows.append(r);}
+    const auto path=favouritesPath();QDir().mkpath(QFileInfo(path).absolutePath());QSaveFile f(path);
+    if(!f.open(QIODevice::WriteOnly)){m_searchProblem="Cannot save radio favourites.";emit searchChanged();return false;}
+    f.setPermissions(QFile::ReadOwner|QFile::WriteOwner);const auto bytes=QJsonDocument(QJsonObject{{"version",1},{"favourites",rows}}).toJson(QJsonDocument::Compact);
+    if(f.write(bytes)!=bytes.size()||!f.commit()){m_searchProblem="Cannot save radio favourites.";emit searchChanged();return false;}
+    m_favourites=rows;m_searchProblem.clear();updateModels();return true;
+}
+void RadioCatalog::cancelSearch(){++m_searchSerial;m_searchBusy=false;emit searchChanged();}
+void RadioCatalog::searchStations(const QString &text,const QString &tag){
+    if(!DeviceConfig::enabled("radio"))return;cancelSearch();m_searchText=text.trimmed().left(100);m_searchTag=tag.trimmed().left(100);m_searchOffset=0;m_results={};updateModels();fetchStations(false);
+}
+void RadioCatalog::loadMore(){if(!m_searchBusy&&m_hasMore){m_searchOffset+=50;fetchStations(true);}}
+void RadioCatalog::fetchStations(bool append){
+    m_searchBusy=true;if(m_storeHealthy)m_searchProblem.clear();const auto serial=m_searchSerial;emit searchChanged();
+    QJsonObject query{{"limit",50},{"offset",m_searchOffset},{"browse",true}};if(!m_searchText.isEmpty())query.insert("search",m_searchText);if(!m_searchTag.isEmpty())query.insert("tag",m_searchTag);
+    m_directory.search(query,[this,serial,append](QJsonObject result){
+        if(serial!=m_searchSerial)return;m_searchBusy=false;
+        if(!result.value("ok").toBool()){m_searchProblem=result.value("error").toString();m_hasMore=false;emit searchChanged();return;}
+        if(!append)m_results={};QStringList ids;for(const auto &v:m_results)ids<<v.toObject().value("id").toString();
+        for(const auto &v:result.value("stations").toArray())if(!ids.contains(v.toObject().value("id").toString())){m_results.append(v);ids<<v.toObject().value("id").toString();}
+        m_hasMore=result.value("hasMore").toBool()&&m_searchOffset<20000;updateModels();
+    });
+}
 QVariantList RadioCatalog::stations() const { return list().toVariantList(); }
 QJsonArray RadioCatalog::list(const QString &genre,const QString &search) const {
     QJsonArray result;
@@ -40,7 +99,7 @@ void RadioCatalog::cancel(){++m_serial;if(m_busy)m_status="Stopped · choose a s
 void RadioCatalog::fail(const QString &message){m_busy=false;m_status=message;emit changed();}
 bool RadioCatalog::knows(const QString &id)const{
     for(const auto &row:m_stations)if(row.toObject().value("id")==id)return true;
-    return !m_directory.station(id).isEmpty();
+    return !station(id).isEmpty();
 }
 bool RadioCatalog::random(const QString &genre){
     QStringList choices;for(const auto &value:list(genre)){auto row=value.toObject();if(row.value("id").toString()!=m_selected)choices<<row.value("id").toString();}
@@ -49,8 +108,8 @@ bool RadioCatalog::random(const QString &genre){
     return play(choices.at(QRandomGenerator::global()->bounded(choices.size())));
 }
 bool RadioCatalog::play(const QString &id){
-    QJsonObject station;for(const auto &value:m_stations)if(value.toObject().value("id")==id){station=value.toObject();break;}
-    if(station.isEmpty())station=m_directory.station(id);
+    if(!DeviceConfig::enabled("radio"))return false;
+    const auto station=this->station(id);
     if(station.isEmpty()){fail("Unknown station ID. Use radio.list for favourites or radio.search for global stations, then play a returned id.");return false;}
     emit interruptPlayback();++m_serial;m_selected=id;
     const auto resolver=station.value("resolver").toString();

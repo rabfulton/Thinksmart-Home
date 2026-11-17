@@ -22,7 +22,7 @@ Rectangle {
             anchors.fill: parent; anchors.margins: 28
             RowLayout {
                 spacing: 20
-                UiButton { iconName: "back"; description: "Stop video and return to library"; onClicked: home.stop() }
+                UiButton { objectName: "videoCloseButton"; iconName: "back"; description: home.source === "iptv" ? "Stop TV and return to channels" : "Stop video and return to library"; onClicked: home.stop() }
                 Text { text: home.title; color: "white"; font.pixelSize: 26; Layout.fillWidth: true; elide: Text.ElideRight }
                 UiButton { text: "Audio"; enabled: home.video.audioTracks.length > 1; onClicked: { audioMenu.open(); playback.reveal() } }
                 UiButton { text: "Subtitles"; enabled: home.video.subtitleTracks.length > 1; onClicked: { subtitleMenu.open(); playback.reveal() } }
@@ -30,18 +30,19 @@ Rectangle {
             Item { Layout.fillHeight: true }
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter; spacing: 24
-                UiButton { text: "−10 s"; onClicked: { home.seek(home.position - 10); playback.reveal() } }
+                UiButton { visible: home.source !== "iptv"; text: "−10 s"; onClicked: { home.seek(home.position - 10); playback.reveal() } }
                 UiButton { iconName: home.state === "playing" ? "pause" : "play"; primary: true; description: home.state === "playing" ? "Pause video" : "Resume video"; onClicked: { home.toggle(); playback.reveal() } }
-                UiButton { text: "+10 s"; onClicked: { home.seek(home.position + 10); playback.reveal() } }
+                UiButton { visible: home.source !== "iptv"; text: "+10 s"; onClicked: { home.seek(home.position + 10); playback.reveal() } }
             }
             Item { Layout.fillHeight: true }
             Text { visible: home.state === "connecting" || home.state === "error"; text: home.message; color: "white"; font.pixelSize: 20; Layout.alignment: Qt.AlignHCenter }
             Text { visible: home.video.controlError.length > 0; text: home.video.controlError; color: Theme.danger; font.pixelSize: 18; Layout.alignment: Qt.AlignHCenter }
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: playback.timeLabel(home.position); color: "white"; font.pixelSize: 18 }
-                Slider { Layout.fillWidth: true; from: 0; to: Math.max(1,home.duration); value: home.position; enabled: home.duration > 0; onMoved: { home.seek(value); playback.reveal() } }
-                Text { text: playback.timeLabel(home.duration); color: "white"; font.pixelSize: 18 }
+                Text { text: home.source === "iptv" ? "LIVE" : playback.timeLabel(home.position); color: "white"; font.pixelSize: 18 }
+                Slider { visible: home.source !== "iptv"; Layout.fillWidth: true; from: 0; to: Math.max(1,home.duration); value: home.position; enabled: home.duration > 0; onMoved: { home.seek(value); playback.reveal() } }
+                Item { visible: home.source === "iptv"; Layout.fillWidth: true }
+                Text { visible: home.source !== "iptv"; text: playback.timeLabel(home.duration); color: "white"; font.pixelSize: 18 }
                 UiButton { iconName: "volume"; description: "Mute"; selected: home.muted; onClicked: { home.toggleMute(); playback.reveal() } }
                 Slider { Layout.preferredWidth: 140; from: 0; to: 100; value: home.volume; onMoved: { home.setVolume(Math.round(value)); playback.reveal() } }
             }

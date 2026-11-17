@@ -8,6 +8,8 @@
 #include "deviceconfig.h"
 #include "personal.h"
 #include "wifi.h"
+#include "layouteditor.h"
+#include "iptv.h"
 #include <QObject>
 #include <QProcess>
 #include <QLocalSocket>
@@ -30,6 +32,9 @@ class Controller:public QObject {
     Q_PROPERTY(QVariantMap themePalette READ themePalette NOTIFY themeChanged)
     Q_PROPERTY(PersonalStore *personal READ personal CONSTANT)
     Q_PROPERTY(WifiController *wifi READ wifi CONSTANT)
+    Q_PROPERTY(LayoutEditor *layoutEditor READ layoutEditor CONSTANT)
+    Q_PROPERTY(IptvClient *iptv READ iptv CONSTANT)
+    Q_PROPERTY(QVariantList pageDefinitions READ pageDefinitions CONSTANT)
     Q_PROPERTY(bool virtualKeyboardEnabled READ virtualKeyboardEnabled CONSTANT)
     Q_PROPERTY(QString alarmText READ alarmText NOTIFY alarmChanged)
     Q_PROPERTY(int volume READ volume NOTIFY changed)
@@ -54,6 +59,10 @@ public:
     QVariantMap themePalette()const{return m_personal.palette(m_themeName).toVariantMap();}
     PersonalStore *personal(){return &m_personal;}
     WifiController *wifi(){return &m_wifi;}
+    LayoutEditor *layoutEditor(){return &m_layoutEditor;}
+    IptvClient *iptv(){return &m_iptv;}
+    QVariantList pageDefinitions()const{return DeviceConfig::pageDefinitions().toVariantList();}
+    Q_INVOKABLE void editLayout();
     bool virtualKeyboardEnabled()const{return qEnvironmentVariable("QT_IM_MODULE")=="qtvirtualkeyboard";}
     QString alarmText()const{return m_alarmText;}
     Q_INVOKABLE QVariantMap personalAction(const QString &action,const QVariantMap &data={});
@@ -81,7 +90,7 @@ public:
     VoiceAssistant *assistant(){return &m_assistant;}
     void releaseAudio(bool force=false);
     bool audioReleased()const;
-    bool wakeWordAllowed()const{return m_alarmText.isEmpty()&&!m_audioLab.running()&&(sharedAudioEnabled()||(!m_wantPlay&&!m_switching));}
+    bool wakeWordAllowed()const{return !m_restartPending&&m_alarmText.isEmpty()&&!m_audioLab.running()&&(sharedAudioEnabled()||(!m_wantPlay&&!m_switching));}
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
     Q_INVOKABLE void stop();
@@ -113,9 +122,14 @@ signals:
     void playbackEvent(const QString &key,const QString &event,double position,bool paused);
     void openAppRequested(const QString &app);
     void audioSetupRequested();
+    void dashboardRestartRequested();
 private:
+    bool m_restartPending=false;
     PersonalStore m_personal;
     WifiController m_wifi;
+    LayoutEditor m_layoutEditor;
+    IptvClient m_iptv;
+    bool m_iptvSoftware=false;
     QJsonObject personalRequest(const QString &action,const QJsonObject &data);
     QJsonObject executeSteps(const QJsonArray &steps);
     QString checkSteps(const QJsonArray &steps)const;

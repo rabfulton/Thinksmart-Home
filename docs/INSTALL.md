@@ -101,6 +101,10 @@ prompt edits and station catalogues are preserved; your selected device config
 is deliberately updated. Inspect local credential files before using credential
 deployment scripts, which replace the corresponding private device JSON.
 
+After installation, Settings → Pages & modules customises the layout and module
+selection on-device. Existing on-device overrides and prompt edits survive later
+installs. See [modules](MODULES.md).
+
 The display starts asleep. Touch or press a volume key to wake. Check landscape
 and portrait touch alignment, sound, volume buttons, screen sleep and a reboot.
 Confirm that SSH reconnects after reboot. AI conversation tests can incur API

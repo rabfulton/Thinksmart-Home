@@ -1,4 +1,5 @@
 #include "radiodirectory.h"
+#include "deviceconfig.h"
 #include <QDateTime>
 #include <QDnsLookup>
 #include <QCryptographicHash>
@@ -47,12 +48,13 @@ QString streamUrl(const QString &text){
     return url.toString(QUrl::FullyEncoded);
 }
 QJsonObject reply(const QJsonObject &filters,const QJsonObject &entry,const QString &cache){
-    return {{"ok",true},{"source","Radio Browser"},{"query",filters},{"cache",cache},{"asOf",entry.value("fetchedAt")},{"stations",entry.value("stations")},{"count",entry.value("stations").toArray().size()},
-        {"message",entry.value("stations").toArray().isEmpty()?"No matching healthy stations. Try a related tag or relax filters.":"Up to five candidates; choose one matching the user's request."},
+    return {{"ok",true},{"source","Radio Browser"},{"query",filters},{"cache",cache},{"asOf",entry.value("fetchedAt")},{"stations",entry.value("stations")},{"count",entry.value("stations").toArray().size()},{"hasMore",entry.value("hasMore").toBool()},
+        {"message",entry.value("stations").toArray().isEmpty()?"No matching healthy stations. Try a related tag or relax filters.":"Choose a candidate matching the request."},
         {"guidance","Choose a suitable result and call radio.play with its id. URLs are public streams. Metadata describes a station, not a guarantee of its current programme."}};
 }
 }
 RadioDirectory::RadioDirectory(QObject *parent):QObject(parent){
+    if(!DeviceConfig::enabled("radio"))return;
     QFile file(cachePath());if(file.open(QIODevice::ReadOnly)&&file.size()<=2*1024*1024)m_cache=QJsonDocument::fromJson(file.readAll()).object();
     const auto now=QDateTime::currentSecsSinceEpoch();
     for(const auto &key:m_cache.keys()){const auto time=qint64(m_cache.value(key).toObject().value("fetchedAt").toDouble());if(time>now+60||time<now-keepFor)m_cache.remove(key);}
@@ -77,10 +79,16 @@ QJsonObject RadioDirectory::filters(const QJsonObject &request,QString &error){
         }
         result.insert(key,text);
     }
+    if(result.isEmpty()&&request.value("browse").toBool())result.insert("browse",true);
     if(result.isEmpty())error="Supply at least one country, language, tag or station-name search. Filters are combined; broaden them if there are no results.";
+    for(const auto &key:{"limit","offset"})if(request.contains(key)){
+        const auto v=request.value(key);const int minimum=QString(key)=="limit"?1:0,maximum=QString(key)=="limit"?50:20000;
+        if(!v.isDouble()||v.toDouble()!=v.toInt()||v.toInt()<minimum||v.toInt()>maximum){error="Invalid radio search limit or offset.";return {};}
+        result.insert(key,v.toInt());
+    }
     return result;
 }
-QJsonArray RadioDirectory::normalize(const QJsonArray &rows){
+QJsonArray RadioDirectory::normalize(const QJsonArray &rows,int limit){
     QJsonArray stations;QSet<QString> ids,urls,names;
     for(const auto &value:rows){
         const auto row=value.toObject();const auto id=uuid(row.value("stationuuid").toString());
@@ -95,7 +103,7 @@ QJsonArray RadioDirectory::normalize(const QJsonArray &rows){
         stations.append(QJsonObject{{"id","rb:"+id},{"uuid",id},{"name",name},{"url",url},{"country",country},{"countryCode",code},{"language",language},{"tags",tags},
             {"description",QStringList{country,language,words.join(", ")}.join(" · ").left(600)},{"codec",row.value("codec").toString().left(20)},
             {"bitrate",std::clamp(row.value("bitrate").toInt(),0,1000000)},{"healthy",true},{"checkedAt",row.value("lastchecktime_iso8601").toString().left(40)}});
-        if(stations.size()==5)break;
+        if(stations.size()>=std::clamp(limit,1,50))break;
     }
     return stations;
 }
@@ -139,6 +147,7 @@ void RadioDirectory::servers(std::function<void()> ready){
     QTimer::singleShot(2000,dns,[dns](){dns->abort();});dns->lookup();
 }
 void RadioDirectory::search(const QJsonObject &request,Done done){
+    if(!DeviceConfig::enabled("radio")){done({{"ok",false},{"error","Radio is disabled."}});return;}
     QString error;const auto query=filters(request,error);
     if(!error.isEmpty()){done({{"ok",false},{"error",error}});return;}
     const auto key=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(query).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
@@ -158,10 +167,11 @@ void RadioDirectory::fetch(const std::shared_ptr<Search> &query,int attempt){
     }
     QUrl url=m_servers[attempt];url.setPath("/json/stations/search");QUrlQuery params;
     for(auto i=query->filters.begin();i!=query->filters.end();++i){
-        QString key=i.key();if(key=="country"){if(i.value().toString().size()==2)key="countrycode";else params.addQueryItem("countryExact","true");}
+        QString key=i.key();if(key=="limit"||key=="offset"||key=="browse")continue;if(key=="country"){if(i.value().toString().size()==2)key="countrycode";else params.addQueryItem("countryExact","true");}
         if(key=="search")key="name";params.addQueryItem(key,i.value().toString());
     }
-    params.addQueryItem("hidebroken","true");params.addQueryItem("order","votes");params.addQueryItem("reverse","true");params.addQueryItem("limit","25");url.setQuery(params);
+    params.addQueryItem("hidebroken","true");params.addQueryItem("order","votes");params.addQueryItem("reverse","true");params.addQueryItem("limit",QString::number(qMax(25,query->filters.value("limit").toInt(5))));
+    if(query->filters.value("offset").toInt()>0)params.addQueryItem("offset",QString::number(query->filters.value("offset").toInt()));url.setQuery(params);
     QNetworkRequest request(url);request.setRawHeader("User-Agent",userAgent);request.setTransferTimeout(6000);request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::NoLessSafeRedirectPolicy);
     auto *networkReply=m_network.get(request);
     connect(networkReply,&QNetworkReply::downloadProgress,this,[networkReply](qint64 size,qint64 total){if(size>2*1024*1024||total>2*1024*1024)networkReply->abort();});
@@ -169,14 +179,13 @@ void RadioDirectory::fetch(const std::shared_ptr<Search> &query,int attempt){
         const auto bytes=networkReply->readAll();const int status=networkReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         QJsonParseError error;const auto data=QJsonDocument::fromJson(bytes,&error);const bool ok=networkReply->error()==QNetworkReply::NoError&&status==200&&bytes.size()<=2*1024*1024&&error.error==QJsonParseError::NoError&&data.isArray();networkReply->deleteLater();
         if(!ok){fetch(query,status==429?int(m_servers.size()):attempt+1);return;}
-        const QJsonObject entry{{"fetchedAt",QDateTime::currentSecsSinceEpoch()},{"stations",normalize(data.array())}};remember(query->key,entry);
+        const QJsonObject entry{{"fetchedAt",QDateTime::currentSecsSinceEpoch()},{"stations",normalize(data.array(),query->filters.value("limit").toInt(5))},{"hasMore",data.array().size()>=qMax(25,query->filters.value("limit").toInt(5))}};remember(query->key,entry);
         finish(query,reply(query->filters,entry,"live"));
     });
 }
 void RadioDirectory::finish(const std::shared_ptr<Search> &query,QJsonObject result){m_pending.remove(query->key);for(auto &callback:query->callbacks)callback(result);}
 void RadioDirectory::clicked(const QString &id){
-    const auto station=m_stations.value(id);if(station.isEmpty())return;
-    const auto stationId=uuid(station.value("uuid").toString());
+    const auto stationId=id.startsWith("rb:")?uuid(id.mid(3)):QString();if(stationId.isEmpty())return;
     servers([this,stationId](){
         auto url=m_servers.first();url.setPath("/json/url/"+stationId);QNetworkRequest request(url);request.setRawHeader("User-Agent",userAgent);request.setTransferTimeout(2500);
         auto *r=m_network.get(request);connect(r,&QNetworkReply::downloadProgress,r,[r](qint64 n,qint64 total){if(n>65536||total>65536)r->abort();});connect(r,&QNetworkReply::finished,r,&QObject::deleteLater);

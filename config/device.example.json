@@ -10,7 +10,8 @@
     "bluetooth": true,
     "vrm": false,
     "navidrome": false,
-    "jellyfin": false
+    "jellyfin": false,
+    "iptv": false
   },
   "weather": {
     "name": "London",

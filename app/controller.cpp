@@ -18,10 +18,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <csignal>
+#include <QCoreApplication>
 #include <cmath>
 
 QString Controller::socketPath(){return qEnvironmentVariable("THINKSMART_CONTROL_SOCKET","/run/thinksmart-ui/control.sock");}
 Controller::Controller(ScreenController *display,QObject *parent):QObject(parent),m_display(display),m_audioLab(this,display),m_assistant(this,display),m_videoPlayer(this){
+    connect(&m_iptv,&IptvClient::playRequested,this,[this](const QUrl &url,const QString &name,bool software){m_iptvSoftware=software;playMedia("iptv",url,name,"Live TV",{},true,{},0);});
+    connect(&m_layoutEditor,&LayoutEditor::restartRequested,this,[this](){
+        m_restartPending=true;stop();m_assistant.suspendLocalAudio();emit dashboardRestartRequested();
+#ifndef THINKSMART_VOICE_TESTING
+        QFile wake(socketPath()+".wake");if(wake.open(QIODevice::WriteOnly)){wake.setPermissions(QFile::ReadOwner|QFile::WriteOwner);wake.write("wake");}
+        QTimer::singleShot(150,QCoreApplication::instance(),&QCoreApplication::quit);
+#endif
+    });
     connect(&m_videoPlayer,&VideoPlayer::event,this,&Controller::handlePlayerEvent);
     connect(display,&ScreenController::stopping,this,&Controller::stop);
     connect(&m_phone,&BluetoothAudio::changed,this,&Controller::changed);
@@ -76,10 +85,12 @@ Controller::~Controller(){
     finishPlayback();m_wantPlay=false;m_player.disconnect(this);m_mixer.disconnect(this);m_ipc.disconnect(this);
     for(auto process:{&m_player,&m_mixer})if(process->state()!=QProcess::NotRunning){process->terminate();if(!process->waitForFinished(500)){process->kill();process->waitForFinished(500);}}
 }
+void Controller::editLayout(){m_layoutEditor.begin();m_display->wake();emit openAppRequested("layout-settings");}
 void Controller::setState(const QString &s,const QString &message){m_state=s;m_message=message;emit changed();}
 void Controller::command(const QJsonArray &cmd){if(m_video&&m_videoPlayer.running()){m_videoPlayer.command(cmd);return;}if(m_ipc.state()==QLocalSocket::ConnectedState)m_ipc.write(QJsonDocument(QJsonObject{{"command",cmd}}).toJson(QJsonDocument::Compact)+'\n');}
 void Controller::finishPlayback(){if(!m_playbackKey.isEmpty())emit playbackEvent(m_playbackKey,"stopped",m_position,state()=="paused");m_playbackKey.clear();m_reported=false;}
 void Controller::beginPlayback(){
+    m_iptv.cancelPlayback();
     emit cancelDiscoveryRequested();
     m_videoPlayer.stop();m_audioLab.stop();if(!sharedAudioEnabled())m_assistant.stop();
     m_switching=true;m_wantPlay=true;m_handoff.stop();m_connectTimer.stop();m_loadTimer.stop();m_ipc.abort();m_player.terminate();m_phone.stopReceiver();
@@ -90,7 +101,7 @@ void Controller::playMedia(const QString &source,const QUrl &url,const QString &
     finishPlayback();m_source=source;m_url=url.toString(QUrl::FullyEncoded);m_title=title;m_subtitle=subtitle;m_headers=headers;m_video=video;m_playbackKey=key;m_start=qMax(0.0,start);m_position=m_start;m_duration=0;beginPlayback();
 }
 void Controller::startPlayer(){
-    if(m_video){m_display->wake();emit openAppRequested("video");m_videoPlayer.start(QUrl(m_url),m_headers,m_start);return;}
+    if(m_video){m_display->wake();m_videoPlayer.start(QUrl(m_url),m_headers,m_start,m_source=="iptv"&&m_iptvSoftware);emit openAppRequested(m_source=="iptv"?"iptv":"video");return;}
     QFile::remove(m_playerSocket);m_buffer.clear();m_ipc.abort();
     QStringList args={"--idle=yes","--ao=alsa","--audio-device=alsa/default","--audio-format=s16","--audio-channels=stereo","--volume=100","--no-config","--cache=yes","--demuxer-max-bytes=16777216","--demuxer-max-back-bytes=1048576","--cache-secs=5","--network-timeout=15","--msg-level=all=warn","--terminal=no","--input-terminal=no","--input-ipc-server="+m_playerSocket};
     if(m_video)args<<"--vo=gpu"<<"--gpu-context=wayland"<<"--hwdec=auto-safe"<<"--fullscreen=yes"<<"--osc=yes"<<"--script-opts=osc-windowcontrols=yes";
@@ -110,6 +121,7 @@ void Controller::play(){
         if(!m_phone.active())beginPlayback();else m_phone.transport("Play");return;
     }
     if(m_state=="paused"&&(m_videoPlayer.running()||m_ipc.state()==QLocalSocket::ConnectedState)){command({"set_property","pause",false});return;}
+    if(m_source=="iptv"&&!m_iptv.lastChannel().isEmpty()){m_iptv.play(m_iptv.lastChannel().value("id").toString());return;}
     if(m_source=="jellyfin"){emit replayRequested(m_source);return;}
     if(m_source=="radio"&&m_radio&&(m_radioId=="commons"||m_radioId=="lords")){emit radioRequested(m_radioId);return;}
     if(m_url.isEmpty()){setState("error","No stream is configured");return;}
@@ -117,6 +129,7 @@ void Controller::play(){
 }
 void Controller::pause(){if(m_source=="bluetooth")m_phone.transport("Pause");else if(m_state=="playing")command({"set_property","pause",true});}
 void Controller::stop(){
+    m_iptv.cancelPlayback();
     m_audioLab.stop();if(!sharedAudioEnabled())m_assistant.stop();
     emit cancelDiscoveryRequested();
     finishPlayback();m_wantPlay=false;m_switching=false;m_handoff.stop();m_loadTimer.stop();m_connectTimer.stop();
@@ -212,7 +225,7 @@ void Controller::handleClient(QLocalSocket *client){
         else if(request=="next")next();else if(request=="previous")previous();
         else if(request.startsWith("open-app ")) {
             const QString app=request.mid(9);
-            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
+            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes","iptv"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
         }
         else if(request=="screen-off")m_display->sleep();
         else if(request=="wake")m_display->wake();
@@ -249,6 +262,15 @@ void Controller::setDataSources(WeatherClient *weather,RadioCatalog *radio,VrmCl
 }
 bool Controller::hasRadioStation(const QString &id)const{return m_radio&&m_radio->knows(id);}
 void Controller::toolRequestAsync(const QJsonObject &request,std::function<void(QJsonObject)> done){
+    if(request.value("action")=="iptv.search"&&DeviceConfig::enabled("iptv")){
+        const QPointer<Controller> self(this);
+        m_iptv.search(request,[self,request,done=std::move(done)](QJsonObject result){
+            if(!self)return;
+            result.insert("version",1);result.insert("action","iptv.search");result.insert("asOf",QDateTime::currentSecsSinceEpoch());
+            if(request.contains("requestId"))result.insert("requestId",request.value("requestId"));
+            result.insert("media",self->toolRequest({{"action","media.status"}}).value("media"));done(result);
+        });return;
+    }
     if(!DeviceConfig::actionEnabled(request.value("action").toString())||request.value("action")!="radio.search"||!m_radio){done(toolRequest(request));return;}
     const QPointer<Controller> self(this);
     m_radio->search(request,[self,request,done=std::move(done)](QJsonObject result){
@@ -271,8 +293,12 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         result.insert("actions",QJsonArray{
             QJsonObject{{"action","radio.list"},{"optional",QJsonArray{"genre","search"}}},
             QJsonObject{{"action","radio.search"},{"optional",QJsonArray{"country","language","tag","search"}},{"limit",5}},
+            QJsonObject{{"action","radio.favourites"}},QJsonObject{{"action","radio.save"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","radio.remove"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","radio.play"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","radio.random"},{"required",QJsonArray{"genre"}}},
+            QJsonObject{{"action","iptv.search"},{"optional",QJsonArray{"search","country","category"}},{"limit",5}},
+            QJsonObject{{"action","iptv.list"}},QJsonObject{{"action","iptv.status"}},
+            QJsonObject{{"action","iptv.play"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","iptv.save"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","iptv.remove"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","radio.status"}},QJsonObject{{"action","weather.get"}},
             QJsonObject{{"action","weather.refresh"}},QJsonObject{{"action","battery.get"}},
             QJsonObject{{"action","media.status"}},QJsonObject{{"action","media.stop"}},
@@ -283,6 +309,8 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         result.insert("actions",available);result.insert("modules",QJsonObject::fromVariantMap(DeviceConfig::modules()));
         for(const auto &name:PersonalStore::actions())if(DeviceConfig::actionEnabled(name))available.append(QJsonObject{{"action",name},{"optional",QJsonArray{"data"}}});
         result.insert("actions",available);
+    }else if(action.startsWith("iptv.")){
+        result=m_iptv.request(request);
     }else if(action.startsWith("video.")&&m_videoLibrary){
         if(action=="video.browse"){if(request.contains("decade"))m_videoLibrary->setDecade(request.value("decade").toInt());else if(request.contains("genre"))m_videoLibrary->setGenre(request.value("genre").toString());else if(request.contains("section"))m_videoLibrary->setSection(request.value("section").toString());m_videoLibrary->refresh();}
         else if(action=="video.more"){m_videoLibrary->loadMore();}
@@ -295,6 +323,11 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         result.insert("video",m_videoLibrary->snapshot());
     }else if(action=="radio.list"&&m_radio){
         result.insert("stations",m_radio->list(request.value("genre").toString(),request.value("search").toString()));
+    }else if(action=="radio.favourites"&&m_radio){
+        result.insert("stations",m_radio->favourites());
+    }else if((action=="radio.save"||action=="radio.remove")&&m_radio){
+        if(!m_radio->favourite(request.value("id").toString(),action=="radio.save"))error(m_radio->searchProblem());
+        result.insert("stations",m_radio->favourites());
     }else if(action=="radio.play"&&m_radio){
         if(!m_radio->play(request.value("id").toString()))error(m_radio->status());
         result.insert("radio",m_radio->snapshot());result.insert("accepted",result.value("ok"));
