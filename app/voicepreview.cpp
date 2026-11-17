@@ -2,6 +2,38 @@
 #include "sharedaudio.h"
 #include <sys/prctl.h>
 #include <csignal>
+#include <QDataStream>
+#include <cmath>
+#include <algorithm>
+
+WakeChime::WakeChime(){
+    m_process.setChildProcessModifier([](){prctl(PR_SET_PDEATHSIG,SIGTERM);});
+    m_deadline.setSingleShot(true);m_deadline.setInterval(2000);
+    connect(&m_deadline,&QTimer::timeout,this,&WakeChime::stop);
+    connect(&m_process,&QProcess::readyReadStandardError,this,[this](){m_process.readAllStandardError();});
+    connect(&m_process,&QProcess::readyReadStandardOutput,this,[this](){m_process.readAllStandardOutput();});
+    connect(&m_process,&QProcess::started,this,[this](){
+        QByteArray pcm;QDataStream stream(&pcm,QIODevice::WriteOnly);stream.setByteOrder(QDataStream::LittleEndian);
+        constexpr int rate=48000,note=4320;
+        for(int i=0;i<note*2;i++){
+            const int n=i%note;const double envelope=std::min({1.,n/720.,(note-1-n)/720.});
+            stream<<qint16(std::lround(32767*.12*envelope*std::sin(2*3.141592653589793*(i<note?660:880)*n/rate)));
+        }
+        m_process.write(pcm);m_process.closeWriteChannel();
+    });
+    connect(&m_process,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this](){m_deadline.stop();});
+    connect(&m_process,&QProcess::errorOccurred,this,[this](){m_deadline.stop();});
+}
+WakeChime::~WakeChime(){m_process.disconnect(this);stop();if(playing())m_process.waitForFinished(500);}
+void WakeChime::play(){
+    if(playing())return;
+    QString player="aplay";
+#ifdef THINKSMART_VOICE_TESTING
+    player=qEnvironmentVariable("THINKSMART_WAKE_CHIME_PLAYER","aplay");
+#endif
+    m_process.start(player,{"-q","-D",sharedAudioEnabled()?"thinksmart_voice":"default","-t","raw","-f","S16_LE","-c","1","-r","48000"});m_deadline.start();
+}
+void WakeChime::stop(){m_deadline.stop();if(playing())m_process.kill();}
 
 VoicePreview::VoicePreview(){
     m_process.setChildProcessModifier([](){prctl(PR_SET_PDEATHSIG,SIGTERM);});

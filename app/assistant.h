@@ -49,6 +49,10 @@ class VoiceAssistant:public QObject {
     Q_PROPERTY(QString wakeStatus READ wakeStatus NOTIFY changed)
     Q_PROPERTY(QString wakeIndicator READ wakeIndicator NOTIFY changed)
     Q_PROPERTY(QString wakeProblem READ wakeProblem NOTIFY changed)
+    Q_PROPERTY(double wakeThreshold READ wakeThreshold WRITE setWakeThreshold NOTIFY changed)
+    Q_PROPERTY(double wakeSensitivity READ wakeSensitivity WRITE setWakeSensitivity NOTIFY changed)
+    Q_PROPERTY(bool wakeThresholdOverridden READ wakeThresholdOverridden NOTIFY changed)
+    Q_PROPERTY(bool wakeSoundEnabled READ wakeSoundEnabled WRITE setWakeSoundEnabled NOTIFY changed)
     Q_PROPERTY(double inputLevel READ inputLevel NOTIFY levelsChanged)
     Q_PROPERTY(double outputLevel READ outputLevel NOTIFY levelsChanged)
     Q_PROPERTY(QVariantList transcript READ transcript NOTIFY transcriptChanged)
@@ -61,7 +65,7 @@ public:
     bool active()const{return m_active;}
     bool noteDictation()const{return m_noteDictation;}
     Q_INVOKABLE void startNote();
-    bool released()const{return m_audio.state()==QProcess::NotRunning&&m_wake.released()&&!previewPlaying();}
+    bool released()const{return m_audio.state()==QProcess::NotRunning&&m_wake.released()&&!previewPlaying()&&!m_wakeChime.playing();}
     QString status()const;
     QString problem()const{return m_problem;}
     QString mode()const{return m_mode;}
@@ -93,6 +97,14 @@ public:
     QString wakeStatus()const{return m_wake.status();}
     QString wakeIndicator()const;
     QString wakeProblem()const{return m_wake.problem();}
+    double wakeThreshold()const{return m_wake.threshold();}
+    double wakeSensitivity()const{return m_wake.sensitivity();}
+    void setWakeSensitivity(double value){if(!m_active)m_wake.setSensitivity(value);}
+    bool wakeThresholdOverridden()const{return m_wake.thresholdOverridden();}
+    void setWakeThreshold(double value){if(!m_active)m_wake.setThreshold(value);}
+    Q_INVOKABLE void resetWakeThreshold(){if(!m_active)m_wake.resetThreshold();}
+    bool wakeSoundEnabled()const{return m_wakeSoundEnabled;}
+    void setWakeSoundEnabled(bool value);
     double inputLevel()const{return m_inputLevel;}
     double outputLevel()const{return m_outputLevel;}
     QVariantList transcript()const{return m_transcript;}
@@ -148,6 +160,8 @@ private:
     QProcess m_audio;
     WakeWord m_wake;
     VoicePreview m_preview;
+    WakeChime m_wakeChime;
+    bool m_wakeSoundEnabled=true;
     QString m_previewProblem,m_configVoice="marin";
     std::unique_ptr<QWebSocket> m_socket;
     QTimer m_wait,m_startDeadline,m_killTimer,m_idleTimer,m_limit,m_responseDeadline,m_wakePolicy,m_duckRelease,m_dismissTimer;

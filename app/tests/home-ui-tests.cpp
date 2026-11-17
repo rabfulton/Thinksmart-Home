@@ -22,6 +22,7 @@
 #include <QHostAddress>
 #include <QUrlQuery>
 #include <algorithm>
+#include <cmath>
 #include <QScopeGuard>
 #include <QStandardPaths>
 #include <QDataStream>
@@ -142,6 +143,9 @@ exec sleep 20
     }
     void init() {
         QSettings settings;settings.clear();settings.sync();warnings.clear();wifiRequests.clear();write("action","");
+        qputenv("THINKSMART_WAKE_CHIME_PLAYER","/usr/bin/true");
+        qputenv("THINKSMART_WAKE_TEST_ARGUMENTS",directory.filePath("wake-arguments.json").toUtf8());
+        QFile::remove(directory.filePath("assistant/wakeword.json"));
         QDir(directory.filePath("personal")).removeRecursively();
         QJsonObject modules;
         if(QByteArray(QTest::currentTestFunction())=="moduleProfiles"){
@@ -478,6 +482,55 @@ exec sleep 20
         qputenv("THINKSMART_VOICE_PREVIEW_PLAYER","/usr/bin/true");voice->previewVoice();
         QTRY_VERIFY(!voice->previewPlaying());QVERIFY(voice->previewProblem().isEmpty());
         QVERIFY(!voice->snapshot().value("mediaDucked").toBool());QVERIFY(!voice->active());
+    }
+    void wakeSensitivityAndActivationSound(){
+        qputenv("THINKSMART_SHARED_AUDIO","1");
+        auto restore=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        write("assistant/wakeword.json",R"({"word":"Sheila","threshold":0.97,"score":2.0,"trailingBlanks":2,"extra":"preserved"})");
+        prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->reloadConfiguration();
+        QCOMPARE(voice->wakeThreshold(),.97);QVERIFY(!voice->wakeThresholdOverridden());
+        QCOMPARE(voice->wakeSensitivity(),50.);
+        for(double sensitivity:{0.,25.,50.,75.,100.}){
+            voice->setWakeSensitivity(sensitivity);QVERIFY(std::abs(voice->wakeSensitivity()-sensitivity)<.000001);
+            QVERIFY(voice->wakeThreshold()>=.94&&voice->wakeThreshold()<=.995);
+        }
+        voice->setWakeSensitivity(0);QCOMPARE(voice->wakeThreshold(),.995);
+        voice->setWakeSensitivity(100);QCOMPARE(voice->wakeThreshold(),.94);
+        voice->setWakeSensitivity(50);QCOMPARE(voice->wakeThreshold(),.97);
+        voice->setWakeSensitivity(-1);voice->setWakeSensitivity(101);QCOMPARE(voice->wakeSensitivity(),50.);
+        voice->resetWakeThreshold();QVERIFY(!voice->wakeThresholdOverridden());
+        voice->setWakeThreshold(.985);QCOMPARE(voice->wakeThreshold(),.985);QVERIFY(voice->wakeThresholdOverridden());
+        voice->setWakeThreshold(std::nan(""));voice->setWakeThreshold(1);QCOMPARE(voice->wakeThreshold(),.985);
+        {WakeWord restored;QCOMPARE(restored.threshold(),.985);}
+        voice->setEnabled(true);QTRY_VERIFY(voice->wakeListening());
+        auto arguments=[&](){QFile f(directory.filePath("wake-arguments.json"));if(!f.open(QIODevice::ReadOnly))return QStringList{};QStringList result;for(const auto &v:QJsonDocument::fromJson(f.readAll()).array())result<<v.toString();return result;};
+        QTRY_VERIFY(arguments().contains("0.985"));
+        voice->setWakeThreshold(.98);QTRY_VERIFY(arguments().contains("0.98"));QTRY_VERIFY(voice->wakeListening());
+        QFile file(directory.filePath("assistant/wakeword.json"));QVERIFY(file.open(QIODevice::ReadOnly));QVERIFY(file.readAll().contains("preserved"));file.close();
+        voice->resetWakeThreshold();QCOMPARE(voice->wakeThreshold(),.97);QVERIFY(!voice->wakeThresholdOverridden());
+        QTRY_VERIFY(arguments().contains("0.97"));QTRY_VERIFY(voice->wakeListening());
+        window->setProperty("selectedApp","assistant");click("assistantSettingsButton");
+        QVERIFY(object("wakeThresholdSlider"));QCOMPARE(object("wakeThresholdSlider")->property("value").toDouble(),50.);
+        voice->setWakeSoundEnabled(false);QVERIFY(!QSettings().value("assistant/wakeSoundEnabled").toBool());
+        voice->setWakeSoundEnabled(true);
+        write("fake-chime","#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$THINKSMART_WAKE_CHIME_LOG\"\ncat > \"$THINKSMART_WAKE_CHIME_PCM\"\nsleep 0.1\n");
+        QFile::setPermissions(directory.filePath("fake-chime"),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
+        qputenv("THINKSMART_WAKE_CHIME_PLAYER",directory.filePath("fake-chime").toUtf8());
+        qputenv("THINKSMART_WAKE_CHIME_LOG",directory.filePath("chime.log").toUtf8());qputenv("THINKSMART_WAKE_CHIME_PCM",directory.filePath("chime.pcm").toUtf8());
+        QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));
+        qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        int connections=0;connect(&server,&QWebSocketServer::newConnection,this,[&](){connections++;auto peer=server.nextPendingConnection();connect(peer,&QWebSocket::disconnected,peer,&QObject::deleteLater);peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        auto chime=[&](){QFile f(directory.filePath("chime.pcm"));return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();};
+        // Merely enabling, changing settings or starting manually makes no tone.
+        QCOMPARE(connections,0);QVERIFY(chime().isEmpty());
+        write("wake-trigger","Sheila");QTRY_VERIFY(voice->active());QTRY_COMPARE(chime().size(),17280);QTRY_COMPARE(connections,1);
+        QFile log(directory.filePath("chime.log"));QVERIFY(log.open(QIODevice::ReadOnly));QVERIFY(log.readAll().contains("thinksmart_voice"));
+        const auto pcm=chime();QVERIFY(pcm!=QByteArray(pcm.size(),'\0'));QCOMPARE(pcm.left(2),QByteArray(2,'\0'));QCOMPARE(pcm.right(2),QByteArray(2,'\0'));
+        voice->setWakeThreshold(.99);QCOMPARE(voice->wakeThreshold(),.97); // Cannot restart capture mid-conversation.
+        voice->stop();QFile::remove(directory.filePath("chime.pcm"));voice->setWakeSoundEnabled(false);
+        write("wake-trigger","Sheila");QTRY_VERIFY(voice->active());QTRY_COMPARE(connections,2);QVERIFY(chime().isEmpty());
+        voice->stop();voice->start();QTRY_COMPARE(connections,3);QVERIFY(chime().isEmpty());voice->stop();
+        voice->setEnabled(false);QTRY_VERIFY(voice->released());voice->setWakeThreshold(.99);QTest::qWait(350);QVERIFY(voice->released());QCOMPARE(connections,3);
     }
     void wakeWordMasterSwitchAndSleepingScreenHandoff(){
         QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));

@@ -31,6 +31,38 @@ Optional private keyword test clips can be placed at
 runs offline inference checks. Otherwise test local detection on the device.
 No human recordings are included in the source package.
 
+### Activation sound and sensitivity
+
+Assistant Settings includes **Activation sound** and **Wake sensitivity**. A short
+original two-note tone plays only when a local wake detection starts a new
+conversation, including from screen sleep. Manual Start and repeated Sheila
+interruptions within an existing conversation do not play it. The tone uses the
+voice bus, so it enters the speaker reference for echo cancellation. It opens no
+API session of its own, and stopping/disabling Assistant stops the tone too.
+
+The sensitivity scale runs from 0 to 100, with **50 / Default** in the middle.
+Lower values reduce false activations; higher values make Sheila easier to wake.
+The slider maps to a narrow threshold range around the configured file default
+(±0.03, bounded by the supported limits). For a file default of 0.97, the range
+is 0.94–0.995, with 0.97 at the midpoint; the two halves map independently.
+Numbers on the interface are a sensitivity scale, not probabilities. The −/+
+buttons move five points. Changes save on release and briefly restart only the
+local listener; controls are disabled during a conversation. Existing actual
+thresholds are retained when upgrading, even if outside the UI's narrower range.
+
+The base threshold remains in `/etc/thinksmart/assistant/wakeword.json`.
+UI overrides save as `assistant/wakeThreshold` in `Home.conf`; **Default**
+removes the override and reloads that file. The tone toggle saves as
+`assistant/wakeSoundEnabled` and defaults to on. The trained streaming Sheila
+model uses `threshold` and its model's averaging window; `score` and
+`trailingBlanks` apply to the older phonetic detector.
+
+For occasional TV/video activations, try a small threshold increase first.
+Echo cancellation covers this device's own speaker, not an unrelated television.
+If false wakes persist at a high threshold, examples of those sounds as negative
+training data can inform a later model revision; no recordings are saved
+automatically. “Go to sleep” remains the immediate conversation-dismissal command.
+
 On the device, shared audio requires PipeWire, WirePlumber, ALSA PipeWire plugins,
 SpeexDSP and WebRTC audio processing. The existing ALSA configuration must provide
 the physical `speaker` PCM and the hardware input expected by the device image.

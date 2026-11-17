@@ -91,6 +91,7 @@ QString VoiceAssistant::binary(){return qEnvironmentVariable("THINKSMART_VOICE_A
 VoiceAssistant::VoiceAssistant(Controller *controller,ScreenController *display):QObject(controller),m_controller(controller),m_display(display){
     QSettings settings;m_enabled=DeviceConfig::enabled("assistant")&&settings.value("assistant/enabled",false).toBool();m_vad=settings.value("assistant/vad","semantic").toString();
     if(!QStringList{"semantic","server","manual"}.contains(m_vad))m_vad="semantic";
+    m_wakeSoundEnabled=settings.value("assistant/wakeSoundEnabled",true).toBool();
     reloadConfiguration();
     connect(&m_preview,&VoicePreview::changed,this,[this](){if(!m_active)setMediaDucked(previewPlaying());emit changed();});
     connect(&m_wake,&WakeWord::changed,this,&VoiceAssistant::changed);
@@ -103,6 +104,7 @@ VoiceAssistant::VoiceAssistant(Controller *controller,ScreenController *display)
         if(m_active&&sharedAudioEnabled()){interrupt();return;}
         if(!m_enabled||m_active||m_display->powerPending()||!m_controller->wakeWordAllowed())return;
         m_display->wake();if(!m_controller->video()->visible())emit m_controller->openAppRequested("assistant");start();
+        if(m_active&&m_wakeSoundEnabled)m_wakeChime.play();
     });
     connect(&m_wake,&WakeWord::microphone,this,[this](const QString &audio){sendMicrophone(audio);});
     connect(&m_wake,&WakeWord::meter,this,[this](double dbfs){if(m_active){m_inputLevel=meter(dbfs);if(isLive())liveMeter(true,dbfs);emit levelsChanged();}});
@@ -119,7 +121,7 @@ VoiceAssistant::VoiceAssistant(Controller *controller,ScreenController *display)
     });
     m_wait.setInterval(25);connect(&m_wait,&QTimer::timeout,this,[this](){
         if(!m_active||!m_enabled){stop();return;}
-        if(previewPlaying())return;
+        if(previewPlaying()||m_wakeChime.playing())return;
         if(sharedAudioEnabled()){
             if(!m_wake.listening()||!m_controller->audioLab()->released())return;
             setMediaDucked(true);m_wake.command("prepare");m_wait.stop();connectApi();return;
@@ -249,6 +251,11 @@ void VoiceAssistant::previewVoice(){
     m_previewProblem.clear();m_preview.play(previewPath());m_display->activity();
 }
 void VoiceAssistant::stopVoicePreview(){m_previewProblem.clear();m_preview.stop();}
+void VoiceAssistant::setWakeSoundEnabled(bool value){
+    if(value==m_wakeSoundEnabled)return;
+    m_wakeSoundEnabled=value;QSettings().setValue("assistant/wakeSoundEnabled",value);
+    if(!value)m_wakeChime.stop();emit changed();
+}
 void VoiceAssistant::setPersonality(const QString &id){
     if(m_active)return;
     const auto choices=m_prompts.personalities();
@@ -278,6 +285,7 @@ void VoiceAssistant::start(){
 }
 void VoiceAssistant::stop(){
     stopVoicePreview();
+    m_wakeChime.stop();
     m_dismissTimer.stop();
     m_duckRelease.stop();m_mediaDucked=false;
     if(sharedAudioEnabled())m_wake.command("idle");else m_wake.setAllowed(false,"Conversation stopped");
@@ -293,7 +301,7 @@ void VoiceAssistant::stop(){
     m_status=m_enabled?"Stopped · microphone closed":"Assistant disabled · microphone closed";emit changed();
 }
 void VoiceAssistant::suspendLocalAudio(){stop();m_wake.setAllowed(false,"Audio released");}
-void VoiceAssistant::kill(){stopVoicePreview();m_wake.kill();if(m_audio.state()!=QProcess::NotRunning)m_audio.kill();}
+void VoiceAssistant::kill(){stopVoicePreview();m_wakeChime.stop();m_wake.kill();if(m_audio.state()!=QProcess::NotRunning)m_audio.kill();}
 void VoiceAssistant::fail(const QString &message){stop();m_problem=message;m_status="Assistant unavailable";emit changed();}
 void VoiceAssistant::connectApi(){
     m_socket=std::make_unique<QWebSocket>();m_socket->setMaxAllowedIncomingMessageSize(1024*1024);
@@ -581,4 +589,4 @@ void VoiceAssistant::updateWakeWord(){
     m_wake.setAllowed(reason.isEmpty(),reason);
     if(sharedAudioEnabled()&&m_active&&!m_wake.problem().isEmpty())fail("Local microphone failed. Reload assistant configuration to retry.");
 }
-QJsonObject VoiceAssistant::snapshot()const{return {{"mediaDucked",m_mediaDucked},{"lastTool",m_lastTool},{"enabled",m_enabled},{"configured",m_configured},{"active",m_active},{"microphoneOpen",m_audio.state()!=QProcess::NotRunning||!m_wake.released()},{"previewAvailable",previewAvailable()},{"previewPlaying",previewPlaying()},{"previewError",previewProblem()},{"wakeWord","Sheila"},{"wakeListening",wakeListening()},{"wakePreparing",wakePreparing()},{"wakeStatus",wakeStatus()},{"wakeError",wakeProblem()},{"state",m_mode},{"status",status()},{"error",m_problem},{"model",m_model},{"backendModel",isLive()?m_backendModel:QString()},{"liveUsageSeconds",m_liveSeconds},{"liveUsageFinalized",m_liveUsageFinalized},{"voice",m_voice},{"vad",m_vad},{"personality",personality()},{"promptsReady",promptsReady()},{"promptError",promptProblem()}};}
+QJsonObject VoiceAssistant::snapshot()const{return {{"mediaDucked",m_mediaDucked},{"lastTool",m_lastTool},{"enabled",m_enabled},{"configured",m_configured},{"active",m_active},{"microphoneOpen",m_audio.state()!=QProcess::NotRunning||!m_wake.released()},{"previewAvailable",previewAvailable()},{"previewPlaying",previewPlaying()},{"previewError",previewProblem()},{"wakeWord","Sheila"},{"wakeListening",wakeListening()},{"wakePreparing",wakePreparing()},{"wakeStatus",wakeStatus()},{"wakeError",wakeProblem()},{"wakeThreshold",wakeThreshold()},{"wakeSensitivity",wakeSensitivity()},{"wakeThresholdOverridden",wakeThresholdOverridden()},{"wakeSoundEnabled",wakeSoundEnabled()},{"state",m_mode},{"status",status()},{"error",m_problem},{"model",m_model},{"backendModel",isLive()?m_backendModel:QString()},{"liveUsageSeconds",m_liveSeconds},{"liveUsageFinalized",m_liveUsageFinalized},{"voice",m_voice},{"vad",m_vad},{"personality",personality()},{"promptsReady",promptsReady()},{"promptError",promptProblem()}};}

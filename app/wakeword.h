@@ -14,6 +14,12 @@ public:
     bool preparing()const{return m_allowed&&!m_listening&&m_problem.isEmpty()&&available();}
     QString status()const;
     QString problem()const{return m_problem;}
+    double threshold()const{return m_threshold;}
+    double sensitivity()const;
+    void setSensitivity(double value);
+    bool thresholdOverridden()const;
+    void setThreshold(double value);
+    void resetThreshold();
     void setAllowed(bool allowed,const QString &reason);
     void retry();
     void kill();
@@ -31,6 +37,7 @@ private:
     void consume();
     void fail(const QString &message);
     void launch();
+    bool readSettings();
     QProcess m_process;
     QTimer m_killTimer,m_startDeadline;
     QElapsedTimer m_clock;
@@ -39,4 +46,6 @@ private:
     bool m_allowed=false,m_listening=false,m_detected=false,m_stopping=false;
     qint64 m_nextStart=0,m_runningSince=0;
     int m_restartCount=0;
+    double m_threshold=.35,m_fileThreshold=.35,m_score=1.5;
+    int m_blanks=2;
 };

@@ -147,6 +147,44 @@ Rectangle {
                 Text { text: "Edit prompts over SSH: " + assistant.promptDirectory; color: Theme.accent; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WrapAnywhere }
                 Text { text: "Shared system instructions, household notes and the selected personality are read at each Start and sent to OpenAI. Add people and preferences to household.md. Reload refreshes the personality list."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                 Text { text: "Wake word · Sheila"; color: Theme.ink; font.pixelSize: 21 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Activation sound"; color: Theme.ink; font.pixelSize: 21; Layout.fillWidth: true }
+                    Switch {
+                        objectName: "wakeSoundSwitch"; implicitHeight: 54; implicitWidth: 80
+                        checked: assistant.wakeSoundEnabled; onToggled: assistant.wakeSoundEnabled = checked
+                        Accessible.name: "Wake-word activation sound"
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 16
+                    Text { text: "Wake sensitivity"; color: Theme.ink; font.pixelSize: 21; Layout.fillWidth: true }
+                    Text { text: Math.round(wakeThresholdSlider.value) + " / 100"; color: Theme.accent; font.pixelSize: 21 }
+                    UiButton { objectName: "wakeThresholdReset"; text: "Default"; enabled: !assistant.active && assistant.wakeThresholdOverridden; onClicked: assistant.resetWakeThreshold() }
+                }
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 12
+                    UiButton { objectName: "wakeThresholdLower"; text: "−"; implicitWidth: 54; enabled: !assistant.active && assistant.wakeSensitivity > 0; onClicked: assistant.wakeSensitivity = Math.max(0, assistant.wakeSensitivity - 5) }
+                    Slider {
+                        id: wakeThresholdSlider; objectName: "wakeThresholdSlider"; Layout.fillWidth: true; implicitHeight: 54
+                        from: 0; to: 100; stepSize: 5; value: assistant.wakeSensitivity; enabled: !assistant.active
+                        palette.highlight: Theme.accent; palette.button: Theme.ink; palette.mid: Theme.border
+                        Accessible.name: "Wake sensitivity"
+                        onMoved: if(!pressed) assistant.wakeSensitivity = value
+                        onPressedChanged: if(!pressed) assistant.wakeSensitivity = value
+                    }
+                    UiButton { objectName: "wakeThresholdHigher"; text: "+"; implicitWidth: 54; enabled: !assistant.active && assistant.wakeSensitivity < 100; onClicked: assistant.wakeSensitivity = Math.min(100, assistant.wakeSensitivity + 5) }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Less sensitive"; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; Layout.preferredWidth: 1 }
+                    Text { text: "Default"; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; Layout.preferredWidth: 1; horizontalAlignment: Text.AlignHCenter }
+                    Text { text: "More sensitive"; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; Layout.preferredWidth: 1; horizontalAlignment: Text.AlignRight }
+                }
+                Text {
+                    text: "Lower sensitivity to reduce TV or video activations. Increase it if Sheila misses you. Changes apply when you release the slider."
+                    color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WordWrap
+                }
                 Text { text: assistant.wakeStatus; color: assistant.wakeListening ? Theme.accent : Theme.muted; font.pixelSize: 17; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                 Text { visible: assistant.wakeProblem.length > 0; text: assistant.wakeProblem; color: Theme.danger; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WordWrap }
             }
