@@ -10,6 +10,7 @@
 #include "wifi.h"
 #include "layouteditor.h"
 #include "iptv.h"
+#include "markets.h"
 #include <QObject>
 #include <QProcess>
 #include <QLocalSocket>
@@ -34,6 +35,7 @@ class Controller:public QObject {
     Q_PROPERTY(WifiController *wifi READ wifi CONSTANT)
     Q_PROPERTY(LayoutEditor *layoutEditor READ layoutEditor CONSTANT)
     Q_PROPERTY(IptvClient *iptv READ iptv CONSTANT)
+    Q_PROPERTY(MarketsClient *markets READ markets CONSTANT)
     Q_PROPERTY(QVariantList pageDefinitions READ pageDefinitions CONSTANT)
     Q_PROPERTY(bool virtualKeyboardEnabled READ virtualKeyboardEnabled CONSTANT)
     Q_PROPERTY(QString alarmText READ alarmText NOTIFY alarmChanged)
@@ -61,6 +63,7 @@ public:
     WifiController *wifi(){return &m_wifi;}
     LayoutEditor *layoutEditor(){return &m_layoutEditor;}
     IptvClient *iptv(){return &m_iptv;}
+    MarketsClient *markets(){return &m_markets;}
     QVariantList pageDefinitions()const{return DeviceConfig::pageDefinitions().toVariantList();}
     Q_INVOKABLE void editLayout();
     bool virtualKeyboardEnabled()const{return qEnvironmentVariable("QT_IM_MODULE")=="qtvirtualkeyboard";}
@@ -129,12 +132,14 @@ private:
     WifiController m_wifi;
     LayoutEditor m_layoutEditor;
     IptvClient m_iptv;
+    MarketsClient m_markets;
     bool m_iptvSoftware=false;
     QJsonObject personalRequest(const QString &action,const QJsonObject &data);
     QJsonObject executeSteps(const QJsonArray &steps);
     QString checkSteps(const QJsonArray &steps)const;
     void ringAlarm(const QString &text);
     void playAlarmTone();
+    void playTone();
     QProcess m_alarmSound;
     QTimer m_alarmRepeat,m_alarmLimit;
     QString m_alarmText;

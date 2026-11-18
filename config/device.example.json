@@ -11,7 +11,8 @@
     "vrm": false,
     "navidrome": false,
     "jellyfin": false,
-    "iptv": false
+    "iptv": false,
+    "markets": false
   },
   "weather": {
     "name": "London",

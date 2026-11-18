@@ -23,6 +23,7 @@
 
 QString Controller::socketPath(){return qEnvironmentVariable("THINKSMART_CONTROL_SOCKET","/run/thinksmart-ui/control.sock");}
 Controller::Controller(ScreenController *display,QObject *parent):QObject(parent),m_display(display),m_audioLab(this,display),m_assistant(this,display),m_videoPlayer(this){
+    connect(&m_markets,&MarketsClient::alertTriggered,this,[this](const QString &,bool chime){m_display->wake();if(chime&&!m_muted)playTone();});
     connect(&m_iptv,&IptvClient::playRequested,this,[this](const QUrl &url,const QString &name,bool software){m_iptvSoftware=software;playMedia("iptv",url,name,"Live TV",{},true,{},0);});
     connect(&m_layoutEditor,&LayoutEditor::restartRequested,this,[this](){
         m_restartPending=true;stop();m_assistant.suspendLocalAudio();emit dashboardRestartRequested();
@@ -225,7 +226,7 @@ void Controller::handleClient(QLocalSocket *client){
         else if(request=="next")next();else if(request=="previous")previous();
         else if(request.startsWith("open-app ")) {
             const QString app=request.mid(9);
-            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes","iptv"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
+            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes","iptv","markets"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
         }
         else if(request=="screen-off")m_display->sleep();
         else if(request=="wake")m_display->wake();
@@ -297,6 +298,11 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
             QJsonObject{{"action","radio.play"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","radio.random"},{"required",QJsonArray{"genre"}}},
             QJsonObject{{"action","iptv.search"},{"optional",QJsonArray{"search","country","category"}},{"limit",5}},
+            QJsonObject{{"action","markets.get"},{"optional",QJsonArray{"symbol"}}},
+            QJsonObject{{"action","markets.refresh"}},QJsonObject{{"action","markets.focus"},{"required",QJsonArray{"symbol"}}},
+            QJsonObject{{"action","markets.watchlist"},{"required",QJsonArray{"symbols"}}},
+            QJsonObject{{"action","markets.alert.add"},{"required",QJsonArray{"symbol","direction","price"}}},
+            QJsonObject{{"action","markets.alert.remove"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","markets.alert.rearm"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","iptv.list"}},QJsonObject{{"action","iptv.status"}},
             QJsonObject{{"action","iptv.play"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","iptv.save"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","iptv.remove"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","radio.status"}},QJsonObject{{"action","weather.get"}},
@@ -309,6 +315,9 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         result.insert("actions",available);result.insert("modules",QJsonObject::fromVariantMap(DeviceConfig::modules()));
         for(const auto &name:PersonalStore::actions())if(DeviceConfig::actionEnabled(name))available.append(QJsonObject{{"action",name},{"optional",QJsonArray{"data"}}});
         result.insert("actions",available);
+    }else if(action.startsWith("markets.")){
+        result=m_markets.request(request);
+        if(action=="markets.focus"&&result.value("ok").toBool())emit openAppRequested("markets");
     }else if(action.startsWith("iptv.")){
         result=m_iptv.request(request);
     }else if(action.startsWith("video.")&&m_videoLibrary){
@@ -398,7 +407,10 @@ void Controller::ringAlarm(const QString &text){
     playAlarmTone();m_alarmRepeat.start();m_alarmLimit.start();
 }
 void Controller::playAlarmTone(){
-    if(m_alarmText.isEmpty()||m_alarmSound.state()!=QProcess::NotRunning)return;
+    if(!m_alarmText.isEmpty())playTone();
+}
+void Controller::playTone(){
+    if(m_alarmSound.state()!=QProcess::NotRunning)return;
     QByteArray pcm;QDataStream out(&pcm,QIODevice::WriteOnly);out.setByteOrder(QDataStream::LittleEndian);
     constexpr double pi=3.141592653589793;
     for(int i=0;i<48000;i++){

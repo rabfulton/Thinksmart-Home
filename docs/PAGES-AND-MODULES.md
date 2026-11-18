@@ -53,7 +53,7 @@ Give every module a stable ID and a single registration describing:
 - Editable instruction files for Realtime, Live conversation and Live reasoning.
 
 The existing IDs remain: assistant, radio, weather, news, chess, notes, bluetooth,
-vrm, navidrome, jellyfin and iptv. View IDs may differ: the energy widget belongs to
+vrm, navidrome, jellyfin, iptv and markets. View IDs may differ: the energy widget belongs to
 vrm; the video widget belongs to jellyfin; music can use either of two providers.
 This relationship belongs in the catalogue rather than scattered UI conditions.
 

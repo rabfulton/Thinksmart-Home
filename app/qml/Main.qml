@@ -30,6 +30,7 @@ ApplicationWindow {
         value: home.modules.assistant && window.selectedApp === "" && window.pageDefinitions[dashboardPages.currentIndex] && (window.pageDefinitions[dashboardPages.currentIndex].widgets || []).indexOf("assistant") >= 0 && !dashboardPages.transitioning && !screenControl.sleeping
     }
     Binding { target: home.iptv; property: "active"; value: home.modules.iptv && !screenControl.sleeping && !home.video.visible && (window.selectedApp === "iptv" || (window.pageRunning && window.currentPage.module === "iptv")) }
+    Binding { target: home.markets; property: "active"; value: home.modules.markets && !screenControl.sleeping && !dashboardPages.transitioning && (window.selectedApp === "markets" || (window.selectedApp === "" && (window.currentPage.module === "markets" || (window.currentPage.widgets || []).indexOf("markets") >= 0))) }
     // Services have one owner even when several pages show the same module.
     readonly property var currentPage: pageDefinitions[dashboardPages.currentIndex] || ({})
     readonly property bool browsingTv: selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
@@ -90,7 +91,7 @@ ApplicationWindow {
         Text { visible: home.configProblem.length > 0; text: home.configProblem; color: Theme.danger; wrapMode: Text.WordWrap; Layout.fillWidth: true }
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
-            currentIndex: window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
+            currentIndex: window.selectedApp === "markets" ? 8 : window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
             PathView {
                 id: dashboardPages; objectName: "dashboardPages"
                 clip: true; currentIndex: window.pageIndex("home"); model: window.pageNames.length; pathItemCount: count
@@ -142,8 +143,9 @@ ApplicationWindow {
                     width: dashboardPages.width; height: dashboardPages.height
                     property var pageData: window.pageDefinitions[index] || ({})
                     property bool pageActive: window.selectedApp === "" && dashboardPages.currentIndex === index && !screenControl.sleeping
-                    sourceComponent: pageData.kind === "widgets" ? homeComponent : pageData.module === "chess" ? chessComponent : pageData.module === "news" ? newsComponent : pageData.module === "notes" ? notesComponent : pageData.module === "iptv" ? iptvComponent : null
+                    sourceComponent: pageData.kind === "widgets" ? homeComponent : pageData.module === "chess" ? chessComponent : pageData.module === "news" ? newsComponent : pageData.module === "notes" ? notesComponent : pageData.module === "iptv" ? iptvComponent : pageData.module === "markets" ? marketsComponent : null
                 }
+                Component { id: marketsComponent; MarketsPage { objectName: "marketsFullPage"; active: parent.pageActive && !dashboardPages.transitioning; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.showDashboardPage(window.pageIndex("home")) } }
                 Component { id: notesComponent; NotesPage { objectName: "notesPage" } }
                 Component { id: iptvComponent; IptvPage { objectName: "iptvFullPage"; active: parent.pageActive && !dashboardPages.transitioning; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.showDashboardPage(window.pageIndex("home")) } }
                 Component {
@@ -183,6 +185,7 @@ ApplicationWindow {
             WeatherPage { onBack: window.selectedApp = "" }
             RadioPage { objectName: "radioAppPage"; active: window.selectedApp === "radio" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
             IptvPage { objectName: "iptvAppPage"; active: window.selectedApp === "iptv" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
+            MarketsPage { objectName: "marketsAppPage"; active: window.selectedApp === "markets" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
         }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 96
@@ -262,4 +265,16 @@ ApplicationWindow {
         color: screenControl.sleeping ? "black" : Theme.background
         Text { anchors.centerIn: parent; text: screenControl.powerMessage; visible: screenControl.powerPending; color: Theme.ink; font.pixelSize: 32 }
     }
+    Dialog {
+        parent: Overlay.overlay; anchors.centerIn: parent; width: Math.min(620,parent.width-48)
+        visible: home.markets.notification.length>0; modal: false; closePolicy: Popup.NoAutoClose; padding: 24
+        background: Rectangle { color: Theme.surface; radius: Theme.radius; border.color: Theme.accent }
+        contentItem: ColumnLayout {
+            spacing: 18
+            Text { text: "Price alert"; color: Theme.accent; font.pixelSize: 25 }
+            Text { text: home.markets.notification; color: Theme.ink; font.pixelSize: 23; textFormat: Text.PlainText; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            UiButton { text: "Dismiss"; Layout.fillWidth: true; onClicked: home.markets.dismiss() }
+        }
+    }
+
 }

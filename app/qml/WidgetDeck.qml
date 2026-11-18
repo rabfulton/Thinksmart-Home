@@ -18,7 +18,7 @@ GridLayout {
         delegate: Loader {
             required property string modelData
             Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 1; Layout.preferredHeight: 1; Layout.minimumHeight: 180
-            sourceComponent: modelData === "assistant" ? assistantWidget : modelData === "weather" ? weatherWidget : modelData === "energy" ? energyWidget : modelData === "radio" ? radioWidget : modelData === "music" ? musicWidget : modelData === "video" ? videoWidget : modelData === "iptv" ? iptvWidget : null
+            sourceComponent: modelData === "assistant" ? assistantWidget : modelData === "weather" ? weatherWidget : modelData === "energy" ? energyWidget : modelData === "radio" ? radioWidget : modelData === "music" ? musicWidget : modelData === "video" ? videoWidget : modelData === "iptv" ? iptvWidget : modelData === "markets" ? marketsWidget : null
         }
     }
     // Retain six grid slots so a single launcher remains a card, rather than
@@ -28,6 +28,7 @@ GridLayout {
         Item { Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 1; Layout.preferredHeight: 1; Layout.minimumHeight: 180 }
     }
     Text { visible: deck.available.length === 0; text: "Add widgets in Settings → Pages & modules"; color: Theme.muted; font.pixelSize: 22; Layout.fillWidth: true; Layout.fillHeight: true; Layout.columnSpan: deck.columns; Layout.rowSpan: deck.hostWindow.wide ? 2 : 3; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; wrapMode: Text.WordWrap }
+    Component { id: marketsWidget; MarketsWidget { objectName: "marketsTile"; running: deck.pageActive && !deck.transitioning && !screenControl.sleeping; onClicked: deck.hostWindow.selectedApp="markets" } }
     Component {
         id: iptvWidget
         HomeTile {

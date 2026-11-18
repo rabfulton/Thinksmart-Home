@@ -100,3 +100,10 @@ policies live in `/etc/thinksmart/assistant/modules/iptv/`.
 Saved radio stations: `~thinksmart/.local/share/ThinkSmart/Home/radio/favourites.json`
 (mode 600), separate from `~thinksmart/.cache/ThinkSmart/Home/radio-browser/`.
 See [RADIO.md](RADIO.md) for initial favourites, discovery and AI actions.
+
+## Markets
+
+Watchlist/focus/price alerts: `~thinksmart/.config/ThinkSmart/Home/markets.json`.
+Cache: `~thinksmart/.cache/ThinkSmart/Home/markets.json`. Module policies:
+`/etc/thinksmart/assistant/modules/markets/{realtime,live,backend}.md`.
+[Markets](MARKETS.md) describes free-feed timing and alert eligibility.

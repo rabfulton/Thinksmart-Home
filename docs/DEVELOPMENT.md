@@ -40,6 +40,11 @@ Module creation and third-party contribution are covered in
 [MODULE-DEVELOPMENT.md](MODULE-DEVELOPMENT.md). Stream compatibility and
 measured decoder limitations are in [VIDEO-COMPATIBILITY.md](VIDEO-COMPATIBILITY.md).
 
+`markets-tests` covers quote/session normalization, rolling crypto comparisons,
+atomic watchlists, one-shot crossing alerts, replay/stale suppression, free-feed
+backoff and disabled-module inactivity. Markets UI and both voice tool paths use
+local fixtures in `home-ui-tests`. See [MARKETS.md](MARKETS.md).
+
 `personal-tests` covers atomic personal-data edits, theme validation/undo,
 schedule persistence, missed events, weekday/DST handling and allowed actions.
 The UI tests exercise notes, touch deletion, scheduler execution and dictation

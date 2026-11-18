@@ -91,6 +91,7 @@ private slots:
         QCoreApplication::setOrganizationName("ThinkSmartTests");QCoreApplication::setApplicationName("HomeUI");
         qputenv("THINKSMART_DISABLE_BLUETOOTH","1");
         qputenv("THINKSMART_DISABLE_WEATHER","1");
+        qputenv("THINKSMART_DISABLE_MARKETS","1");
         qputenv("THINKSMART_DISABLE_NEWS","1");
         qputenv("THINKSMART_DEVICE_CONFIG",directory.filePath("device.json").toUtf8());
         qputenv("THINKSMART_CHESS_ENGINE",(QCoreApplication::applicationDirPath()+"/fake-chess-engine").toUtf8());
@@ -154,6 +155,9 @@ exec sleep 20
             QFETCH(QStringList,enabledModules);for(const auto &name:DeviceConfig::names())modules.insert(name,enabledModules.contains(name));
         }
         if(QByteArray(QTest::currentTestFunction())=="moduleSpeechSchemas")for(const auto &id:{"radio","weather","vrm","notes","iptv"})modules.insert(id,false);
+        qputenv("THINKSMART_MARKETS_FILE",directory.filePath("markets.json").toUtf8());qputenv("THINKSMART_MARKETS_CACHE",directory.filePath("markets-cache.json").toUtf8());
+        QFile::remove(directory.filePath("markets.json"));QFile::remove(directory.filePath("markets-cache.json"));
+        if(QByteArray(QTest::currentTestFunction()).startsWith("markets"))modules.insert("markets",true);
         const bool iptvTest=QByteArray(QTest::currentTestFunction()).startsWith("iptv") || QByteArray(QTest::currentTestFunction())=="wifiDialogKeyboardAndSavedPreferences";
         qputenv("THINKSMART_IPTV_FILE",directory.filePath("iptv-favourites.json").toUtf8());
         qputenv("THINKSMART_IPTV_CACHE",directory.filePath("iptv-cache.json").toUtf8());
@@ -170,6 +174,17 @@ exec sleep 20
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();
             pages.append(QJsonObject{{"id","tv"},{"title","TV"},{"kind","widgets"},{"widgets",QJsonArray{"iptv"}}});config.insert("pages",pages);
             QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
+        }
+        if(QByteArray(QTest::currentTestFunction()).startsWith("markets")){
+            auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","markets-room"},{"title","Markets"},{"kind","widgets"},{"widgets",QJsonArray{"markets"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
+            QJsonObject quotes,charts;const auto now=QDateTime::currentSecsSinceEpoch();
+            for(const auto &symbol:{"^GSPC","DX-Y.NYB","NVDA","BTC-USD","ETH-USD"}){
+                const QString name=symbol;const double value=name=="NVDA"?155.0:name=="BTC-USD"?64000.0:name=="ETH-USD"?1800.0:name=="DX-Y.NYB"?103.0:7340.0;
+                quotes.insert(name,QJsonObject{{"symbol",name},{"label",name=="^GSPC"?"S&P 500":name=="DX-Y.NYB"?"DXY":name},{"name",name=="NVDA"?"NVIDIA Corporation":name=="^GSPC"?"S&P 500":name},{"price",value},{"percent",1.23},{"currency","USD"},{"quoteTime",now},{"fetchedAt",now},{"instrumentType","CRYPTOCURRENCY"},{"changePeriod","day"}});
+                QJsonArray points;for(int i=0;i<40;i++)points.append(QJsonObject{{"time",now-(40-i)*300},{"value",value*(0.98+i*0.0005+std::sin(i*0.6)*0.002)}});
+                for(const auto &range:{"1D","1W","1M","1Y"})charts.insert(name+":"+range,QJsonObject{{"points",points},{"fetchedAt",now}});
+            }
+            write("markets-cache.json",QJsonDocument(QJsonObject{{"version",1},{"quotes",quotes},{"charts",charts}}).toJson());
         }
         if(QByteArray(QTest::currentTestFunction())=="configuredPagesRenderAndRouteModules"){
             const QJsonArray pages{QJsonObject{{"id","home"},{"title","Home"},{"kind","widgets"},{"widgets",QJsonArray{"radio"}}},QJsonObject{{"id","room"},{"title","Room"},{"kind","widgets"},{"widgets",QJsonArray{"assistant","weather"}}},QJsonObject{{"id","games"},{"title","Games"},{"kind","module"},{"module","chess"}},QJsonObject{{"id","games2"},{"title","Second board"},{"kind","module"},{"module","chess"}}};
@@ -249,17 +264,51 @@ exec sleep 20
         connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();if(e.value("type")=="session.update"||e.value("type")=="session.start")session=e.value("session").toObject();});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
         prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
         const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;
-        const auto instructions=session.value("instructions").toString()+owner.value("instructions").toString();for(const auto &marker:{"Radio module","Weather module","Vrm module","Notes module","IPTV module","iptv.search","notes.add","radio.search"})QVERIFY(!instructions.contains(marker));
+        const auto instructions=session.value("instructions").toString()+owner.value("instructions").toString();for(const auto &marker:{"Radio module","Weather module","Vrm module","Notes module","IPTV module","Markets module","markets.get","iptv.search","notes.add","radio.search"})QVERIFY(!instructions.contains(marker));
         bool device=false,personal=false;
         for(const auto &v:owner.value("tools").toArray()){
             const auto f=v.toObject();const auto props=f.value("parameters").toObject().value("properties").toObject();
             if(f.value("name")=="device_action"||f.value("name")=="personal_action"){
-                for(const auto &a:props.value("action").toObject().value("enum").toArray())for(const auto &prefix:{"radio.","weather.","battery.","notes.","iptv."})QVERIFY(!a.toString().startsWith(prefix));
+                for(const auto &a:props.value("action").toObject().value("enum").toArray())for(const auto &prefix:{"radio.","weather.","battery.","notes.","iptv.","markets."})QVERIFY(!a.toString().startsWith(prefix));
                 if(f.value("name")=="device_action")device=true;
                 else{personal=true;for(const auto &a:props.value("data").toObject().value("properties").toObject().value("steps").toObject().value("items").toObject().value("properties").toObject().value("action").toObject().value("enum").toArray())QVERIFY(!a.toString().startsWith("radio."));}
             }
         }
         QVERIFY(device&&personal);voice->setEnabled(false);QTRY_VERIFY(voice->released());
+    }
+    void marketsWidgetChartWatchlistAndAlerts(){
+        screen->wake();window->resize(1280,800);QTest::qWait(80);click("pageButton_markets-room");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);QTRY_VERIFY(object("marketsTile"));click("marketsTile");QTRY_COMPARE(window->property("selectedApp").toString(),QString("markets"));
+        QCOMPARE(media->markets()->quotes().size(),5);QVERIFY(media->markets()->selected().value("available").toBool());
+        click("marketQuote2");QTRY_COMPARE(media->markets()->focus(),QString("NVDA"));click("marketsRange1W");QCOMPARE(media->markets()->range(),QString("1W"));click("marketsMode");QCOMPARE(media->markets()->mode(),QString("focus"));
+        click("marketsAddAlert");QTRY_VERIFY(object("marketsAlertDialog")->property("opened").toBool());object("marketsAlertPrice")->setProperty("text","200");click("marketsSaveAlert");QCOMPARE(media->markets()->alerts().size(),1);QTRY_VERIFY(!object("marketsAlertDialog")->property("visible").toBool());
+        click("marketsAlerts");QTRY_VERIFY(object("marketsAlertsDialog")->property("opened").toBool());QTest::qWait(50);click("marketsRemoveAlert0");QTRY_COMPARE(media->markets()->alerts().size(),0);QVERIFY(QMetaObject::invokeMethod(object("marketsAlertsDialog"),"close"));QTRY_VERIFY(!object("marketsAlertsDialog")->property("visible").toBool());
+        click("marketsEdit");QTRY_VERIFY(object("marketsWatchlistDialog")->property("opened").toBool());object("marketsSymbols")->setProperty("text","NVDA, BTC, DXY");click("marketsSaveSymbols");QCOMPARE(media->markets()->symbols(),(QStringList{"NVDA","BTC-USD","DX-Y.NYB"}));
+        const auto destination=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(100);auto chart=qobject_cast<QQuickItem *>(object("marketsChart"));QVERIFY(chart);QVERIFY(chart->width()>200);QVERIFY(chart->height()>90);if(!destination.isEmpty()){QDir().mkpath(destination);QVERIFY(window->grabWindow().save(destination+QString("/markets-%1.png").arg(size.width())));}}
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));click("marketsBack");QCOMPARE(window->property("selectedApp").toString(),QString());QCOMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);
+    }
+    void marketsKeyboard(){
+        if(!media->virtualKeyboardEnabled())QSKIP("Run separately with Qt Virtual Keyboard");
+        screen->wake();media->openAppRequested("markets");
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(80);click("marketsEdit");QTRY_VERIFY(object("marketsWatchlistDialog")->property("opened").toBool());click("marketsSymbols");QTRY_VERIFY(qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("virtualEnterKey");QTRY_VERIFY(!qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("marketsSaveSymbols");QTRY_VERIFY(!object("marketsWatchlistDialog")->property("visible").toBool());
+            click("marketsAddAlert");QTRY_VERIFY(object("marketsAlertDialog")->property("opened").toBool());click("marketsAlertPrice");QTRY_VERIFY(qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("virtualEnterKey");QTRY_VERIFY(!qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("marketsSaveAlert");QTRY_VERIFY(!object("marketsAlertDialog")->property("visible").toBool());
+        }
+        QCOMPARE(media->markets()->alerts().size(),2);
+    }
+    void marketsVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
+    void marketsVoiceTools(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto restore=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QJsonObject session;QList<QJsonObject> messages;QPointer<QWebSocket> peer;auto cleanupPeer=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();messages.append(e);if(e.value("type")=="session.update"||e.value("type")=="session.start"){session=e.value("session").toObject();peer->sendTextMessage(live?"{\"type\":\"session.started\"}":"{\"type\":\"session.updated\"}");}});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
+        const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;QVERIFY(owner.value("instructions").toString().contains("Markets module"));QVERIFY(QJsonDocument(owner.value("tools").toArray()).toJson().contains("markets.alert.add"));
+        const QJsonObject item{{"type","function_call"},{"name","device_action"},{"call_id","market-call"},{"arguments","{\"action\":\"markets.alert.add\",\"symbol\":\"NVDA\",\"direction\":\"above\",\"price\":200}"}};
+        auto send=[&](QJsonObject e){peer->sendTextMessage(QString::fromUtf8(QJsonDocument(e).toJson(QJsonDocument::Compact)));};
+        if(live){auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","d1"},{"event",e}});};nested({{"type","response.created"},{"response",QJsonObject{{"id","r-market"}}}});nested({{"type","response.output_item.done"},{"response_id","r-market"},{"item",item}});nested({{"type","response.completed"},{"response",QJsonObject{{"id","r-market"}}}});}
+        else {send({{"type","response.created"},{"response",QJsonObject{{"id","r-market"}}}});send({{"type","response.done"},{"response",QJsonObject{{"id","r-market"},{"status","completed"},{"output",QJsonArray{item}}}}});}
+        QTRY_COMPARE(media->markets()->alerts().size(),1);QTRY_VERIFY(std::any_of(messages.cbegin(),messages.cend(),[](auto r){return QJsonDocument(r).toJson().contains("market-call")&&QJsonDocument(r).toJson().contains("alerts");}));voice->setEnabled(false);QTRY_VERIFY(voice->released());
     }
     void iptvBrowserSavesCustomStreams(){
         screen->wake();
@@ -1278,7 +1327,7 @@ exec sleep 20
 };
 int main(int argc,char **argv){
     QTemporaryDir keyboardConfig;qputenv("XDG_CONFIG_HOME",keyboardConfig.path().toUtf8());
-    bool keyboard=false;for(int i=1;i<argc;i++)if(QByteArray(argv[i])=="wifiDialogKeyboardAndSavedPreferences")keyboard=true;
+    bool keyboard=false;for(int i=1;i<argc;i++)if(QByteArray(argv[i])=="wifiDialogKeyboardAndSavedPreferences"||QByteArray(argv[i])=="marketsKeyboard")keyboard=true;
     qputenv("QT_IM_MODULE",keyboard?"qtvirtualkeyboard":"none");qputenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE","1");
     QGuiApplication app(argc,argv);HomeUiTests tests;return QTest::qExec(&tests,argc,argv);
 }

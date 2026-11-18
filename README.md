@@ -1,7 +1,7 @@
 # ThinkSmart Home
 
 A native Qt Quick dashboard for the **Lenovo ThinkSmart View**, running Debian.
-Voice assistance, radio, live TV, weather, music, films, news, chess and notes.
+Voice assistance, radio, live TV, weather, music, films, news, chess, notes and market prices.
 A native touch interface for landscape and portrait, with configurable pages
 and up to six widgets per page. Enable the modules you need on the device.
 
@@ -31,7 +31,7 @@ tools used by this project, ready for your own software and interface.
 
 **Guides:** [Install](docs/INSTALL.md) · [Configuration](docs/CONFIGURATION.md) ·
 [Optional modules](docs/MODULES.md) · [Pages and widgets](docs/PAGES-AND-MODULES.md) ·
-[Create a module](docs/MODULE-DEVELOPMENT.md) · [Radio](docs/RADIO.md) · [IPTV](docs/IPTV.md) · [Voice and audio](docs/VOICE.md) ·
+[Create a module](docs/MODULE-DEVELOPMENT.md) · [Radio](docs/RADIO.md) · [Markets](docs/MARKETS.md) · [IPTV](docs/IPTV.md) · [Voice and audio](docs/VOICE.md) ·
 [Administration](docs/ADMIN.md) · [Personal actions](docs/PERSONAL.md) · [Development](docs/DEVELOPMENT.md)
 
 ## Screenshots

@@ -70,6 +70,8 @@ Canvas {
         case "pause": line(8,5,8,19); line(16,5,16,19); c.lineWidth = 3; break
         case "stop": c.rect(6,6,12,12); break
         case "volume": c.moveTo(3,9); c.lineTo(7,9); c.lineTo(12,4); c.lineTo(12,20); c.lineTo(7,15); c.lineTo(3,15); c.closePath(); c.moveTo(16,7); c.quadraticCurveTo(22,12,16,17); break
+        case "refresh": c.moveTo(20,9); c.arc(12,12,8,-0.4,Math.PI*1.6); line(20,3,20,9); line(14,9,20,9); break
+        case "close": line(6,6,18,18); line(18,6,6,18); break
         case "back": line(16,5,9,12); line(9,12,16,19); break
         case "palette": c.moveTo(20,12); c.arc(12,12,9,0,Math.PI*2); c.moveTo(10,7); c.arc(9,7,1,0,Math.PI*2); c.moveTo(17,10); c.arc(16,10,1,0,Math.PI*2); c.moveTo(9,16); c.arc(8,16,1,0,Math.PI*2); break
         default: line(5,12,19,12); line(13,6,19,12); line(19,12,13,18)
