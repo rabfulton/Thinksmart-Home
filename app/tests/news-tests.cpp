@@ -1,4 +1,5 @@
 #include "../news.h"
+#include "../deviceconfig.h"
 #include <QtTest>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -53,7 +54,12 @@ private slots:
         QVERIFY(server.listen(QHostAddress::LocalHost));base=QUrl(QString("http://127.0.0.1:%1/").arg(server.serverPort()));
         connect(&server,&QTcpServer::newConnection,this,[this](){while(server.hasPendingConnections())accept(server.nextPendingConnection());});
     }
-    void init(){offline=false;requests.clear();QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation)).removeRecursively();QSettings().clear();}
+    void init(){
+        offline=false;requests.clear();QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation)).removeRecursively();QSettings().clear();
+        qputenv("THINKSMART_NEWS_FILE",directory.filePath("news.json").toUtf8());QFile::remove(NewsSettings::path());
+        qputenv("THINKSMART_DEVICE_CONFIG",directory.filePath("device.json").toUtf8());qputenv("THINKSMART_DASHBOARD_CONFIG",directory.filePath("absent-dashboard.json").toUtf8());
+        QFile f(DeviceConfig::path());QVERIFY(f.open(QIODevice::WriteOnly));f.write("{\"modules\":{\"news\":true}}");f.close();DeviceConfig::reload();
+    }
     void parsesEntitiesAndRejectsMalformedOrUnsafeItems(){
         const auto rows=HeadlinesClient::parseRss(rss("WORLD"));QCOMPARE(rows.size(),1);const auto first=rows.first().toMap();
         QCOMPARE(first.value("title").toString(),QString("WORLD headline & context"));QCOMPARE(first.value("source").toString(),QString("Example Press"));
@@ -87,6 +93,29 @@ private slots:
         }
         offline=true;HackerNewsClient saved(base);QCOMPARE(saved.items()->rowCount(),2);saved.openStory(0);QVERIFY(!saved.commentsBusy());QCOMPARE(saved.comments()->rowCount(),12);
         saved.reloadComments();QTRY_VERIFY(!saved.commentsBusy());QCOMPARE(saved.comments()->rowCount(),12);QVERIFY(!saved.commentsProblem().isEmpty());
+    }
+    void columnPreferencesValidateMigrateAndPersist(){
+        QSettings().setValue("news/section","FINANCE");NewsSettings prefs(nullptr,base);QCOMPARE(prefs.columns(),(QStringList{"FINANCE","HN"}));QVERIFY(!QFile::exists(NewsSettings::path()));
+        QVERIFY(!prefs.saveColumns({}));QVERIFY(!prefs.saveColumns({"HN","HN"}));QVERIFY(!prefs.saveColumns({"WORLD","HN","BBC_WORLD"}));QVERIFY(!prefs.saveColumns({"https://example.test/feed"}));
+        QVERIFY(prefs.saveColumns({"BBC_WORLD","CNBC_WORLD"}));QVERIFY(!(QFileInfo(NewsSettings::path()).permissions()&QFile::ReadOther));NewsSettings restored(nullptr,base);QCOMPARE(restored.columns(),(QStringList{"BBC_WORLD","CNBC_WORLD"}));
+        QFile file(NewsSettings::path());QVERIFY(file.open(QIODevice::WriteOnly));file.write("broken");file.close();NewsSettings corrupt(nullptr,base);QVERIFY(!corrupt.problem().isEmpty());QVERIFY(!corrupt.saveColumns({"WORLD"}));QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),QByteArray("broken"));
+    }
+    void selectedColumnsHaveIndependentSourcesAndUnusedFeedsStayStopped(){
+        HeadlinesClient first(base);HackerNewsClient hn(base);NewsSettings prefs(nullptr,base);prefs.setClients(&first,&hn);
+        QVERIFY(prefs.saveColumns({"BBC_WORLD","GUARDIAN_BUSINESS"}));prefs.setActive(true);
+        auto second=qobject_cast<HeadlinesClient *>(prefs.client(1));QVERIFY(second);QVERIFY(second!=&first);QTRY_VERIFY(!first.busy()&&!second->busy());QCOMPARE(requests.size(),2);
+        QCOMPARE(row(first.items()).value("section").toString(),QString("BBC_WORLD"));QCOMPARE(row(second->items()).value("section").toString(),QString("GUARDIAN_BUSINESS"));QVERIFY(!hn.selectedFeed());hn.refresh();QTest::qWait(30);QCOMPARE(requests.size(),2);
+        QVERIFY(prefs.saveColumns({"HN"}));QVERIFY(!first.selectedFeed());QVERIFY(!second->selectedFeed());QVERIFY(hn.selectedFeed());QCOMPARE(prefs.client(0),static_cast<QObject *>(&hn));QTRY_VERIFY(!hn.busy());
+        const auto count=requests.size();first.refresh();second->refresh();QTest::qWait(30);QCOMPARE(requests.size(),count);
+    }
+    void disabledNewsAndCorruptSettingsDoNotStartFeeds(){
+        QFile f(DeviceConfig::path());QVERIFY(f.open(QIODevice::WriteOnly));f.write("{\"modules\":{\"news\":false}}");f.close();DeviceConfig::reload();
+        HeadlinesClient first(base);HackerNewsClient hn(base);NewsSettings prefs(nullptr,base);prefs.setClients(&first,&hn);prefs.setActive(true);QVERIFY(!prefs.active());QVERIFY(!first.selectedFeed());QVERIFY(!hn.selectedFeed());
+        QVERIFY(prefs.saveColumns({"BBC_WORLD"}));first.refresh();hn.refresh();hn.openStory(0);QTest::qWait(50);QVERIFY(requests.isEmpty());
+    }
+    void parsesPublisherFeedsWithIsoDatesAndMissingSource(){
+        const auto rows=HeadlinesClient::parseRss("<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns=\"http://purl.org/rss/1.0/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><item><title>World story</title><link>https://example.test/world</link><dc:date>2026-11-13T14:00:00Z</dc:date><description>&lt;p&gt;Publisher summary&lt;/p&gt;</description></item></rdf:RDF>");
+        QCOMPARE(rows.size(),1);QCOMPARE(rows[0].toMap().value("when").toString(),QString("13 Nov · 14:00"));QCOMPARE(rows[0].toMap().value("summary").toString(),QString("Publisher summary"));
     }
     void modelInsertionsPreserveExistingIndices(){
         NewsEntries model;QAbstractItemModelTester tester(&model,QAbstractItemModelTester::FailureReportingMode::QtTest);

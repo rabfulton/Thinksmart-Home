@@ -93,6 +93,7 @@ private slots:
         qputenv("THINKSMART_DISABLE_WEATHER","1");
         qputenv("THINKSMART_DISABLE_MARKETS","1");
         qputenv("THINKSMART_DISABLE_NEWS","1");
+        qputenv("THINKSMART_NEWS_FILE",directory.filePath("news-settings.json").toUtf8());
         qputenv("THINKSMART_DEVICE_CONFIG",directory.filePath("device.json").toUtf8());
         qputenv("THINKSMART_CHESS_ENGINE",(QCoreApplication::applicationDirPath()+"/fake-chess-engine").toUtf8());
         qputenv("XDG_CACHE_HOME",directory.filePath("cache").toUtf8());
@@ -143,6 +144,7 @@ exec sleep 20
         QVERIFY(helper.waitForStarted());QTRY_VERIFY(QFile::exists(directory.filePath("control.sock")));
     }
     void init() {
+        QFile::remove(directory.filePath("news-settings.json"));
         QSettings settings;settings.clear();settings.sync();warnings.clear();wifiRequests.clear();write("action","");
         qputenv("THINKSMART_DASHBOARD_CONFIG",directory.filePath("dashboard.json").toUtf8());
         QFile::remove(directory.filePath("dashboard.json"));QFile::remove(directory.filePath("dashboard.json.bak"));
@@ -214,6 +216,7 @@ exec sleep 20
         energy=std::make_unique<VrmClient>();
         weather=std::make_unique<WeatherClient>();radio=std::make_unique<RadioCatalog>();
         headlines=std::make_unique<HeadlinesClient>();hackerNews=std::make_unique<HackerNewsClient>();
+        media->newsSettings()->setClients(headlines.get(),hackerNews.get());
         chessGame=std::make_unique<ChessGame>();chessGame->newGame();if(!chessGame->playerWhite())chessGame->switchSides();chessGame->setRating(1200);
         media->setDataSources(weather.get(),radio.get(),energy.get());
         music=std::make_unique<MediaLibrary>("navidrome");video=std::make_unique<MediaLibrary>("jellyfin");media->setVideoLibrary(video.get());
@@ -469,6 +472,20 @@ exec sleep 20
         const auto hidden=orb->property("phase").toDouble();QTest::qWait(100);QCOMPARE(orb->property("phase").toDouble(),hidden);
         window->setProperty("selectedApp","");QTRY_VERIFY(orb->property("moving").toBool());
         screen->sleep();QVERIFY(!orb->property("moving").toBool());
+    }
+    void newsColumnSettingsEditor(){
+        screen->wake();window->resize(1280,800);media->editLayout();click("layoutModulesTab");click("moduleEdit_news");QTRY_VERIFY(object("layoutSettingsPage")->property("editingNews").toBool());
+        const auto defaults=QStringList{"WORLD_FINANCE","HN"};QCOMPARE(media->newsSettings()->columns(),defaults);
+        click("newsOneColumn");click("newsSettingsCancel");QCOMPARE(media->newsSettings()->columns(),defaults);QVERIFY(!QFile::exists(NewsSettings::path()));
+        click("moduleEdit_news");click("newsOneColumn");
+        auto choice=object("newsColumnSource0");QVERIFY(choice);const auto sources=media->newsSettings()->sources();int bbc=-1;for(int i=0;i<sources.size();i++)if(sources[i].toMap().value("id")=="BBC_WORLD")bbc=i;QVERIFY(bbc>=0);
+        choice->setProperty("currentIndex",bbc);QVERIFY(QMetaObject::invokeMethod(choice,"activated",Q_ARG(int,bbc)));click("newsSettingsSave");QCOMPARE(media->newsSettings()->columns(),(QStringList{"BBC_WORLD"}));QVERIFY(QFile::exists(NewsSettings::path()));QVERIFY(!hackerNews->selectedFeed());
+        click("layoutCancel");media->openAppRequested("news");QTest::qWait(300);QVERIFY(object("headlinesPanel"));QVERIFY(!object("hackerNewsPanel"));
+        QVERIFY(media->newsSettings()->saveColumns({"BBC_WORLD","HN"}));QTest::qWait(40);QVERIFY(object("hackerNewsPanel"));
+        media->editLayout();click("layoutModulesTab");click("moduleEdit_news");
+        const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(100);if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/news-settings-%1.png").arg(size.width())));}}
+        click("newsSettingsDefaults");click("newsSettingsSave");QCOMPARE(media->newsSettings()->columns(),defaults);click("layoutCancel");
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
     }
     void newsPanelsReaderAndReplies(){
         screen->wake();window->resize(1280,800);media->openAppRequested("news");QTest::qWait(400);

@@ -7,6 +7,8 @@ Rectangle {
     objectName: "layoutSettingsPage"
     readonly property var editor: home.layoutEditor
     property string section: "pages"
+    property bool editingNews: false
+    function editNews() { newsEditor.begin();editingNews=true }
     property int selected: -1
     property var current: selected >= 0 && selected < editor.pages.length ? editor.pages[selected] : ({})
     signal back()
@@ -15,14 +17,16 @@ Rectangle {
     enabled: !screenControl.sleeping && !screenControl.powerPending
     onSelectedChanged: Qt.callLater(function() { scroll.contentItem.contentY = 0 })
     onSectionChanged: Qt.callLater(function() { scroll.contentItem.contentY = 0 })
-    onVisibleChanged: if(!visible) { Qt.inputMethod.hide(); selected = -1 }
+    onVisibleChanged: if(!visible) { Qt.inputMethod.hide(); selected = -1; editingNews=false }
     component Label: Text { color: Theme.ink; font.pixelSize: 20; wrapMode: Text.WordWrap }
     component Choice: ComboBox {
         implicitHeight: 54; font.pixelSize: 20; textRole: "title"; valueRole: "id"
         palette.button: Theme.raised; palette.buttonText: Theme.ink; palette.base: Theme.raised; palette.text: Theme.ink; palette.window: Theme.raised
         palette.highlight: Theme.tint; palette.highlightedText: Theme.accent
     }
+    NewsSettingsEditor { id: newsEditor; anchors.fill: parent; visible: page.editingNews; onBack: page.editingNews=false }
     ColumnLayout {
+        visible: !page.editingNews
         anchors.fill: parent; anchors.margins: 24; spacing: 14
         RowLayout {
             UiButton { objectName: "layoutBackButton"; iconName: "back"; onClicked: { if(page.selected >= 0) { Qt.inputMethod.hide(); page.selected = -1 } else { page.editor.begin(); page.back() } } }
@@ -75,6 +79,7 @@ Rectangle {
                             Label { text: modelData.title }
                             Label { text: modelData.description; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
                         }
+                        UiButton { objectName: "moduleEdit_"+modelData.id; visible: modelData.id==="news"; text: "Edit"; onClicked: page.editNews() }
                         Switch { objectName: "moduleSwitch_" + modelData.id; checked: !!page.editor.modules[modelData.id]; implicitHeight: 54; implicitWidth: 80; onToggled: page.editor.setModule(modelData.id,checked) }
                     }
                 }
@@ -108,6 +113,7 @@ Rectangle {
                         UiButton { objectName: "layoutAddWidget"; text: "Add widget"; enabled: (page.current.widgets || []).length < 6 && widgetChoice.count > 0; onClicked: page.editor.addWidget(page.selected,widgetChoice.currentValue) }
                     }
                     Label { visible: page.current.kind === "widgets"; text: "Widgets from disabled modules stay saved and reappear when enabled."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
+                    UiButton { objectName: "layoutNewsSources"; visible: page.current.module==="news"; text: "Edit news sources"; onClicked: page.editNews() }
                     UiButton { objectName: "layoutRemovePage"; text: "Remove page"; enabled: page.current.id !== "home"; onClicked: { page.editor.removePage(page.selected); page.selected = -1 } }
                 }
             }

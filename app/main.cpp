@@ -59,6 +59,7 @@ int main(int argc,char **argv) {
     WeatherClient weather;
     HeadlinesClient headlines;
     HackerNewsClient hackerNews;
+    controller.newsSettings()->setClients(&headlines,&hackerNews);
     ChessGame chessGame;
     RadioCatalog radio;
     controller.setDataSources(&weather,&radio,&energy);

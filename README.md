@@ -49,7 +49,7 @@ tools used by this project, ready for your own software and interface.
 | [Weather](docs/MODULES.md) | Current conditions, hourly and daily forecasts from Open-Meteo | Location; no API key |
 | [Markets](docs/MARKETS.md) | Editable watchlist, focused charts, session status and price alerts | Free quotes, which may be delayed; no API key |
 | [TV / IPTV](docs/IPTV.md) | Internet TV directory, saved streams and fullscreen playback | Internet or your own stream links |
-| [News](docs/MODULES.md) | World/finance feeds and Hacker News with native comment threads | Internet; cached reading |
+| [News](docs/NEWS.md) | One or two configurable feeds, publisher presets and Hacker News comments | Internet; cached reading |
 | [Chess](docs/MODULES.md) | Theme-aware board, adjustable engine strength and either playing side | Local Arasan engine |
 | [Notes](docs/PERSONAL.md) | Saved notes, touch deletion and optional voice dictation | Local storage; Assistant for dictation |
 | [Bluetooth speaker](docs/MODULES.md) | Play audio from your phone through the device | BlueZ and BlueALSA |

@@ -91,3 +91,8 @@ documentation/assets and flags credentials or forbidden file types/locations.
 Commit and publish only that reviewed snapshot. Keep imported licence notices
 and source provenance. Root MIT licensing applies to our original work; see
 [THIRD_PARTY.md](../THIRD_PARTY.md) before distributing linked binaries.
+
+News source presets and one/two-column preferences are covered by `news-tests`;
+`newsColumnSettingsEditor` and `newsPanelsReaderAndReplies` in `home-ui-tests`
+cover the editor, orientation, article reader, HN replies and vertical scrolling.
+See [News configuration](NEWS.md).

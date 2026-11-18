@@ -107,3 +107,9 @@ Watchlist/focus/price alerts: `~thinksmart/.config/ThinkSmart/Home/markets.json`
 Cache: `~thinksmart/.cache/ThinkSmart/Home/markets.json`. Module policies:
 `/etc/thinksmart/assistant/modules/markets/{realtime,live,backend}.md`.
 [Markets](MARKETS.md) describes free-feed timing and alert eligibility.
+
+## News preferences
+
+Column sources: `~thinksmart/.config/ThinkSmart/Home/news.json` (mode 600).
+Edit through Settings → Pages & modules → Modules → News → Edit. Existing
+World & finance / Hacker News choices are preserved. [News guide](NEWS.md).

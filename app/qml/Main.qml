@@ -36,8 +36,7 @@ ApplicationWindow {
     readonly property bool browsingTv: selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
     readonly property bool pageRunning: selectedApp === "" && !dashboardPages.transitioning && !screenControl.sleeping
     Binding { target: chessGame; property: "active"; value: home.modules.chess && window.pageRunning && window.currentPage.module === "chess" }
-    Binding { target: headlines; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
-    Binding { target: hackerNews; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
+    Binding { target: home.newsSettings; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
 
 
     ColumnLayout {
