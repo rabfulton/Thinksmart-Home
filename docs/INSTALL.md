@@ -8,6 +8,35 @@ The host can run Arch/Manjaro or another Linux distribution with Docker, Git,
 OpenSSH and Python 3.11+. FFmpeg is needed for optional audio preparation. The
 host does not need a Debian desktop installation. Builders use Debian containers.
 
+## For installation agents
+
+Start with [AGENTS.md](../AGENTS.md), [configuration](CONFIGURATION.md) and the
+[module list](MODULES.md). The README's copyable prompt is the short handoff;
+use this guide to carry it through to a working device.
+
+1. **Discover:** inspect the host tools and the device's current OS, model/panel,
+   storage and working graphics/audio. Use existing local setup records where
+   available. Ask for missing SSH access, location/timezone and service details;
+   help the user choose modules and their placement before installing components.
+2. **Prepare:** choose the existing-Debian or stock-firmware path below. Create
+   private configuration from templates, explicitly review every module flag,
+   and build with Docker. Keep the existing device drivers. For stock firmware,
+   verify the image, physical target and calibration handling before requesting
+   approval to flash; preparing a build does not authorise flashing it.
+3. **Install and verify:** use the repository scripts, deploy only the selected
+   optional helpers/assets, and preserve current settings and prompts. On an
+   upgrade, inspect saved on-device module overrides and page layout as well as
+   the host configuration. Reuse the user's pages for new widgets. Record a
+   rollback for changes to an existing install.
+4. **Hand over:** verify the relevant checks in step 5, document any unverified
+   hardware/services, and save actual module choices, paths, access instructions
+   and rollback in ignored `admin.md`. Reference private credential files without
+   copying their contents. Do not run cloud voice/microphone tests incidentally.
+
+The app, services and third-party accounts are separate setup steps. A compiled
+launcher does not establish that Bluetooth audio, hardware video decoding,
+server authentication or local wake-word assets work on a particular device.
+
 ## 1. Establish the base system
 
 **Already running Debian with working SSH, graphics and audio:** continue below.
@@ -41,6 +70,9 @@ python3 tools/configure-device.py
 Edit `private/ssh.env` for your device/key and `private/device.json` for your
 modules and weather location. See [CONFIGURATION.md](CONFIGURATION.md) for
 initial host-key verification and [MODULES.md](MODULES.md) for dependencies.
+The example enables several integrations for compatibility; turn off those you
+do not want. IPTV and Markets start disabled. A voice API key is needed only if
+you choose cloud voice, not for the dashboard or the free radio/weather/market feeds.
 
 ```sh
 ./tools/thinksmart-ssh 'uname -m; cat /etc/os-release'
@@ -86,6 +118,10 @@ runtime check; use `ldd` on the staged binary on the device.
 - **Voice:** follow [VOICE.md](VOICE.md) before enabling conversations.
 - **VRM/media:** create the selected private JSON files from the templates. Deploy
   them with `tools/install-vrm-config.sh` and `tools/install-media-config.sh`.
+- **Radio, weather, news, Markets and IPTV:** no account/API key is needed for
+  their built-in public sources. Configure weather location, enable the wanted
+  modules and place their views through the page editor. Free market quotes may
+  be delayed; see [Markets](MARKETS.md) for polling and alert behaviour.
 
 ## 5. Install and check the launcher
 
@@ -103,12 +139,18 @@ deployment scripts, which replace the corresponding private device JSON.
 
 After installation, Settings → Pages & modules customises the layout and module
 selection on-device. Existing on-device overrides and prompt edits survive later
-installs. See [modules](MODULES.md).
+installs. Add widgets to suitable existing pages, or create pages according to
+the user's preferences. Hiding a widget does not disable its background service;
+use the module switch for that. See [modules](MODULES.md).
 
 The display starts asleep. Touch or press a volume key to wake. Check landscape
 and portrait touch alignment, sound, volume buttons, screen sleep and a reboot.
 Confirm that SSH reconnects after reboot. AI conversation tests can incur API
 charges and transmit microphone audio; use local mocks for development.
+Verify each selected integration against its actual source, including a saved
+favourite or setting surviving an app restart. Separate verified playback from
+a request merely being accepted. Mark any unavailable servers or hardware paths
+as unverified rather than claiming a complete test.
 
 For ongoing access, enrol the device in your own Tailscale account using its CLI.
 OpenSSH over the tailnet works independently of the launcher; no shared Tailscale

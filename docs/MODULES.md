@@ -41,9 +41,11 @@ module registrations.
 | `jellyfin` | Native film browser and playback | Server settings/credentials |
 | `iptv` | Live TV browser, saved streams and fullscreen libmpv playback | Optional, off by default; [IPTV guide](IPTV.md) |
 
-Home is always available. Enabled News/Chess pages join the ring automatically;
-one-page and two-page profiles work too. The Music card appears when Navidrome or
-Bluetooth is enabled, with only the selected source tabs. Cards reflow when hidden.
+Home is always available. The initial layout includes the enabled News/Chess/Notes
+pages; the page editor controls placement and order thereafter. Enabling a new
+integration does not automatically add a dedicated page. One-page and two-page
+profiles work too. Navidrome and Bluetooth share the Music widget, with only the
+selected source tabs. Widget pages retain six grid slots, including empty ones.
 
 Disabling a module removes its UI entry, stops its polling/engine/microphone
 activity and removes its actions from advertised AI capabilities. The local tool

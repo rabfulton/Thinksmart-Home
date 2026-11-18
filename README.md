@@ -1,38 +1,83 @@
 # ThinkSmart Home
 
-A native Qt Quick dashboard for the **Lenovo ThinkSmart View**, running Debian.
-Voice assistance, radio, live TV, weather, music, films, news, chess, notes and market prices.
-A native touch interface for landscape and portrait, with configurable pages
-and up to six widgets per page. Enable the modules you need on the device.
+Turn a **Lenovo ThinkSmart View** into a personal home dashboard running Debian
+and Qt Quick. Talk to your assistant, play radio and films, check the weather and
+markets, read the news or play chess—all through a native touch interface.
+
+Choose your modules, arrange up to six widgets per page, and use the device in
+landscape or portrait. A coding agent can build and customise your installation
+from this repository; your accounts, prompts and household settings stay private.
 
 ![ThinkSmart Home dashboard](docs/screenshots/home-landscape.png)
 
-*Screenshots use demonstration data. Your Wi-Fi, accounts and API keys stay local.*
+*Screenshots use demonstration data.*
 
 ## Start with your coding agent
 
 Clone this repository, open it in your coding agent, and paste:
 
 ```text
-Help me install ThinkSmart Home on my Lenovo ThinkSmart View.
-Read AGENTS.md and docs/INSTALL.md first. Check my device variant and current OS,
-then ask which modules I want, my location/timezone, and how to reach the device.
-Create my configuration in private/ without printing passwords or API keys.
-Build using Docker on this computer. Use the existing Debian installation where
-possible; if firmware installation is needed, prepare and verify it before asking
-me to approve flashing. Install only the optional components I selected, preserve
-this device's calibration and identities, and verify SSH, touch, audio and startup.
+Install and customise ThinkSmart Home for my Lenovo ThinkSmart View.
+Read AGENTS.md, docs/INSTALL.md, docs/CONFIGURATION.md and docs/MODULES.md.
+Inspect my device and host, then help me choose modules and a page layout.
+Ask for missing device/panel, OS, SSH and location/timezone details.
+Keep credentials in private/ using the templates; never print secrets.
+Build and test with Docker on this computer. Reuse working Debian, graphics
+and audio, and install the optional dependencies only for my chosen modules.
+Preserve existing pages, settings, prompts, calibration and device identities.
+For stock firmware, prepare and verify the image/target before asking me to
+approve flashing. Verify startup, SSH, touch, audio and screen sleep as applicable.
+Do not start paid voice or microphone tests without asking. Record what you
+installed and how to administer or roll it back in a private admin.md.
 ```
 
-An existing Debian device with working graphics/audio is the quickest route.
+The build host can run Arch/Manjaro or another Linux distribution with Docker;
+it does not need a Debian desktop. An existing Debian device with working
+graphics/audio is the quickest route. See the [installation guide](docs/INSTALL.md)
+for prerequisites, agent workflow and device setup.
+
 For a completely custom image, [m0s4ik/thinksmart-view-debian](https://github.com/m0s4ik/thinksmart-view-debian)
 is a very useful starting point: it provides the Debian base and image-building
 tools used by this project, ready for your own software and interface.
 
-**Guides:** [Install](docs/INSTALL.md) · [Configuration](docs/CONFIGURATION.md) ·
-[Optional modules](docs/MODULES.md) · [Pages and widgets](docs/PAGES-AND-MODULES.md) ·
-[Create a module](docs/MODULE-DEVELOPMENT.md) · [Radio](docs/RADIO.md) · [Markets](docs/MARKETS.md) · [IPTV](docs/IPTV.md) · [Voice and audio](docs/VOICE.md) ·
-[Administration](docs/ADMIN.md) · [Personal actions](docs/PERSONAL.md) · [Development](docs/DEVELOPMENT.md)
+## Modules
+
+| Module | What it does | Setup |
+| --- | --- | --- |
+| [Assistant](docs/VOICE.md) | OpenAI Realtime/Live voice, local wake word, personalities and household context | OpenAI key; optional wake-word assets |
+| [Radio](docs/RADIO.md) | Worldwide station search, genre browsing and saved favourites | Internet; no API key |
+| [Weather](docs/MODULES.md) | Current conditions, hourly and daily forecasts from Open-Meteo | Location; no API key |
+| [Markets](docs/MARKETS.md) | Editable watchlist, focused charts, session status and price alerts | Free quotes, which may be delayed; no API key |
+| [TV / IPTV](docs/IPTV.md) | Internet TV directory, saved streams and fullscreen playback | Internet or your own stream links |
+| [News](docs/MODULES.md) | World/finance feeds and Hacker News with native comment threads | Internet; cached reading |
+| [Chess](docs/MODULES.md) | Theme-aware board, adjustable engine strength and either playing side | Local Arasan engine |
+| [Notes](docs/PERSONAL.md) | Saved notes, touch deletion and optional voice dictation | Local storage; Assistant for dictation |
+| [Bluetooth speaker](docs/MODULES.md) | Play audio from your phone through the device | BlueZ and BlueALSA |
+| [Music / Navidrome](docs/MODULES.md) | Browse and play your music library | Navidrome server and credentials |
+| [Video / Jellyfin](docs/MODULES.md) | Native film browsing by category/decade, posters and fullscreen playback | Jellyfin server and credentials |
+| [Energy / Victron VRM](docs/MODULES.md) | Battery, solar and energy readings, including cached offline data | VRM installation and read-only token |
+
+Use **Settings → Pages & modules** to enable integrations and arrange widgets or
+full-page apps. One page can hold several modules; new widgets can go on an
+existing page. Disabling a module stops its background activity and removes its
+related AI capabilities. It remains part of the shared application binary.
+See [module setup and dependencies](docs/MODULES.md).
+
+The dashboard also includes editable dark themes, screen sleep/wake, physical
+volume controls, [Wi-Fi settings and a touch keyboard](docs/WIFI.md). The
+assistant can manage [notes, themes, routines, timers and scheduled actions](docs/PERSONAL.md).
+Video uses mpv/libmpv with [hardware decoding where supported](docs/VIDEO-COMPATIBILITY.md).
+
+## Customise and extend
+
+Arrange your device through the touch UI, edit prompts and configuration over
+SSH, or ask a coding agent to add an integration. New modules are native Qt
+components compiled into the app, with their own optional AI instructions and
+actions. The [module development guide](docs/MODULE-DEVELOPMENT.md) includes a
+starting prompt and contribution workflow.
+
+[Configuration](docs/CONFIGURATION.md) · [Pages and widgets](docs/PAGES-AND-MODULES.md) ·
+[Administration](docs/ADMIN.md) · [Development and tests](docs/DEVELOPMENT.md)
 
 ## Screenshots
 
@@ -44,11 +89,6 @@ tools used by this project, ready for your own software and interface.
 | --- | --- |
 | ![Chess](docs/screenshots/chess.png) | ![Portrait dashboard](docs/screenshots/home-portrait.png) |
 
-
-The launcher supports dark themes, screen sleep/wake and physical volume keys.
-Optional integrations include OpenAI Realtime/Live, Navidrome, Jellyfin, Bluetooth
-speaker mode and Victron VRM. Media uses mpv/libmpv with hardware decoding where
-the device's driver and stream support it. Enabled dashboard pages form a ring.
 
 **Licence:** our original code is [MIT](LICENSE). Imported code and artwork keep
 their own licences; see [third-party notices](THIRD_PARTY.md). Linked dependencies,

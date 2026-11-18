@@ -20,12 +20,19 @@ Use this repository's scripts and record the configuration you actually install.
   tools. Explain that runtime disabling does not strip code from the binary.
 - Existing credentials and SSH-edited prompts belong to the user. Preserve them
   on upgrades. Inspect changes before invoking credential deployment scripts.
+- Follow the user's module selection and placement preferences. Reuse suitable existing
+  widget pages; do not create a separate page for every integration. Preserve
+  existing layouts and the six-widget limit when adding a module.
 - Keep UI changes native to Qt Quick, theme-aware and usable by touch in both
   orientations. Preserve vertical news scrolling and the circular page order.
 - Use local mocks for voice tests. Enabling Assistant alone must not create a
   cloud conversation; do not start paid API/microphone tests without authorization.
 - Run checks appropriate to the change. Module/config changes need the focused
   module tests; voice changes need mocked Realtime/Live tests. See docs/DEVELOPMENT.md.
+- Record the actual installation, enabled modules, configuration paths, relevant
+  checks and rollback instructions in ignored admin.md. Keep passwords, tokens
+  and private keys in their private files, not in those notes. Leave the user
+  with a working setup and clear details of anything still unverified.
 - Our original code is MIT. Imported code/artwork retains its own licence and
   attribution; see THIRD_PARTY.md. Do not relabel imported material as ours.
 - Export a public release with tools/export-public.py, not the private working
