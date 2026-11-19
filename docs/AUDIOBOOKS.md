@@ -32,11 +32,16 @@ to jump to a particular part.
 
 Each book opens recording details, narrator/language, description and chapters.
 The widget has Resume/Pause and −30s/+30s controls, with more space for the title
-instead of a decorative book icon. The expanded player also has skip buttons and
-a seek slider. Seeking works while playing or paused. Start/Resume plays from its
-saved location. Chapter selection starts that part
-from the beginning. About opens the supplied description. Restart and removal
-require touch confirmation; removing a book also removes its saved position.
+instead of a decorative book icon. Resume immediately shows Loading while the
+stream connects and becomes available again after a failed load or Stop. The
+expanded player also has skip buttons and a seek slider. In landscape, book
+information and compact controls sit on the left, with an independently scrolling
+chapter list on the right. Portrait stacks them vertically. Seeking works while
+playing or paused. Start/Resume plays from its saved location. Chapter selection starts that part
+from the beginning. The full description appears below the controls; longer
+descriptions scroll within the information panel. A single button switches
+between Save and Remove. Restart and removal require touch
+confirmation; removing a book also removes its saved position.
 
 The bundled Top 100 does not trigger an automatic network request. After a
 successful manual update, its downloaded list is cached for a week. Picks are

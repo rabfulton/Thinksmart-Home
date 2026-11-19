@@ -8,7 +8,8 @@ WidgetTile {
     readonly property var book: books.current
     heading: "Audiobooks"; indexLabel: book.completed ? "FINISHED · READY TO READ AGAIN" : "LIBRIVOX · YOUR LISTENING PLACE"
     function time(v) { const n=Math.floor(v||0);return Math.floor(n/60)+":"+String(n%60).padStart(2,"0") }
-    readonly property bool canSeek: home.source==="audiobooks"&&(home.state==="playing"||home.state==="paused")&&home.duration>0
+    readonly property bool loading: books.preparing||(home.source==="audiobooks"&&home.state==="connecting")
+    readonly property bool canSeek: !loading&&home.source==="audiobooks"&&(home.state==="playing"||home.state==="paused")&&home.duration>0
     ColumnLayout {
         anchors.fill: parent; spacing: 6
         Text { text: card.book.title || "Choose a good book"; textFormat: Text.PlainText; color: Theme.ink; font.pixelSize: 22; Layout.fillWidth: true; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight }
@@ -22,8 +23,8 @@ WidgetTile {
                 objectName: "audiobookWidgetResume"
                 implicitHeight: 48; font.pixelSize: 16; Layout.fillWidth: true; Layout.minimumWidth: 0
                 readonly property bool playing: home.source==="audiobooks"&&home.state==="playing"
-                text: books.preparing?"Preparing…":playing?"Pause":card.book.completed?"Play again":(card.book.position||card.book.chapterIndex)?"Resume":card.book.id==="lv:753"?"Start Moby-Dick":"Start book"
-                enabled: !books.preparing
+                text: card.loading?"Loading…":playing?"Pause":card.book.completed?"Play again":(card.book.position||card.book.chapterIndex)?"Resume":card.book.id==="lv:753"?"Start Moby-Dick":"Start book"
+                enabled: !card.loading
                 onClicked: playing?home.pause():home.source==="audiobooks"&&home.state==="paused"?home.play():books.resume()
             }
             UiButton { objectName: "audiobookWidgetForward30"; text: "+30s"; implicitWidth: 68; implicitHeight: 48; font.pixelSize: 16; enabled: card.canSeek; onClicked: home.seek(Math.min(home.duration,home.position+30)) }

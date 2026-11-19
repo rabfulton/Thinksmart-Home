@@ -314,9 +314,29 @@ exec sleep 20
     void audiobooksWidgetAndDiscovery(){
         screen->wake();window->resize(1280,800);QTest::qWait(60);click("pageButton_dev-books");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);click("audiobooksTile");QCOMPARE(window->property("selectedApp").toString(),QString("audiobooks"));
         QTRY_COMPARE(object("audiobooksList")->property("count").toInt(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->detail().value("id").toString(),QString("lv:753"));QCOMPARE(object("audiobooksChapters")->property("count").toInt(),2);
-        const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(100);if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/audiobooks-%1.png").arg(size.width())));}}
+        const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(100);
+            auto chapters=qobject_cast<QQuickItem *>(object("audiobooksChapters"));auto info=qobject_cast<QQuickItem *>(object("audiobooksBookInfo"));auto resume=qobject_cast<QQuickItem *>(object("audiobooksResume"));QVERIFY(chapters&&info&&resume);
+            QVERIFY(chapters->height()>300);QVERIFY(resume->width()<=200);
+            if(size.width()>size.height())QVERIFY(chapters->mapToScene(QPointF()).x()>=info->mapToScene(QPointF()).x()+info->width());
+            else QVERIFY(chapters->mapToScene(QPointF()).y()>=info->mapToScene(QPointF()).y()+info->height());
+            if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/audiobooks-%1.png").arg(size.width())));}
+        }
         click("audiobooksTab_top");QCOMPARE(media->audiobooks()->tab(),QString("top"));QTRY_COMPARE(object("audiobooksList")->property("count").toInt(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->chapters().size(),2);
-        click("audiobooksTab_picks");QCOMPARE(media->audiobooks()->periods().size(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->detail().value("id").toString(),QString("lv:753"));click("audiobooksBack");click("audiobooksBack");QCOMPARE(window->property("selectedApp").toString(),QString());
+        click("audiobooksTab_picks");QCOMPARE(media->audiobooks()->periods().size(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->detail().value("id").toString(),QString("lv:753"));
+        QCOMPARE(object("audiobooksSave")->property("text").toString(),QString("Remove"));click("audiobooksSave");QTRY_VERIFY(object("audiobooksRemoveDialog")->property("opened").toBool());click("audiobooksCancelRemoval");QTRY_VERIFY(!object("audiobooksRemoveDialog")->property("visible").toBool());QVERIFY(media->audiobooks()->detail().value("saved").toBool());
+        click("audiobooksSave");QTRY_VERIFY(object("audiobooksRemoveDialog")->property("opened").toBool());QTest::qWait(50);click("audiobooksConfirmRemoval");QTRY_VERIFY(!object("audiobooksRemoveDialog")->property("visible").toBool());QCOMPARE(object("audiobooksSave")->property("text").toString(),QString("Save"));click("audiobooksSave");QTRY_VERIFY(media->audiobooks()->detail().value("saved").toBool());QCOMPARE(object("audiobooksSave")->property("text").toString(),QString("Remove"));
+        click("audiobooksBack");click("audiobooksBack");QCOMPARE(window->property("selectedApp").toString(),QString());
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void audiobooksResumeShowsLoadingUntilPlayerStarts(){
+        write("book-player","#!/bin/sh\nexec sleep 20\n");QFile::setPermissions(directory.filePath("book-player"),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);qputenv("THINKSMART_MEDIA_TEST_PLAYER",directory.filePath("book-player").toUtf8());
+        screen->wake();window->resize(1280,800);QTest::qWait(60);click("pageButton_dev-books");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);QTRY_VERIFY(!object("dashboardPages")->property("transitioning").toBool());QTRY_VERIFY(object("audiobookWidgetResume"));click("audiobookWidgetResume");
+        QCOMPARE(media->state(),QString("connecting"));QVERIFY(!media->audiobooks()->preparing());QCOMPARE(object("audiobookWidgetResume")->property("text").toString(),QString("Loading…"));QVERIFY(!object("audiobookWidgetResume")->property("enabled").toBool());
+        click("audiobooksTile");QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(object("audiobooksResume")->property("text").toString(),QString("Loading…"));QVERIFY(!object("audiobooksResume")->property("enabled").toBool());
+        QTest::qWait(150);QCOMPARE(object("audiobooksResume")->property("text").toString(),QString("Loading…"));
+        media->stop();QVERIFY(object("audiobooksResume")->property("enabled").toBool());QVERIFY(object("audiobooksResume")->property("text").toString()!=QString("Loading…"));
+        write("book-player","#!/bin/sh\nexit 1\n");click("audiobooksResume");QCOMPARE(object("audiobooksResume")->property("text").toString(),QString("Loading…"));QTRY_COMPARE(media->state(),QString("error"));QVERIFY(object("audiobooksResume")->property("enabled").toBool());QVERIFY(object("audiobooksResume")->property("text").toString()!=QString("Loading…"));
         QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
     }
     void audiobooksVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
