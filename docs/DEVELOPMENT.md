@@ -116,3 +116,14 @@ invalid settings and proxy failure without direct fallback. Both configurations
 also check the bundled 100-link list survives a failed update. The app,
 audiobook tests and UI/voice mocks receive the
 same compile definition. TLS verification remains enabled in either build.
+
+`tvarchive-tests` checks derivative selection, stable IDs, season ordering, unsafe
+paths, persistence, failed resumes, EOF-only advancement, autoplay, random scope,
+cache failures and disabled-module inactivity. `tvArchiveBrowserAndProgressControls`
+and `tvArchiveVoiceTools` in home-ui-tests cover both orientations and mocked
+Realtime/Live integration. Tests use synthetic metadata and no TV streams.
+
+`THINKSMART_ENABLE_TVARCHIVE_PROXY` is separately OFF by default. Test ON and OFF
+when editing this adapter. The proxy tests check invalid configuration and failure
+without direct fallback; unrelated networking must remain direct. Existing
+Audiobooks proxy tests also cover the shared loopback proxy validator.

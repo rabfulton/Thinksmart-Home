@@ -49,6 +49,7 @@ tools used by this project, ready for your own software and interface.
 | [Radio](docs/RADIO.md) | Worldwide station search, genre browsing and saved favourites | Internet; no API key |
 | [Weather](docs/MODULES.md) | Current conditions, hourly and daily forecasts from Open-Meteo | Location; no API key |
 | [Markets](docs/MARKETS.md) | Editable watchlist, focused charts, session status and price alerts | Free quotes, which may be delayed; no API key |
+| [TV Archive](docs/TV-ARCHIVE.md) | Classic British series, episode browsing, resume and optional autoplay | Internet Archive; no API key |
 | [TV / IPTV](docs/IPTV.md) | Internet TV directory, saved streams and fullscreen playback | Internet or your own stream links |
 | [News](docs/NEWS.md) | One or two configurable feeds, publisher presets and Hacker News comments | Internet; cached reading |
 | [Chess](docs/MODULES.md) | Theme-aware board, adjustable engine strength and either playing side | Local Arasan engine |

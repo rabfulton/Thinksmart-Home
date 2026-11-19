@@ -169,6 +169,12 @@ exec sleep 20
             auto recommendation=book;recommendation.remove("tracks");recommendation.insert("id","catalog:moby-dick-by-herman-melville");recommendation.insert("genres",QJsonArray{"Adventure"});recommendation.insert("rank",1);
             write("audiobooks-cache/discovery.json",QJsonDocument(QJsonObject{{"top",QJsonArray{recommendation}},{"picks",QJsonArray{QJsonObject{{"id","catalog:moby-dick-by-herman-melville"},{"title","Moby Dick"},{"catalogUrl",book.value("catalogUrl")},{"period","202508"}}}},{"periods",QJsonArray{QJsonObject{{"id","202508"},{"label","Aug 2025 · Monthly picks"}}}}}).toJson());
         }
+        qputenv("THINKSMART_TVARCHIVE_FILE",directory.filePath("tvarchive-state.json").toUtf8());qputenv("THINKSMART_TVARCHIVE_CACHE",directory.filePath("tvarchive-cache.json").toUtf8());qputenv("THINKSMART_DISABLE_TVARCHIVE","1");qunsetenv("THINKSMART_TVARCHIVE_TEST_AUDIO");QFile::remove(directory.filePath("tvarchive-state.json"));QFile::remove(directory.filePath("tvarchive-cache.json"));
+        if(QByteArray(QTest::currentTestFunction()).startsWith("tvArchive")){
+            modules.insert("tvarchive",true);qputenv("THINKSMART_TVARCHIVE_TEST_AUDIO","1");qputenv("THINKSMART_MEDIA_TEST_PLAYER","/usr/bin/true");
+            QJsonArray files;for(int n=1;n<=3;n++)files.append(QJsonObject{{"name",QString("Example Show/Season %1/Example Show S%1E01 - Pilot.mp4").arg(n)},{"size","50000000"},{"length","1200"}});
+            write("tvarchive-cache.json",QJsonDocument(QJsonObject{{"version",1},{"collection",TvArchiveClient::collection()},{"updated",QDateTime::currentSecsSinceEpoch()},{"episodes",TvArchiveClient::parseCatalogue({{"files",files}})}}).toJson());
+        }
         const bool iptvTest=QByteArray(QTest::currentTestFunction()).startsWith("iptv") || QByteArray(QTest::currentTestFunction())=="wifiDialogKeyboardAndSavedPreferences";
         qputenv("THINKSMART_IPTV_FILE",directory.filePath("iptv-favourites.json").toUtf8());
         qputenv("THINKSMART_IPTV_CACHE",directory.filePath("iptv-cache.json").toUtf8());
@@ -188,6 +194,9 @@ exec sleep 20
         }
         if(QByteArray(QTest::currentTestFunction()).startsWith("audiobooks")){
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","dev-books"},{"title","Dev"},{"kind","widgets"},{"widgets",QJsonArray{"audiobooks"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
+        }
+        if(QByteArray(QTest::currentTestFunction()).startsWith("tvArchive")){
+            auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","dev-tv"},{"title","Dev"},{"kind","widgets"},{"widgets",QJsonArray{"tvarchive"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
         }
         if(QByteArray(QTest::currentTestFunction()).startsWith("markets")){
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","markets-room"},{"title","Markets"},{"kind","widgets"},{"widgets",QJsonArray{"markets"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
@@ -311,6 +320,16 @@ exec sleep 20
         }
         QCOMPARE(media->markets()->alerts().size(),2);
     }
+    void tvArchiveBrowserAndProgressControls(){
+        screen->wake();window->resize(1280,800);QTest::qWait(60);click("pageButton_dev-tv");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);click("tvArchiveTile");QCOMPARE(window->property("selectedApp").toString(),QString("tvarchive"));QTRY_VERIFY(media->tvArchive()->active());QTRY_COMPARE(object("tvArchiveList")->property("count").toInt(),1);QTRY_VERIFY(object("tvArchiveRow0"));click("tvArchiveRow0");QCOMPARE(object("tvArchiveList")->property("count").toInt(),3);QCOMPARE(media->tvArchive()->seasons().size(),4);
+        click("tvArchiveAutoplay");QVERIFY(media->tvArchive()->autoplay());
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(80);auto list=qobject_cast<QQuickItem *>(object("tvArchiveList"));auto random=qobject_cast<QQuickItem *>(object("tvArchiveRandom"));QVERIFY(list&&random);QVERIFY(list->height()>size.height()/2);QVERIFY(random->mapToScene(QPointF(random->width(),0)).x()<=size.width());
+            click("tvArchiveSeason");QTRY_VERIFY(object("tvArchiveSeasonPopup")->property("opened").toBool());QTRY_VERIFY(object("tvArchiveSeasonOption2"));click("tvArchiveSeasonOption2");QTRY_COMPARE(media->tvArchive()->season(),QString("2"));QCOMPARE(object("tvArchiveList")->property("count").toInt(),1);QTRY_VERIFY(!object("tvArchiveSeasonPopup")->property("visible").toBool());
+            click("tvArchiveSeason");QTRY_VERIFY(object("tvArchiveSeasonPopup")->property("opened").toBool());QTRY_VERIFY(object("tvArchiveSeasonOption0"));click("tvArchiveSeasonOption0");QTRY_VERIFY(media->tvArchive()->season().isEmpty());QCOMPARE(object("tvArchiveList")->property("count").toInt(),3);QTRY_VERIFY(!object("tvArchiveSeasonPopup")->property("visible").toBool());
+        }
+        click("tvArchiveBack");QTRY_COMPARE(object("tvArchiveList")->property("count").toInt(),1);click("tvArchiveBack");QCOMPARE(window->property("selectedApp").toString(),QString());
+    }
+    void tvArchiveVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
     void audiobooksWidgetAndDiscovery(){
         screen->wake();window->resize(1280,800);QTest::qWait(60);click("pageButton_dev-books");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);click("audiobooksTile");QCOMPARE(window->property("selectedApp").toString(),QString("audiobooks"));
         QTRY_COMPARE(object("audiobooksList")->property("count").toInt(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->detail().value("id").toString(),QString("lv:753"));QCOMPARE(object("audiobooksChapters")->property("count").toInt(),2);
@@ -338,6 +357,20 @@ exec sleep 20
         media->stop();QVERIFY(object("audiobooksResume")->property("enabled").toBool());QVERIFY(object("audiobooksResume")->property("text").toString()!=QString("Loading…"));
         write("book-player","#!/bin/sh\nexit 1\n");click("audiobooksResume");QCOMPARE(object("audiobooksResume")->property("text").toString(),QString("Loading…"));QTRY_COMPARE(media->state(),QString("error"));QVERIFY(object("audiobooksResume")->property("enabled").toBool());QVERIFY(object("audiobooksResume")->property("text").toString()!=QString("Loading…"));
         QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void tvArchiveVoiceTools(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto restore=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QJsonObject session;QList<QJsonObject> messages;QPointer<QWebSocket> peer;auto cleanupPeer=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();messages.append(e);if(e.value("type")=="session.update"||e.value("type")=="session.start"){session=e.value("session").toObject();peer->sendTextMessage(live?"{\"type\":\"session.started\"}":"{\"type\":\"session.updated\"}");}});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
+        const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;QVERIFY(owner.value("instructions").toString().contains("TV Archive module"));QVERIFY(QJsonDocument(owner.value("tools").toArray()).toJson().contains("tvarchive.play"));
+        const auto episodeId=media->tvArchive()->request({{"action","tvarchive.list"},{"id",media->tvArchive()->request({{"action","tvarchive.list"}}).value("items").toArray()[0].toObject().value("id")}}).value("items").toArray()[0].toObject().value("id").toString();
+        const QJsonObject item{{"type","function_call"},{"name","device_action"},{"call_id","archive-call"},{"arguments",QString::fromUtf8(QJsonDocument(QJsonObject{{"action","tvarchive.play"},{"id",episodeId}}).toJson(QJsonDocument::Compact))}};
+        auto send=[&](QJsonObject e){peer->sendTextMessage(QString::fromUtf8(QJsonDocument(e).toJson(QJsonDocument::Compact)));};
+        if(live){auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","d1"},{"event",e}});};nested({{"type","response.created"},{"response",QJsonObject{{"id","r-book"}}}});nested({{"type","response.output_item.done"},{"response_id","r-book"},{"item",item}});nested({{"type","response.completed"},{"response",QJsonObject{{"id","r-book"}}}});}
+        else {send({{"type","response.created"},{"response",QJsonObject{{"id","r-book"}}}});send({{"type","response.done"},{"response",QJsonObject{{"id","r-book"},{"status","completed"},{"output",QJsonArray{item}}}}});}
+        QTRY_COMPARE(media->source(),QString("tvarchive"));QTRY_VERIFY(std::any_of(messages.cbegin(),messages.cend(),[](auto r){return QJsonDocument(r).toJson().contains("archive-call")&&QJsonDocument(r).toJson().contains("accepted");}));voice->setEnabled(false);QTRY_VERIFY(voice->released());
     }
     void audiobooksVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
     void audiobooksVoiceTools(){

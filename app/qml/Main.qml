@@ -32,9 +32,10 @@ ApplicationWindow {
     Binding { target: home.iptv; property: "active"; value: home.modules.iptv && !screenControl.sleeping && !home.video.visible && (window.selectedApp === "iptv" || (window.pageRunning && window.currentPage.module === "iptv")) }
     Binding { target: home.markets; property: "active"; value: home.modules.markets && !screenControl.sleeping && !dashboardPages.transitioning && (window.selectedApp === "markets" || (window.selectedApp === "" && (window.currentPage.module === "markets" || (window.currentPage.widgets || []).indexOf("markets") >= 0))) }
     Binding { target: home.audiobooks; property: "active"; value: home.modules.audiobooks && !screenControl.sleeping && !dashboardPages.transitioning && (window.selectedApp === "audiobooks" || (window.selectedApp === "" && (window.currentPage.widgets || []).indexOf("audiobooks") >= 0)) }
+    Binding { target: home.tvArchive; property: "active"; value: home.modules.tvarchive && !screenControl.sleeping && (window.selectedApp === "tvarchive" || (window.selectedApp === "" && !dashboardPages.transitioning && (window.currentPage.widgets || []).indexOf("tvarchive") >= 0)) }
     // Services have one owner even when several pages show the same module.
     readonly property var currentPage: pageDefinitions[dashboardPages.currentIndex] || ({})
-    readonly property bool browsingTv: selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
+    readonly property bool browsingTv: selectedApp === "tvarchive" || selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
     readonly property bool pageRunning: selectedApp === "" && !dashboardPages.transitioning && !screenControl.sleeping
     Binding { target: chessGame; property: "active"; value: home.modules.chess && window.pageRunning && window.currentPage.module === "chess" }
     Binding { target: home.newsSettings; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
@@ -91,7 +92,7 @@ ApplicationWindow {
         Text { visible: home.configProblem.length > 0; text: home.configProblem; color: Theme.danger; wrapMode: Text.WordWrap; Layout.fillWidth: true }
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
-            currentIndex: window.selectedApp === "audiobooks" ? 9 : window.selectedApp === "markets" ? 8 : window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
+            currentIndex: window.selectedApp === "tvarchive" ? 10 : window.selectedApp === "audiobooks" ? 9 : window.selectedApp === "markets" ? 8 : window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
             PathView {
                 id: dashboardPages; objectName: "dashboardPages"
                 clip: true; currentIndex: window.pageIndex("home"); model: window.pageNames.length; pathItemCount: count
@@ -187,6 +188,7 @@ ApplicationWindow {
             IptvPage { objectName: "iptvAppPage"; active: window.selectedApp === "iptv" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
             MarketsPage { objectName: "marketsAppPage"; active: window.selectedApp === "markets" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
             AudiobooksPage { objectName: "audiobooksAppPage"; active: window.selectedApp === "audiobooks" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp="" }
+            TvArchivePage { objectName: "tvArchiveAppPage"; active: window.selectedApp === "tvarchive" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp="" }
         }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 96
@@ -197,7 +199,7 @@ ApplicationWindow {
                 Rectangle {
                     width: 52; height: 52; radius: 14; color: Theme.tint
                     Text { visible: home.source === "radio" && home.radioId === "radio4"; anchors.centerIn: parent; text: "4"; color: Theme.accent; font.pixelSize: 36 }
-                    UiIcon { visible: home.source !== "radio" || home.radioId !== "radio4"; anchors.centerIn: parent; name: home.source === "radio" ? "radio" : home.source === "bluetooth" ? "bluetooth" : (home.source === "audiobooks" ? "book" : home.source === "iptv" ? "tv" : home.source === "jellyfin" ? "video" : "music"); tint: Theme.accent; width: 30; height: 30 }
+                    UiIcon { visible: home.source !== "radio" || home.radioId !== "radio4"; anchors.centerIn: parent; name: home.source === "radio" ? "radio" : home.source === "bluetooth" ? "bluetooth" : (home.source === "tvarchive" ? "tv" : home.source === "audiobooks" ? "book" : home.source === "iptv" ? "tv" : home.source === "jellyfin" ? "video" : "music"); tint: Theme.accent; width: 30; height: 30 }
                 }
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.minimumWidth: 100; spacing: 5

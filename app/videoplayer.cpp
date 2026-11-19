@@ -76,10 +76,12 @@ bool VideoPlayer::initialize(){
     mpv_observe_property(m_handle,0,"video-codec",MPV_FORMAT_STRING);
     mpv_observe_property(m_handle,0,"hwdec-current",MPV_FORMAT_STRING);mpv_observe_property(m_handle,0,"track-list",MPV_FORMAT_NODE);return true;
 }
-void VideoPlayer::start(const QUrl &url,const QStringList &headers,double position,bool software){
+void VideoPlayer::start(const QUrl &url,const QStringList &headers,double position,bool software,const QString &proxy,bool archive){
     if(!initialize()){rendererFailed();return;}
     m_controlError.clear();m_decoder.clear();m_diagnostics={{"requestedDecoder",software?"software":"v4l2m2m-copy"}};
-    QJsonObject options{{"http-header-fields",headers.join(',')},{"hwdec",software?"no":"v4l2m2m-copy"},{"hwdec-software-fallback",software?"yes":"no"},{"vd",software?"lavc:h264":""}};
+    QJsonObject options{{"sid","no"},{"http-header-fields",headers.join(',')},{"hwdec",software?"no":"v4l2m2m-copy"},{"hwdec-software-fallback",software?"yes":"no"},{"vd",software?"lavc:h264":""}};
+    options.insert("http-proxy",proxy);options.insert("tls-verify",archive?"yes":"no");options.insert("tls-ca-file",archive?"/etc/ssl/certs/ca-certificates.crt":"");
+    if(archive)options.insert("hwdec-software-fallback","yes");
     // An explicit zero seek stalls initial HLS hardware decoding on the tested
     // FFmpeg/Venus stack. Let the demuxer open normally at the beginning.
     // Converted resume offsets are already applied by Jellyfin's stream URL.
@@ -142,8 +144,8 @@ void VideoPlayer::drain(){
             if(QByteArray(p->name)=="hwdec-current"){m_decoder=value.toString();emit changed();}
             if(m_running)emit event({{"event","property-change"},{"name",QString::fromUtf8(p->name)},{"data",value}});
         }else if(e->event_id==MPV_EVENT_END_FILE&&m_running){
-            auto *end=static_cast<mpv_event_end_file *>(e->data);if(end->reason==MPV_END_FILE_REASON_STOP)continue;
-            m_running=false;m_visible=false;emit event({{"event","end-file"},{"reason",end->reason==MPV_END_FILE_REASON_ERROR?"error":"eof"}});emit changed();
+            auto *end=static_cast<mpv_event_end_file *>(e->data);if(end->reason==MPV_END_FILE_REASON_STOP||end->reason==MPV_END_FILE_REASON_REDIRECT)continue;
+            m_running=false;m_visible=false;emit event({{"event","end-file"},{"reason",end->reason==MPV_END_FILE_REASON_EOF?"eof":"error"}});emit changed();
         }
     }
 }

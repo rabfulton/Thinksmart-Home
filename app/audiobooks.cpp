@@ -1,5 +1,6 @@
 #include "audiobooks.h"
 #include "deviceconfig.h"
+#include "localproxy.h"
 #include <QNetworkReply>
 #include <QUrlQuery>
 #include <QJsonDocument>
@@ -42,9 +43,7 @@ QString AudiobooksClient::libraryPath(){return qEnvironmentVariable("THINKSMART_
 QString AudiobooksClient::cacheDirectory(){return qEnvironmentVariable("THINKSMART_AUDIOBOOKS_CACHE",QStandardPaths::writableLocation(QStandardPaths::CacheLocation)+"/audiobooks");}
 #ifdef THINKSMART_ENABLE_AUDIOBOOKS_PROXY
 QString AudiobooksClient::proxyUrl(){
-    const QUrl u(qEnvironmentVariable("THINKSMART_AUDIOBOOKS_PROXY").trimmed());
-    if(!u.isValid()||u.scheme()!="http"||!QStringList{"127.0.0.1","::1","localhost"}.contains(u.host())||u.port()<1||u.port()>65535||!u.userInfo().isEmpty()||u.hasQuery()||u.hasFragment()||(!u.path().isEmpty()&&u.path()!="/"))return {};
-    return u.toString(QUrl::RemovePath);
+    return localHttpProxy(qEnvironmentVariable("THINKSMART_AUDIOBOOKS_PROXY"));
 }
 #endif
 QStringList AudiobooksClient::playerOptions(const QString &source){

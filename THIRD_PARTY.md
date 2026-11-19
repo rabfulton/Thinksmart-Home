@@ -70,5 +70,9 @@ source metadata are not relicensed as our MIT code. See [Audiobooks](docs/AUDIOB
 
 Cloudflare WARP is an optional, separately installed network service, governed by
 Cloudflare's terms. No WARP binaries, packages, source, registration state or
-account data are distributed here. Our generic Audiobooks local-proxy adapter is
+account data are distributed here. Our generic Audiobooks and TV Archive local-proxy adapters are
 original MIT code, compiled out unless explicitly enabled.
+
+TV Archive fetches file metadata and programmes from the user-selected Internet
+Archive collection at runtime. No programmes, artwork or remote catalogue are
+bundled or relicensed as our code. See [TV Archive](docs/TV-ARCHIVE.md).

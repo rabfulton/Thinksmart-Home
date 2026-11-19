@@ -22,7 +22,7 @@ Rectangle {
             anchors.fill: parent; anchors.margins: 28
             RowLayout {
                 spacing: 20
-                UiButton { objectName: "videoCloseButton"; iconName: "back"; description: home.source === "iptv" ? "Stop TV and return to channels" : "Stop video and return to library"; onClicked: home.stop() }
+                UiButton { objectName: "videoCloseButton"; iconName: "back"; description: home.source === "tvarchive" ? "Stop and return to episodes" : home.source === "iptv" ? "Stop TV and return to channels" : "Stop video and return to library"; onClicked: home.stop() }
                 Text { text: home.title; color: "white"; font.pixelSize: 26; Layout.fillWidth: true; elide: Text.ElideRight }
                 UiButton { text: "Audio"; enabled: home.video.audioTracks.length > 1; onClicked: { audioMenu.open(); playback.reveal() } }
                 UiButton { text: "Subtitles"; enabled: home.video.subtitleTracks.length > 1; onClicked: { subtitleMenu.open(); playback.reveal() } }

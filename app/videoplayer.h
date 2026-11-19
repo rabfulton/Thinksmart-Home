@@ -25,7 +25,7 @@ public:
     QString decoder()const{return m_decoder;}
     QJsonObject diagnostics()const;
     mpv_handle *handle()const{return m_handle;}
-    void start(const QUrl &url,const QStringList &headers,double position,bool software=false);
+    void start(const QUrl &url,const QStringList &headers,double position,bool software=false,const QString &proxy={},bool archive=false);
     void stop();
     void command(const QJsonArray &arguments);
     void rendererReady();

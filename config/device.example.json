@@ -13,7 +13,8 @@
     "jellyfin": false,
     "iptv": false,
     "markets": false,
-    "audiobooks": false
+    "audiobooks": false,
+    "tvarchive": false
   },
   "weather": {
     "name": "London",

@@ -29,6 +29,7 @@ module registrations.
 | Flag | Enables | Additional setup |
 | --- | --- | --- |
 | `assistant` | Voice settings/conversations, local wake word and orb | OpenAI credentials; optional audio/wake setup in [VOICE.md](VOICE.md) |
+| `tvarchive` | Classic TV series/episodes, saved progress, random play and autoplay | [TV Archive guide](TV-ARCHIVE.md); no key; disabled by default |
 | `audiobooks` | LibriVox widget, discovery, chapter playback and saved positions | [Audiobook guide](AUDIOBOOKS.md); no key; disabled by default |
 | `radio` | Worldwide search, genre browsing and saved favourites | [Radio guide](RADIO.md); optional curated catalogue |
 | `markets` | Watchlist, chart widget, price alerts and AI tools | No key required; [Markets guide](MARKETS.md). Free quotes may be delayed; disabled by default |

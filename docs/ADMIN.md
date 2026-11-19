@@ -127,3 +127,9 @@ Optional local-proxy support is compiled out by default. Build with
 needed. The [proxy guide](AUDIOBOOKS.md#optional-proxy-for-audiobooks-only)
 covers WARP as one possible ISP-filtering workaround, installation scope and
 removal. Any proxy service and its registration state are managed separately.
+
+TV Archive keeps episode/series progress and autoplay in
+`~thinksmart/.local/share/ThinkSmart/Home/tvarchive/state.json` and a replaceable
+catalogue in `~thinksmart/.cache/ThinkSmart/Home/tvarchive/catalogue.json`. Preserve
+the former during upgrades. Its optional local proxy is configured independently
+with `THINKSMART_TVARCHIVE_PROXY`; see [TV Archive](TV-ARCHIVE.md).

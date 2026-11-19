@@ -9,7 +9,7 @@ python3 tools/configure-device.py --disable vrm --disable navidrome --disable je
 This copies `config/device.example.json` to ignored `private/device.json`.
 Edit the copy to select modules and set your weather name, latitude, longitude
 and IANA timezone. `true`/`false` values are JSON booleans. Missing module flags
-default to enabled for compatibility, except IPTV, Markets and Audiobooks which default to disabled. The example explicitly lists every module.
+default to enabled for compatibility, except IPTV, Markets, Audiobooks and TV Archive which default to disabled. The example explicitly lists every module.
 
 ```sh
 python3 tools/configure-device.py --config private/device.json --check
@@ -84,3 +84,7 @@ and preserve existing prompts. See [ADMIN.md](ADMIN.md) for all file locations.
 Themes, notes, routines and schedules live in
 `/var/lib/thinksmart-home/personal/`. They can be edited by the built-in assistant
 or over SSH and survive application upgrades. See [personal actions](PERSONAL.md).
+
+TV Archive is an optional `tvarchive` widget, off by default. Add it to an existing
+page after enabling it. Its progress, autoplay and optional module-only proxy are
+described in [TV-ARCHIVE.md](TV-ARCHIVE.md).
