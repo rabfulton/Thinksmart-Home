@@ -128,8 +128,9 @@ receives its proxy only when an audiobook starts; switching to other media start
 an ordinary player. Cover images are cached locally through the module's own
 network manager, avoiding QML's shared image downloader. Remove the drop-in and
 restart to return Audiobooks to direct connections. The independent WARP proxy
-service may remain connected while no book is playing; stop/disable that service
-separately if you no longer need it.
+service remains connected by default. The optional [appliance setup](APPLIANCE.md)
+starts it on demand and stops it after two minutes without client connections,
+with its routine diagnostic files held in RAM.
 
 ## Listening positions
 

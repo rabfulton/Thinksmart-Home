@@ -53,6 +53,11 @@ Additional services are `thinksmart-power`, `thinksmart-actions` (local scheduli
 `thinksmart-network` (Wi-Fi settings), and optionally `thinksmart-pipewire`,
 `thinksmart-wireplumber` and `thinksmart-audio-routing`.
 
+For a mostly static device, [optional appliance settings](APPLIANCE.md) put a
+small warning/error journal in RAM, disable Tailscale diagnostic disk buffers,
+and start the Archive-only WARP proxy on demand. These are separate opt-in
+settings; saved user data and registrations remain persistent.
+
 ## Wi-Fi and remote access
 
 For touch configuration, open **Settings → Wi-Fi settings**. The embedded Qt

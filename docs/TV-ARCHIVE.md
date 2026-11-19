@@ -67,7 +67,9 @@ proxy with an explicit port. TV catalogue and playback requests use this proxy;
 unrelated modules keep their existing routing. TLS certificate verification stays
 enabled. Proxied catalogue requests use a compact X25519 TLS key share for
 compatibility with constrained tunnel paths; TLS 1.3 remains available. An unavailable configured proxy reports an error without falling back
-to the filtered direct connection. The independent proxy service can remain
+to the filtered direct connection. See [on-demand proxy setup](APPLIANCE.md) to
+release WARP's memory and stop its routine logging between uses.
+Without that optional setup, the independent proxy service can remain
 connected when the widget is disabled; manage that service separately.
 
 ## Progress and administration

@@ -17,8 +17,9 @@ TOOLS = (
     'prepare_sheila_helpers.py', 'check-wakeword.py', 'check-voice-api.py',
     'check-live-api.py', 'configure-device.py', 'thinksmart-ssh', 'thinksmartctl',
     'export-public.py', 'check-public.py', 'test-public.py', 'render-screenshots.sh',
+    'thinksmart-warp-ready.py', 'test-appliance.py', 'install-appliance.py',
 )
-APP_SUFFIXES = {'.cpp', '.h', '.hpp', '.cc', '.c', '.cmake', '.frag', '.qml', '.svg', '.json', '.service', '.conf', '.xml'}
+APP_SUFFIXES = {'.cpp', '.h', '.hpp', '.cc', '.c', '.cmake', '.frag', '.qml', '.svg', '.json', '.service', '.socket', '.conf', '.xml'}
 APP_NAMES = {'CMakeLists.txt', 'qmldir', 'LICENSE', 'SOURCE', 'thinksmart-session', 'thinksmart-route-audio', 'rollback-shared-audio'}
 
 

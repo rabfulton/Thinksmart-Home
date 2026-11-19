@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MIT
+[Unit]
+Description=Archive-only proxy (starts WARP on demand)
+Requires=warp-svc.service thinksmart-archive-proxy.socket
+After=warp-svc.service thinksmart-archive-proxy.socket
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+Environment=LC_ALL=C
+ExecStartPre=/usr/local/libexec/thinksmart-warp-ready
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=64 --exit-idle-time=2min 127.0.0.1:40001
+TimeoutStartSec=22
+TimeoutStopSec=5
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+LogLevelMax=warning

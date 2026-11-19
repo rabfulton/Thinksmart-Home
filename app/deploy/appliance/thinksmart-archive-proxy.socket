@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+[Unit]
+Description=Archive-only on-demand loopback proxy
+
+[Socket]
+ListenStream=127.0.0.1:40000
+Accept=no
+NoDelay=true
+
+[Install]
+WantedBy=sockets.target

@@ -134,3 +134,9 @@ sunrise/sunset times. `weatherIconsLocationAndSolarLayout` in `home-ui-tests`
 checks WMO/day-night icon states, the location picker and card bounds in both
 orientations. Set `THINKSMART_WEATHER_SCREENSHOTS` to an output directory to render
 its synthetic forecast screens. No live geocoding or voice calls are used.
+
+`python3 tools/test-appliance.py` checks the optional on-demand Archive proxy's
+readiness handling and systemd socket forwarding against a local echo fixture.
+It also checks that an open connection survives the idle timeout and that the
+forwarder exits and can be activated again after clients disconnect. No vendor
+client, microphone or external service is used. See [appliance setup](APPLIANCE.md).
