@@ -71,7 +71,7 @@ Edit `private/ssh.env` for your device/key and `private/device.json` for your
 modules and weather location. See [CONFIGURATION.md](CONFIGURATION.md) for
 initial host-key verification and [MODULES.md](MODULES.md) for dependencies.
 The example enables several integrations for compatibility; turn off those you
-do not want. IPTV and Markets start disabled. A voice API key is needed only if
+do not want. IPTV, Markets and Audiobooks start disabled. A voice API key is needed only if
 you choose cloud voice, not for the dashboard or the free radio/weather/market feeds.
 
 ```sh
@@ -118,10 +118,12 @@ runtime check; use `ldd` on the staged binary on the device.
 - **Voice:** follow [VOICE.md](VOICE.md) before enabling conversations.
 - **VRM/media:** create the selected private JSON files from the templates. Deploy
   them with `tools/install-vrm-config.sh` and `tools/install-media-config.sh`.
-- **Radio, weather, news, Markets and IPTV:** no account/API key is needed for
+- **Radio, weather, news, Markets, IPTV and Audiobooks:** no account/API key is needed for
   their built-in public sources. Configure weather location, enable the wanted
   modules and place their views through the page editor. Free market quotes may
   be delayed; see [Markets](MARKETS.md) for polling and alert behaviour.
+  [Audiobooks](AUDIOBOOKS.md) documents LibriVox discovery, saved positions and
+  an optional build-time proxy adapter for connections affected by ISP filtering.
 
 ## 5. Install and check the launcher
 

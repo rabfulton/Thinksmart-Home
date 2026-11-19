@@ -96,3 +96,23 @@ News source presets and one/two-column preferences are covered by `news-tests`;
 `newsColumnSettingsEditor` and `newsPanelsReaderAndReplies` in `home-ui-tests`
 cover the editor, orientation, article reader, HN replies and vertical scrolling.
 See [News configuration](NEWS.md).
+
+`audiobooks-tests` uses a local HTTP fixture and playback event signals to check
+chapter-aware resume, failed loads, EOF-only advancement, cancellation, discovery
+caching and disabled-module inactivity. Audiobook UI and both speech protocols
+have mocked tests in home-ui-tests; no book audio or paid calls are used.
+
+`THINKSMART_ENABLE_AUDIOBOOKS_PROXY` is a CMake option, OFF by default. The
+optional adapter works with a separately installed local HTTP proxy such as
+WARP; no vendor software or registration data is shipped. Configure with
+`-DTHINKSMART_ENABLE_AUDIOBOOKS_PROXY=ON` to include it. The build-home script
+forwards additional CMake arguments and explicitly resets this option to OFF
+unless overridden, even when reusing an existing build cache.
+
+Run `audiobooks-tests` in both configurations when changing proxy support. OFF
+checks that the environment setting has no effect. ON checks module-specific
+routing of Archive artwork, discovery and unrelated requests staying direct,
+invalid settings and proxy failure without direct fallback. Both configurations
+also check the bundled 100-link list survives a failed update. The app,
+audiobook tests and UI/voice mocks receive the
+same compile definition. TLS verification remains enabled in either build.

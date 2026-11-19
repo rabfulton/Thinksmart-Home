@@ -12,7 +12,8 @@
     "navidrome": false,
     "jellyfin": false,
     "iptv": false,
-    "markets": false
+    "markets": false,
+    "audiobooks": false
   },
   "weather": {
     "name": "London",

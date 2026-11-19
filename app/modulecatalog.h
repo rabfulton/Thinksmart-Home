@@ -19,6 +19,7 @@ public:
         {"vrm","Victron energy","Battery and solar data; needs VRM credentials","energy",{},"battery."},
         {"navidrome","Music library","Local music; needs Navidrome server settings","music",{},{}},
         {"jellyfin","Video library","Films and series; needs Jellyfin server settings","video",{},"video."},
+        {"audiobooks","Audiobooks","LibriVox books, curated picks and saved listening positions","audiobooks",{},"audiobooks.",false},
         {"markets","Markets","Free price feeds, charts and price alerts","markets","markets","markets.",false},
         {"iptv","IPTV","Live internet television and saved channels","iptv","iptv","iptv.",false}
     };}

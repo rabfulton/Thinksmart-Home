@@ -14,7 +14,7 @@ try:
     if len(data) > 32768:
         raise ValueError('Request is too large')
     with socket.socket(socket.AF_UNIX) as client:
-        client.settimeout(40 if request.get("action") == "iptv.search" else 20 if request.get("action") == "radio.search" else 4)
+        client.settimeout(40 if request.get("action") in {"iptv.search", "audiobooks.search"} else 20 if request.get("action") == "radio.search" else 4)
         client.connect(os.environ.get('THINKSMART_CONTROL_SOCKET', '/run/thinksmart-ui/control.sock'))
         client.sendall(data)
         reply = b''

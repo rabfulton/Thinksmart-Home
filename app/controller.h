@@ -12,6 +12,7 @@
 #include "iptv.h"
 #include "markets.h"
 #include "news.h"
+#include "audiobooks.h"
 #include <QObject>
 #include <QProcess>
 #include <QLocalSocket>
@@ -38,6 +39,7 @@ class Controller:public QObject {
     Q_PROPERTY(IptvClient *iptv READ iptv CONSTANT)
     Q_PROPERTY(MarketsClient *markets READ markets CONSTANT)
     Q_PROPERTY(NewsSettings *newsSettings READ newsSettings CONSTANT)
+    Q_PROPERTY(AudiobooksClient *audiobooks READ audiobooks CONSTANT)
     Q_PROPERTY(QVariantList pageDefinitions READ pageDefinitions CONSTANT)
     Q_PROPERTY(bool virtualKeyboardEnabled READ virtualKeyboardEnabled CONSTANT)
     Q_PROPERTY(QString alarmText READ alarmText NOTIFY alarmChanged)
@@ -67,6 +69,7 @@ public:
     IptvClient *iptv(){return &m_iptv;}
     MarketsClient *markets(){return &m_markets;}
     NewsSettings *newsSettings(){return &m_newsSettings;}
+    AudiobooksClient *audiobooks(){return &m_audiobooks;}
     QVariantList pageDefinitions()const{return DeviceConfig::pageDefinitions().toVariantList();}
     Q_INVOKABLE void editLayout();
     bool virtualKeyboardEnabled()const{return qEnvironmentVariable("QT_IM_MODULE")=="qtvirtualkeyboard";}
@@ -137,6 +140,7 @@ private:
     IptvClient m_iptv;
     MarketsClient m_markets;
     NewsSettings m_newsSettings;
+    AudiobooksClient m_audiobooks;
     bool m_iptvSoftware=false;
     QJsonObject personalRequest(const QString &action,const QJsonObject &data);
     QJsonObject executeSteps(const QJsonArray &steps);

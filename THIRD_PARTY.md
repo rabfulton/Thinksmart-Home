@@ -59,3 +59,16 @@ Useful upstream projects:
 [ThinkSmart device research](https://github.com/rickx/ubuntu-thinksmart),
 [Sherpa-ONNX](https://github.com/k2-fsa/sherpa-onnx),
 [microWakeWord](https://github.com/OHF-Voice/micro-wake-word).
+
+Audiobooks use LibriVox API/podcast metadata and Internet Archive audio at runtime;
+Top 100 discovery uses [bstjohn.net](https://www.bstjohn.net/audiobooks/) ranking
+data. A compact factual index of 100 catalogue links, book/author names, genres,
+approximate durations and source ranks is bundled for offline discovery, with
+attribution in `app/data/audiobooks/SOURCE`. Website code/prose, download counts,
+Guardian list tags, recordings and cover art are excluded. Remote material and
+source metadata are not relicensed as our MIT code. See [Audiobooks](docs/AUDIOBOOKS.md).
+
+Cloudflare WARP is an optional, separately installed network service, governed by
+Cloudflare's terms. No WARP binaries, packages, source, registration state or
+account data are distributed here. Our generic Audiobooks local-proxy adapter is
+original MIT code, compiled out unless explicitly enabled.

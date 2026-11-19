@@ -160,6 +160,15 @@ exec sleep 20
         qputenv("THINKSMART_MARKETS_FILE",directory.filePath("markets.json").toUtf8());qputenv("THINKSMART_MARKETS_CACHE",directory.filePath("markets-cache.json").toUtf8());
         QFile::remove(directory.filePath("markets.json"));QFile::remove(directory.filePath("markets-cache.json"));
         if(QByteArray(QTest::currentTestFunction()).startsWith("markets"))modules.insert("markets",true);
+        qputenv("THINKSMART_AUDIOBOOKS_FILE",directory.filePath("audiobooks.json").toUtf8());qputenv("THINKSMART_AUDIOBOOKS_CACHE",directory.filePath("audiobooks-cache").toUtf8());qputenv("THINKSMART_DISABLE_AUDIOBOOKS","1");QFile::remove(directory.filePath("audiobooks.json"));QDir(directory.filePath("audiobooks-cache")).removeRecursively();
+        qunsetenv("THINKSMART_MEDIA_TEST_PLAYER");
+        if(QByteArray(QTest::currentTestFunction()).startsWith("audiobooks")){
+            modules.insert("audiobooks",true);qputenv("THINKSMART_MEDIA_TEST_PLAYER","/usr/bin/true");QDir().mkpath(directory.filePath("audiobooks-cache/books"));
+            QJsonArray tracks;for(int i=0;i<2;i++)tracks.append(QJsonObject{{"id",QString::number(i+1)},{"number",i+1},{"title",i?"Loomings":"Etymology and Extracts"},{"duration",180},{"url","https://archive.org/example-test.mp3"}});
+            auto book=AudiobooksClient::initialBook();book.insert("tracks",tracks);book.insert("description","A voyage aboard the Pequod, narrated by Ishmael.");book.insert("chapterCount",2);write("audiobooks-cache/books/753.json",QJsonDocument(book).toJson());
+            auto recommendation=book;recommendation.remove("tracks");recommendation.insert("id","catalog:moby-dick-by-herman-melville");recommendation.insert("genres",QJsonArray{"Adventure"});recommendation.insert("rank",1);
+            write("audiobooks-cache/discovery.json",QJsonDocument(QJsonObject{{"top",QJsonArray{recommendation}},{"picks",QJsonArray{QJsonObject{{"id","catalog:moby-dick-by-herman-melville"},{"title","Moby Dick"},{"catalogUrl",book.value("catalogUrl")},{"period","202508"}}}},{"periods",QJsonArray{QJsonObject{{"id","202508"},{"label","Aug 2025 · Monthly picks"}}}}}).toJson());
+        }
         const bool iptvTest=QByteArray(QTest::currentTestFunction()).startsWith("iptv") || QByteArray(QTest::currentTestFunction())=="wifiDialogKeyboardAndSavedPreferences";
         qputenv("THINKSMART_IPTV_FILE",directory.filePath("iptv-favourites.json").toUtf8());
         qputenv("THINKSMART_IPTV_CACHE",directory.filePath("iptv-cache.json").toUtf8());
@@ -176,6 +185,9 @@ exec sleep 20
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();
             pages.append(QJsonObject{{"id","tv"},{"title","TV"},{"kind","widgets"},{"widgets",QJsonArray{"iptv"}}});config.insert("pages",pages);
             QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
+        }
+        if(QByteArray(QTest::currentTestFunction()).startsWith("audiobooks")){
+            auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","dev-books"},{"title","Dev"},{"kind","widgets"},{"widgets",QJsonArray{"audiobooks"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
         }
         if(QByteArray(QTest::currentTestFunction()).startsWith("markets")){
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","markets-room"},{"title","Markets"},{"kind","widgets"},{"widgets",QJsonArray{"markets"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
@@ -298,6 +310,28 @@ exec sleep 20
             click("marketsAddAlert");QTRY_VERIFY(object("marketsAlertDialog")->property("opened").toBool());click("marketsAlertPrice");QTRY_VERIFY(qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("virtualEnterKey");QTRY_VERIFY(!qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("marketsSaveAlert");QTRY_VERIFY(!object("marketsAlertDialog")->property("visible").toBool());
         }
         QCOMPARE(media->markets()->alerts().size(),2);
+    }
+    void audiobooksWidgetAndDiscovery(){
+        screen->wake();window->resize(1280,800);QTest::qWait(60);click("pageButton_dev-books");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);click("audiobooksTile");QCOMPARE(window->property("selectedApp").toString(),QString("audiobooks"));
+        QTRY_COMPARE(object("audiobooksList")->property("count").toInt(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->detail().value("id").toString(),QString("lv:753"));QCOMPARE(object("audiobooksChapters")->property("count").toInt(),2);
+        const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(100);if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/audiobooks-%1.png").arg(size.width())));}}
+        click("audiobooksTab_top");QCOMPARE(media->audiobooks()->tab(),QString("top"));QTRY_COMPARE(object("audiobooksList")->property("count").toInt(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->chapters().size(),2);
+        click("audiobooksTab_picks");QCOMPARE(media->audiobooks()->periods().size(),1);QTRY_VERIFY(object("audiobookRow0"));click("audiobookRow0");QCOMPARE(media->audiobooks()->detail().value("id").toString(),QString("lv:753"));click("audiobooksBack");click("audiobooksBack");QCOMPARE(window->property("selectedApp").toString(),QString());
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void audiobooksVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
+    void audiobooksVoiceTools(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto restore=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QJsonObject session;QList<QJsonObject> messages;QPointer<QWebSocket> peer;auto cleanupPeer=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();messages.append(e);if(e.value("type")=="session.update"||e.value("type")=="session.start"){session=e.value("session").toObject();peer->sendTextMessage(live?"{\"type\":\"session.started\"}":"{\"type\":\"session.updated\"}");}});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
+        const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;QVERIFY(owner.value("instructions").toString().contains("Audiobooks module"));QVERIFY(QJsonDocument(owner.value("tools").toArray()).toJson().contains("audiobooks.play"));
+        const QJsonObject item{{"type","function_call"},{"name","device_action"},{"call_id","book-call"},{"arguments","{\"action\":\"audiobooks.play\",\"id\":\"lv:753\"}"}};
+        auto send=[&](QJsonObject e){peer->sendTextMessage(QString::fromUtf8(QJsonDocument(e).toJson(QJsonDocument::Compact)));};
+        if(live){auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","d1"},{"event",e}});};nested({{"type","response.created"},{"response",QJsonObject{{"id","r-book"}}}});nested({{"type","response.output_item.done"},{"response_id","r-book"},{"item",item}});nested({{"type","response.completed"},{"response",QJsonObject{{"id","r-book"}}}});}
+        else {send({{"type","response.created"},{"response",QJsonObject{{"id","r-book"}}}});send({{"type","response.done"},{"response",QJsonObject{{"id","r-book"},{"status","completed"},{"output",QJsonArray{item}}}}});}
+        QTRY_COMPARE(media->source(),QString("audiobooks"));QTRY_VERIFY(std::any_of(messages.cbegin(),messages.cend(),[](auto r){return QJsonDocument(r).toJson().contains("book-call")&&QJsonDocument(r).toJson().contains("accepted");}));voice->setEnabled(false);QTRY_VERIFY(voice->released());
     }
     void marketsVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
     void marketsVoiceTools(){

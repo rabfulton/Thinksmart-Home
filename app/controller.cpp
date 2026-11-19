@@ -23,6 +23,9 @@
 
 QString Controller::socketPath(){return qEnvironmentVariable("THINKSMART_CONTROL_SOCKET","/run/thinksmart-ui/control.sock");}
 Controller::Controller(ScreenController *display,QObject *parent):QObject(parent),m_display(display),m_audioLab(this,display),m_assistant(this,display),m_videoPlayer(this){
+    connect(&m_audiobooks,&AudiobooksClient::interruptPlayback,this,&Controller::stop);
+    connect(&m_audiobooks,&AudiobooksClient::playRequested,this,[this](const QUrl &url,const QString &title,const QString &subtitle,const QString &key,double start){playMedia("audiobooks",url,title,subtitle,{},false,key,start);});
+    connect(this,&Controller::playbackEvent,&m_audiobooks,&AudiobooksClient::report);
     connect(&m_markets,&MarketsClient::alertTriggered,this,[this](const QString &,bool chime){m_display->wake();if(chime&&!m_muted)playTone();});
     connect(&m_iptv,&IptvClient::playRequested,this,[this](const QUrl &url,const QString &name,bool software){m_iptvSoftware=software;playMedia("iptv",url,name,"Live TV",{},true,{},0);});
     connect(&m_layoutEditor,&LayoutEditor::restartRequested,this,[this](){
@@ -91,6 +94,7 @@ void Controller::setState(const QString &s,const QString &message){m_state=s;m_m
 void Controller::command(const QJsonArray &cmd){if(m_video&&m_videoPlayer.running()){m_videoPlayer.command(cmd);return;}if(m_ipc.state()==QLocalSocket::ConnectedState)m_ipc.write(QJsonDocument(QJsonObject{{"command",cmd}}).toJson(QJsonDocument::Compact)+'\n');}
 void Controller::finishPlayback(){if(!m_playbackKey.isEmpty())emit playbackEvent(m_playbackKey,"stopped",m_position,state()=="paused");m_playbackKey.clear();m_reported=false;}
 void Controller::beginPlayback(){
+    m_audiobooks.cancelPending();
     m_iptv.cancelPlayback();
     emit cancelDiscoveryRequested();
     m_videoPlayer.stop();m_audioLab.stop();if(!sharedAudioEnabled())m_assistant.stop();
@@ -107,7 +111,12 @@ void Controller::startPlayer(){
     QStringList args={"--idle=yes","--ao=alsa","--audio-device=alsa/default","--audio-format=s16","--audio-channels=stereo","--volume=100","--no-config","--cache=yes","--demuxer-max-bytes=16777216","--demuxer-max-back-bytes=1048576","--cache-secs=5","--network-timeout=15","--msg-level=all=warn","--terminal=no","--input-terminal=no","--input-ipc-server="+m_playerSocket};
     if(m_video)args<<"--vo=gpu"<<"--gpu-context=wayland"<<"--hwdec=auto-safe"<<"--fullscreen=yes"<<"--osc=yes"<<"--script-opts=osc-windowcontrols=yes";
     else args<<"--no-video";
-    m_player.start("mpv",args);m_connectAttempts=0;m_connectTimer.start();
+    args<<AudiobooksClient::playerOptions(m_source);
+    QString mediaPlayer="mpv";
+#ifdef THINKSMART_VOICE_TESTING
+    mediaPlayer=qEnvironmentVariable("THINKSMART_MEDIA_TEST_PLAYER","mpv");
+#endif
+    m_player.start(mediaPlayer,args);m_connectAttempts=0;m_connectTimer.start();
 }
 void Controller::loadMedia(){
     QJsonObject options{{"start",QString::number(m_start)}};
@@ -122,6 +131,7 @@ void Controller::play(){
         if(!m_phone.active())beginPlayback();else m_phone.transport("Play");return;
     }
     if(m_state=="paused"&&(m_videoPlayer.running()||m_ipc.state()==QLocalSocket::ConnectedState)){command({"set_property","pause",false});return;}
+    if(m_source=="audiobooks"){m_audiobooks.resume();return;}
     if(m_source=="iptv"&&!m_iptv.lastChannel().isEmpty()){m_iptv.play(m_iptv.lastChannel().value("id").toString());return;}
     if(m_source=="jellyfin"){emit replayRequested(m_source);return;}
     if(m_source=="radio"&&m_radio&&(m_radioId=="commons"||m_radioId=="lords")){emit radioRequested(m_radioId);return;}
@@ -130,6 +140,7 @@ void Controller::play(){
 }
 void Controller::pause(){if(m_source=="bluetooth")m_phone.transport("Pause");else if(m_state=="playing")command({"set_property","pause",true});}
 void Controller::stop(){
+    m_audiobooks.cancelPending();
     m_iptv.cancelPlayback();
     m_audioLab.stop();if(!sharedAudioEnabled())m_assistant.stop();
     emit cancelDiscoveryRequested();
@@ -140,8 +151,8 @@ void Controller::stop(){
 void Controller::toggle(){if(state()=="playing")pause();else if(m_switching||m_state=="connecting")stop();else play();}
 void Controller::useRadio(){if(!DeviceConfig::enabled("radio"))return;stop();m_source="radio";m_radioId="radio4";m_url=m_radioUrl;m_title="BBC Radio 4";m_subtitle="Live radio";m_headers.clear();m_video=false;m_playbackKey.clear();m_start=0;m_position=0;m_duration=0;emit changed();}
 void Controller::useBluetooth(){if(!DeviceConfig::enabled("bluetooth"))return;if(m_source=="bluetooth"&&(m_phone.active()||m_switching))return;finishPlayback();m_source="bluetooth";m_video=false;m_headers.clear();m_playbackKey.clear();m_position=0;m_duration=0;beginPlayback();}
-void Controller::next(){if(m_source=="bluetooth")m_phone.transport("Next");else if(m_source=="navidrome")emit advanceRequested(1);}
-void Controller::previous(){if(m_source=="bluetooth")m_phone.transport("Previous");else if(m_source=="navidrome")emit advanceRequested(-1);}
+void Controller::next(){if(m_source=="bluetooth")m_phone.transport("Next");else if(m_source=="navidrome")emit advanceRequested(1);else if(m_source=="audiobooks")m_audiobooks.advance(1);}
+void Controller::previous(){if(m_source=="bluetooth")m_phone.transport("Previous");else if(m_source=="navidrome")emit advanceRequested(-1);else if(m_source=="audiobooks")m_audiobooks.advance(-1);}
 void Controller::seek(double seconds){if(m_seekable&&m_duration>0)command({"seek",qBound(0.0,seconds,m_duration),"absolute"});}
 void Controller::setVolume(int value){m_volume=qBound(0,value,100);m_muted=false;m_settings.setValue("volume",m_volume);command({"set_property","mute",m_volume==0});m_volumeTimer.start();emit changed();}
 void Controller::toggleMute(){m_muted=!m_muted;command({"set_property","mute",m_muted||m_volume==0});m_volumeTimer.start();emit changed();}
@@ -158,15 +169,15 @@ void Controller::handlePlayerEvent(const QJsonObject &o){
         if(event=="playback-restart"&&m_wantPlay&&!m_switching){m_loadTimer.stop();setState("playing",m_subtitle.isEmpty()?"Playing":m_subtitle);if(!m_reported&&!m_playbackKey.isEmpty()){m_reported=true;emit playbackEvent(m_playbackKey,"start",m_position,false);}}
         if(event=="property-change"){
             QString name=o.value("name").toString();auto data=o.value("data");
-            if(name=="pause"&&m_wantPlay&&m_state!="connecting"&&!m_switching)setState(data.toBool()?"paused":"playing",data.toBool()?"Paused":m_subtitle);
+            if(name=="pause"&&m_wantPlay&&m_state!="connecting"&&!m_switching){setState(data.toBool()?"paused":"playing",data.toBool()?"Paused":m_subtitle);if(m_source=="audiobooks"&&m_reported)emit playbackEvent(m_playbackKey,"progress",m_position,data.toBool());}
             if(name=="time-pos"&&data.isDouble()){m_position=data.toDouble();if(m_video&&m_state=="playing")m_display->activity();emit changed();}
             if(name=="duration"&&data.isDouble()){m_duration=data.toDouble();emit changed();}
             if(name=="seekable")m_seekable=data.toBool();
         }
         if(event=="end-file"&&m_wantPlay&&!m_switching){
-            finishPlayback();m_wantPlay=false;m_loadTimer.stop();QString reason=o.value("reason").toString();
+            const auto finishedKey=m_playbackKey;finishPlayback();m_wantPlay=false;m_loadTimer.stop();QString reason=o.value("reason").toString();
             setState(reason=="error"?"error":"stopped",reason=="error"?"Stream unavailable. Try again.":"Playback finished");
-            if(m_video)m_player.terminate();if(reason=="eof"&&m_source=="navidrome")emit advanceRequested(1);
+            if(m_video)m_player.terminate();if(reason=="eof"&&m_source=="navidrome")emit advanceRequested(1);if(reason=="eof"&&m_source=="audiobooks")m_audiobooks.completed(finishedKey);
         }
 }
 
@@ -226,7 +237,7 @@ void Controller::handleClient(QLocalSocket *client){
         else if(request=="next")next();else if(request=="previous")previous();
         else if(request.startsWith("open-app ")) {
             const QString app=request.mid(9);
-            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes","iptv","markets"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
+            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes","iptv","markets","audiobooks"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
         }
         else if(request=="screen-off")m_display->sleep();
         else if(request=="wake")m_display->wake();
@@ -263,6 +274,7 @@ void Controller::setDataSources(WeatherClient *weather,RadioCatalog *radio,VrmCl
 }
 bool Controller::hasRadioStation(const QString &id)const{return m_radio&&m_radio->knows(id);}
 void Controller::toolRequestAsync(const QJsonObject &request,std::function<void(QJsonObject)> done){
+    if(request.value("action")=="audiobooks.search"&&DeviceConfig::enabled("audiobooks")){m_audiobooks.searchRequest(request,std::move(done));return;}
     if(request.value("action")=="iptv.search"&&DeviceConfig::enabled("iptv")){
         const QPointer<Controller> self(this);
         m_iptv.search(request,[self,request,done=std::move(done)](QJsonObject result){
@@ -298,6 +310,9 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
             QJsonObject{{"action","radio.play"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","radio.random"},{"required",QJsonArray{"genre"}}},
             QJsonObject{{"action","iptv.search"},{"optional",QJsonArray{"search","country","category"}},{"limit",5}},
+            QJsonObject{{"action","audiobooks.list"}},QJsonObject{{"action","audiobooks.status"}},QJsonObject{{"action","audiobooks.search"},{"required",QJsonArray{"search"}},{"optional",QJsonArray{"category"}}},
+            QJsonObject{{"action","audiobooks.play"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","audiobooks.resume"}},QJsonObject{{"action","audiobooks.next"}},QJsonObject{{"action","audiobooks.previous"}},
+            QJsonObject{{"action","audiobooks.save"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","audiobooks.remove"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","markets.get"},{"optional",QJsonArray{"symbol"}}},
             QJsonObject{{"action","markets.refresh"}},QJsonObject{{"action","markets.focus"},{"required",QJsonArray{"symbol"}}},
             QJsonObject{{"action","markets.watchlist"},{"required",QJsonArray{"symbols"}}},
@@ -315,6 +330,8 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         result.insert("actions",available);result.insert("modules",QJsonObject::fromVariantMap(DeviceConfig::modules()));
         for(const auto &name:PersonalStore::actions())if(DeviceConfig::actionEnabled(name))available.append(QJsonObject{{"action",name},{"optional",QJsonArray{"data"}}});
         result.insert("actions",available);
+    }else if(action.startsWith("audiobooks.")){
+        result=m_audiobooks.request(request);
     }else if(action.startsWith("markets.")){
         result=m_markets.request(request);
         if(action=="markets.focus"&&result.value("ok").toBool())emit openAppRequested("markets");

@@ -7,9 +7,9 @@ configuration and restarts the dashboard; it stops current playback/conversation
 then returns with the screen awake. Cancel discards the draft.
 
 Widget pages hold up to six cards (three columns in landscape, two in portrait).
-Cards retain their size when a page has empty slots. The TV widget opens its full
-channel browser, like the Music and Video launchers.
-Chess, Notes, News, Markets and IPTV provide full-page views. Home stays available and editable;
+Cards retain their size when a page has empty slots. The TV and Audiobooks widgets
+open their full browsers, like the Music and Video launchers.
+Chess, Notes, News, Markets, IPTV and Audiobooks provide full-page views. Home stays available and editable;
 its widgets can all be removed. Module placements are retained while disabled.
 Removing a placement does not disable its AI/background integration. The same
 widget can be shown on different pages, sharing one native service.
@@ -29,6 +29,7 @@ module registrations.
 | Flag | Enables | Additional setup |
 | --- | --- | --- |
 | `assistant` | Voice settings/conversations, local wake word and orb | OpenAI credentials; optional audio/wake setup in [VOICE.md](VOICE.md) |
+| `audiobooks` | LibriVox widget, discovery, chapter playback and saved positions | [Audiobook guide](AUDIOBOOKS.md); no key; disabled by default |
 | `radio` | Worldwide search, genre browsing and saved favourites | [Radio guide](RADIO.md); optional curated catalogue |
 | `markets` | Watchlist, chart widget, price alerts and AI tools | No key required; [Markets guide](MARKETS.md). Free quotes may be delayed; disabled by default |
 | `weather` | Home widget and forecast | Configure weather location/timezone |

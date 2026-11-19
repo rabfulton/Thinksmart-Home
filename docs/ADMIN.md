@@ -113,3 +113,17 @@ Cache: `~thinksmart/.cache/ThinkSmart/Home/markets.json`. Module policies:
 Column sources: `~thinksmart/.config/ThinkSmart/Home/news.json` (mode 600).
 Edit through Settings → Pages & modules → Modules → News → Edit. Existing
 World & finance / Hacker News choices are preserved. [News guide](NEWS.md).
+
+## Audiobooks
+
+Shelf/positions: `~thinksmart/.local/share/ThinkSmart/Home/audiobooks/library.json`.
+Cache: `~thinksmart/.cache/ThinkSmart/Home/audiobooks/`. Module rules:
+`/etc/thinksmart/assistant/modules/audiobooks/{realtime,live,backend}.md`.
+[Audiobook guide](AUDIOBOOKS.md). No credentials or separate audio service needed.
+
+Optional local-proxy support is compiled out by default. Build with
+`-DTHINKSMART_ENABLE_AUDIOBOOKS_PROXY=ON`, then supply the module-only
+`THINKSMART_AUDIOBOOKS_PROXY` setting through a launcher service drop-in if
+needed. The [proxy guide](AUDIOBOOKS.md#optional-proxy-for-audiobooks-only)
+covers WARP as one possible ISP-filtering workaround, installation scope and
+removal. Any proxy service and its registration state are managed separately.

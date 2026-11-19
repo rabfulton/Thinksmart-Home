@@ -1,0 +1,806 @@
+{
+  "generatedAt": "2026-05-18T14:04:50.870Z",
+  "source": "https://www.bstjohn.net/audiobooks/",
+  "books": [
+    {
+      "r": 1,
+      "t": "Frankenstein, or The Modern Prometheus",
+      "a": "Shelley, Mary Wollstonecraft",
+      "y": "Science Fiction|Horror|Classic Literature",
+      "h": 8,
+      "l": "https://librivox.org/frankenstein-or-modern-prometheus-by-mary-w-shelley/"
+    },
+    {
+      "r": 2,
+      "t": "Moby Dick, or the Whale",
+      "a": "Melville, Herman",
+      "y": "Adventure|Classic Literature",
+      "h": 24,
+      "l": "https://librivox.org/moby-dick-by-herman-melville/"
+    },
+    {
+      "r": 3,
+      "t": "Pride and Prejudice",
+      "a": "Austen, Jane",
+      "y": "Romance|Classic Literature",
+      "h": 13,
+      "l": "https://librivox.org/pride-and-prejudice-by-jane-austen/"
+    },
+    {
+      "r": 4,
+      "t": "Crime and Punishment",
+      "a": "Dostoyevsky, Fyodor",
+      "y": "Mystery & Detective|Classic Literature",
+      "h": 23,
+      "l": "https://librivox.org/crime-and-punishment-by-fyodor-dostoyevsky/"
+    },
+    {
+      "r": 5,
+      "t": "Romeo and Juliet (version 2)",
+      "a": "Shakespeare, William",
+      "y": "Romance|Drama|Classic Literature",
+      "h": 3,
+      "l": "https://librivox.org/romeo-and-juliet-version-2-by-william-shakespeare/"
+    },
+    {
+      "r": 6,
+      "t": "Strange Case of Dr. Jekyll and Mr. Hyde",
+      "a": "Stevenson, Robert Louis",
+      "y": "Science Fiction|Horror|Mystery & Detective|Classic Literature",
+      "h": 3,
+      "l": "https://librivox.org/the-strange-case-of-dr-jekyll-mr-hyde-by-robert-louis-stevenson/"
+    },
+    {
+      "r": 7,
+      "t": "Alice's Adventures in Wonderland",
+      "a": "Carroll, Lewis",
+      "y": "Fantasy|Children's|Classic Literature",
+      "h": 2,
+      "l": "https://librivox.org/alices-adventures-in-wonderland-by-lewis-carroll/"
+    },
+    {
+      "r": 8,
+      "t": "Room with a View",
+      "a": "Forster, E. M.",
+      "y": "Romance|Humor|Classic Literature",
+      "h": 7,
+      "l": "https://librivox.org/a-room-with-a-view-by-em-forster/"
+    },
+    {
+      "r": 9,
+      "t": "Count of Monte Cristo",
+      "a": "Dumas, Alexandre",
+      "y": "Adventure|Historical Fiction|History|Classic Literature",
+      "h": 49,
+      "l": "https://librivox.org/the-count-of-monte-cristo-by-alexandre-dumas/"
+    },
+    {
+      "r": 10,
+      "t": "King in Yellow (part 1)",
+      "a": "Chambers, Robert W.",
+      "y": "Fantasy|Horror|Mystery & Detective|Short Stories|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/king-in-yellow-by-robert-w-chambers/"
+    },
+    {
+      "r": 11,
+      "t": "Middlemarch",
+      "a": "Eliot, George",
+      "y": "Romance|Historical Fiction|Classic Literature",
+      "h": 33,
+      "l": "https://librivox.org/middlemarch-by-george-eliot/"
+    },
+    {
+      "r": 12,
+      "t": "Great Gatsby (Version 3)",
+      "a": "Fitzgerald, F. Scott",
+      "y": "Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/great-gatsby-version-3-by-f-scott-fitzgerald/"
+    },
+    {
+      "r": 13,
+      "t": "Little Women (version 2)",
+      "a": "Alcott, Louisa May",
+      "y": "Romance|Classic Literature",
+      "h": 19,
+      "l": "https://librivox.org/little-women-by-louisa-may-alcott-version-2/"
+    },
+    {
+      "r": 14,
+      "t": "Jane Eyre",
+      "a": "Brontë, Charlotte",
+      "y": "Romance|Classic Literature",
+      "h": 20,
+      "l": "https://librivox.org/jane-eyre-by-charlotte-bront/"
+    },
+    {
+      "r": 15,
+      "t": "Blue Castle (Version 2)",
+      "a": "Montgomery, Lucy Maud",
+      "y": "Romance|Classic Literature",
+      "h": 7,
+      "l": "https://librivox.org/the-blue-castle-version-2-by-lucy-maud-montgomery/"
+    },
+    {
+      "r": 16,
+      "t": "Importance of Being Earnest",
+      "a": "Wilde, Oscar",
+      "y": "Drama|Classic Literature",
+      "h": 2,
+      "l": "https://librivox.org/the-importance-of-being-earnest-by-oscar-wilde/"
+    },
+    {
+      "r": 17,
+      "t": "Dracula",
+      "a": "Stoker, Bram",
+      "y": "Fantasy|Horror|Mystery & Detective|Classic Literature",
+      "h": 16,
+      "l": "https://librivox.org/dracula-by-bram-stoker/"
+    },
+    {
+      "r": 18,
+      "t": "Adventures of Huckleberry Finn",
+      "a": "Twain, Mark",
+      "y": "Adventure|Humor|Children's|Classic Literature",
+      "h": 10,
+      "l": "https://librivox.org/the-adventures-of-huckleberry-finn-by-mark-twain/"
+    },
+    {
+      "r": 19,
+      "t": "Wuthering Heights",
+      "a": "Brontë, Emily",
+      "y": "Horror|Romance|Classic Literature",
+      "h": 11,
+      "l": "https://librivox.org/wuthering-heights-by-emily-bronte/"
+    },
+    {
+      "r": 20,
+      "t": "Picture of Dorian Gray (version 2 dramatic reading)",
+      "a": "Wilde, Oscar",
+      "y": "Horror|Philosophy|Classic Literature",
+      "h": 9,
+      "l": "https://librivox.org/the-picture-of-dorian-gray-by-oscar-wilde-2/"
+    },
+    {
+      "r": 21,
+      "t": "Twenty Years After",
+      "a": "Dumas, Alexandre",
+      "y": "Adventure|Historical Fiction|History|Classic Literature",
+      "h": 25,
+      "l": "https://librivox.org/twenty-years-after-by-alexandre-dumas/"
+    },
+    {
+      "r": 22,
+      "t": "Enchanted April",
+      "a": "Arnim, Elizabeth von",
+      "y": "Romance|Classic Literature",
+      "h": 10,
+      "l": "https://librivox.org/the-enchanted-april-by-elizabeth-von-arnim/"
+    },
+    {
+      "r": 23,
+      "t": "Adventures of Sherlock Holmes",
+      "a": "Doyle, Sir Arthur Conan",
+      "y": "Mystery & Detective|Short Stories|Classic Literature",
+      "h": 10,
+      "l": "https://librivox.org/the-adventures-of-sherlock-holmes/"
+    },
+    {
+      "r": 24,
+      "t": "Brothers Karamazov",
+      "a": "Dostoyevsky, Fyodor",
+      "y": "Classic Literature",
+      "h": 37,
+      "l": "https://librivox.org/the-brothers-karamazov-by-fyodor-dostoyevsky/"
+    },
+    {
+      "r": 25,
+      "t": "Doll's House",
+      "a": "Ibsen, Henrik",
+      "y": "Drama|Classic Literature",
+      "h": 2,
+      "l": "https://librivox.org/a-dolls-house-by-henrik-ibsen/"
+    },
+    {
+      "r": 26,
+      "t": "Adventures of Ferdinand Count Fathom",
+      "a": "Smollett, Tobias",
+      "y": "Horror|Adventure|Classic Literature",
+      "h": 16,
+      "l": "https://librivox.org/the-adventures-of-ferdinand-count-fathom-by-tobias-smollett/"
+    },
+    {
+      "r": 27,
+      "t": "Tale of Two Cities",
+      "a": "Dickens, Charles",
+      "y": "Historical Fiction|History|Classic Literature",
+      "h": 14,
+      "l": "https://librivox.org/a-tale-of-two-cities-by-charles-dickens/"
+    },
+    {
+      "r": 28,
+      "t": "Expedition of Humphry Clinker",
+      "a": "Smollett, Tobias",
+      "y": "Historical Fiction|Humor|Essays|Classic Literature",
+      "h": 17,
+      "l": "https://librivox.org/the-expedition-of-humphry-clinker-by-tobias-smollett/"
+    },
+    {
+      "r": 29,
+      "t": "Cranford",
+      "a": "Gaskell, Elizabeth Cleghorn",
+      "y": "Classic Literature",
+      "h": 6,
+      "l": "https://librivox.org/cranford-by-elizabeth-gaskell/"
+    },
+    {
+      "r": 30,
+      "t": "History of Tom Jones, A Foundling",
+      "a": "Fielding, Henry",
+      "y": "Humor",
+      "h": 36,
+      "l": "https://librivox.org/history-of-tom-jones-by-henry-fielding/"
+    },
+    {
+      "r": 31,
+      "t": "Adventures of Roderick Random",
+      "a": "Smollett, Tobias",
+      "y": "Adventure|Historical Fiction|Classic Literature",
+      "h": 19,
+      "l": "https://librivox.org/the-adventures-of-roderick-random-by-tobias-smollett/"
+    },
+    {
+      "r": 32,
+      "t": "Modest Proposal",
+      "a": "Swift, Jonathan",
+      "y": "Humor|Essays|Non-Fiction",
+      "h": 0,
+      "l": "https://librivox.org/a-modest-proposal-by-jonathan-swift/"
+    },
+    {
+      "r": 33,
+      "t": "Adventures of Tom Sawyer",
+      "a": "Twain, Mark",
+      "y": "Adventure|Humor|Children's|Classic Literature",
+      "h": 6,
+      "l": "https://librivox.org/tom-sawyer-by-mark-twain/"
+    },
+    {
+      "r": 34,
+      "t": "Thus Spake Zarathustra: A Book for All and None",
+      "a": "Nietzsche, Friedrich",
+      "y": "Philosophy",
+      "h": 12,
+      "l": "https://librivox.org/thus-spake-zarathustra-by-friedrich-nietzsche/"
+    },
+    {
+      "r": 35,
+      "t": "Great Expectations",
+      "a": "Dickens, Charles",
+      "y": "Classic Literature",
+      "h": 20,
+      "l": "https://librivox.org/great-expectations-by-charles-dickens/"
+    },
+    {
+      "r": 36,
+      "t": "Beowulf (Hall translation)",
+      "a": "Unknown",
+      "y": "Fantasy|Poetry|Classic Literature",
+      "h": 3,
+      "l": "https://librivox.org/beowulf-by-unknown-2/"
+    },
+    {
+      "r": 37,
+      "t": "Grimms' Fairy Tales",
+      "a": "Grimm, Jacob & Wilhelm",
+      "y": "Fantasy|Short Stories|Classic Literature",
+      "h": 10,
+      "l": "https://librivox.org/fairy-tales-by-the-brothers-grimm/"
+    },
+    {
+      "r": 38,
+      "t": "Walden",
+      "a": "Thoreau, Henry David",
+      "y": "Philosophy|History|Biography|Essays",
+      "h": 14,
+      "l": "https://librivox.org/walden-by-henry-david-thoreau/"
+    },
+    {
+      "r": 39,
+      "t": "Prince",
+      "a": "Machiavelli, Niccolò",
+      "y": "Philosophy|History|Non-Fiction",
+      "h": 5,
+      "l": "https://librivox.org/the-prince-by-niccolo-machiavelli/"
+    },
+    {
+      "r": 40,
+      "t": "Treasure Island",
+      "a": "Stevenson, Robert Louis",
+      "y": "Adventure|Historical Fiction|Children's|Classic Literature",
+      "h": 7,
+      "l": "https://librivox.org/treasure-island-by-robert-louis-stevenson/"
+    },
+    {
+      "r": 41,
+      "t": "Leviathan (Books I and II)",
+      "a": "Hobbes, Thomas",
+      "y": "Philosophy|History|Non-Fiction",
+      "h": 11,
+      "l": "https://librivox.org/leviathan-books-i-and-ii-by-thomas-hobbes/"
+    },
+    {
+      "r": 42,
+      "t": "Metamorphosis (version 5)",
+      "a": "Kafka, Franz",
+      "y": "Horror|Classic Literature",
+      "h": 2,
+      "l": "https://librivox.org/the-metamorphosis-version-5-by-franz-kafka/"
+    },
+    {
+      "r": 43,
+      "t": "Life on the Mississippi",
+      "a": "Twain, Mark",
+      "y": "History|Biography|Non-Fiction",
+      "h": 14,
+      "l": "https://librivox.org/life-on-the-mississippi-by-mark-twain/"
+    },
+    {
+      "r": 44,
+      "t": "Ulysses",
+      "a": "Joyce, James",
+      "y": "Classic Literature",
+      "h": 32,
+      "l": "https://librivox.org/ulysses-by-james-joyce/"
+    },
+    {
+      "r": 45,
+      "t": "Sense and Sensibility",
+      "a": "Austen, Jane",
+      "y": "Romance|Classic Literature",
+      "h": 12,
+      "l": "https://librivox.org/sense-and-sensibility-by-jane-austen/"
+    },
+    {
+      "r": 46,
+      "t": "Hound of the Baskervilles",
+      "a": "Doyle, Sir Arthur Conan",
+      "y": "Mystery & Detective|Classic Literature",
+      "h": 5,
+      "l": "https://librivox.org/the-hound-of-the-baskervilles-by-arthur-conan-doyle/"
+    },
+    {
+      "r": 47,
+      "t": "Study in Scarlet (version 2)",
+      "a": "Doyle, Sir Arthur Conan",
+      "y": "Mystery & Detective|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/a-study-in-scarlet-by-sir-arthur-conan-doyle-2/"
+    },
+    {
+      "r": 48,
+      "t": "Autobiography of Benjamin Franklin",
+      "a": "Franklin, Benjamin",
+      "y": "History|Biography",
+      "h": 7,
+      "l": "https://librivox.org/the-autobigraphy-of-benjamin-franklin-ed-by-frank-woodworth-pine/"
+    },
+    {
+      "r": 49,
+      "t": "Anne of Green Gables",
+      "a": "Montgomery, Lucy Maud",
+      "y": "Children's",
+      "h": 10,
+      "l": "https://librivox.org/anne-of-green-gables-by-lucy-maud-montgomery/"
+    },
+    {
+      "r": 50,
+      "t": "War and Peace, Book 01: 1805",
+      "a": "Tolstoy, Leo",
+      "y": "Historical Fiction|History|Classic Literature",
+      "h": 5,
+      "l": "https://librivox.org/war-and-peace-book-01-by-leo-tolstoy/"
+    },
+    {
+      "r": 51,
+      "t": "Narrative of the Life of Frederick Douglass",
+      "a": "Douglass, Frederick",
+      "y": "History|Biography",
+      "h": 4,
+      "l": "https://librivox.org/narrative-of-the-life-of-frederick-douglass-by-frederick-douglass/"
+    },
+    {
+      "r": 52,
+      "t": "Kama Sutra",
+      "a": "Vatsyayana, Mallanaga",
+      "y": "Classic Literature",
+      "h": 6,
+      "l": "https://librivox.org/the-kama-sutra-by-mallanaga-vatsyayana/"
+    },
+    {
+      "r": 53,
+      "t": "Gulliver's Travels",
+      "a": "Swift, Jonathan",
+      "y": "Fantasy|Adventure|Humor|Classic Literature",
+      "h": 11,
+      "l": "https://librivox.org/gullivers-travels-by-jonathan-swift/"
+    },
+    {
+      "r": 54,
+      "t": "Odyssey",
+      "a": "Homer",
+      "y": "Fantasy|Poetry|Classic Literature",
+      "h": 11,
+      "l": "https://librivox.org/the-odyssey-by-homer/"
+    },
+    {
+      "r": 55,
+      "t": "Beyond Good and Evil",
+      "a": "Nietzsche, Friedrich",
+      "y": "Philosophy",
+      "h": 8,
+      "l": "https://librivox.org/beyond-good-and-evil-by-friedrich-nietzsche/"
+    },
+    {
+      "r": 56,
+      "t": "Mysteries of Udolpho",
+      "a": "Radcliffe, Ann",
+      "y": "Horror|Mystery & Detective|Romance|Classic Literature",
+      "h": 32,
+      "l": "https://librivox.org/mysteries-of-udolpho-by-ann-radcliffe/"
+    },
+    {
+      "r": 57,
+      "t": "Wonderful Wizard of Oz",
+      "a": "Baum, L. Frank",
+      "y": "Fantasy|Adventure|Children's|Classic Literature",
+      "h": 3,
+      "l": "https://librivox.org/the-wonderful-wizard-of-oz/"
+    },
+    {
+      "r": 58,
+      "t": "Ramayan, Book 2",
+      "a": "Valmiki",
+      "y": "Fantasy|Poetry|Classic Literature",
+      "h": 11,
+      "l": "https://librivox.org/the-ramayana-book-2-by-valmiki/"
+    },
+    {
+      "r": 59,
+      "t": "Works of Edgar Allan Poe, Raven Edition, Volume 2",
+      "a": "Poe, Edgar Allan",
+      "y": "Fantasy|Horror|Mystery & Detective|Short Stories|Classic Literature",
+      "h": 10,
+      "l": "https://librivox.org/the-works-of-edgar-allan-poe-raven-edition-volume-2-by-edgar-allan-poe/"
+    },
+    {
+      "r": 60,
+      "t": "History Of Sir Richard Calmady",
+      "a": "Malet, Lucas",
+      "y": "Romance|Classic Literature",
+      "h": 31,
+      "l": "https://librivox.org/the-history-of-sir-richard-calmady-by-lucas-malet/"
+    },
+    {
+      "r": 61,
+      "t": "Peter Pan (version 2)",
+      "a": "Barrie, J. M.",
+      "y": "Fantasy|Adventure|Children's|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/peter-pan-version-2/"
+    },
+    {
+      "r": 62,
+      "t": "Carmen",
+      "a": "Mérimée, Prosper",
+      "y": "Mystery & Detective|Romance|Classic Literature",
+      "h": 2,
+      "l": "https://librivox.org/carmen-by-prosper-merimee/"
+    },
+    {
+      "r": 63,
+      "t": "Souls of Black Folk",
+      "a": "Du Bois, W. E. B.",
+      "y": "History|Essays|Non-Fiction",
+      "h": 7,
+      "l": "https://librivox.org/souls-of-black-folks-by-web-du-bois/"
+    },
+    {
+      "r": 64,
+      "t": "Lady of the Lake",
+      "a": "Scott, Sir Walter",
+      "y": "Fantasy|Adventure|Poetry|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/the-lady-of-the-lake-by-sir-walter-scott/"
+    },
+    {
+      "r": 65,
+      "t": "Turn of the Screw",
+      "a": "James, Henry",
+      "y": "Horror|Mystery & Detective|Classic Literature",
+      "h": 5,
+      "l": "https://librivox.org/the-turn-of-the-screw-by-henry-james/"
+    },
+    {
+      "r": 66,
+      "t": "Lives of the Twelve Caesars",
+      "a": "Forester, T.; Suetonius Tranquillus, Gaius",
+      "y": "History|Biography",
+      "h": 16,
+      "l": "https://librivox.org/twelve-caesars-by-suetonius/"
+    },
+    {
+      "r": 67,
+      "t": "Green Mummy",
+      "a": "Hume, Fergus",
+      "y": "Mystery & Detective|Romance|Classic Literature",
+      "h": 7,
+      "l": "https://librivox.org/the-green-mummy-by-fergus-hume/"
+    },
+    {
+      "r": 68,
+      "t": "Great Controversy",
+      "a": "White, Ellen G.",
+      "y": "Religion|History",
+      "h": 23,
+      "l": "https://librivox.org/the-great-controversy-by-ellen-g-white/"
+    },
+    {
+      "r": 69,
+      "t": "Man Who Was Thursday, A Nightmare",
+      "a": "Chesterton, G. K.",
+      "y": "Fantasy|Mystery & Detective|Adventure|Philosophy|Classic Literature",
+      "h": 6,
+      "l": "https://librivox.org/the-man-who-was-thursday-a-nightmare-by-gk-chesterton/"
+    },
+    {
+      "r": 70,
+      "t": "Anna Karenina, Book 1",
+      "a": "Tolstoy, Leo",
+      "y": "Romance|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/anna-karenina-book-1-by-leo-tolstoy/"
+    },
+    {
+      "r": 71,
+      "t": "Extraordinary Adventures of Arsène Lupin, Gentleman-Burglar",
+      "a": "Leblanc, Maurice",
+      "y": "Mystery & Detective|Adventure|Short Stories|Classic Literature",
+      "h": 5,
+      "l": "https://librivox.org/the-extraordinary-adventures-of-arsene-lupin-gentleman-burglar/"
+    },
+    {
+      "r": 72,
+      "t": "Heart of Darkness",
+      "a": "Conrad, Joseph",
+      "y": "Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/heart-of-darkness-by-joseph-conrad/"
+    },
+    {
+      "r": 73,
+      "t": "Calculus Made Easy",
+      "a": "Thompson, Silvanus P.",
+      "y": "Non-Fiction",
+      "h": 10,
+      "l": "https://librivox.org/calculus-made-easy-by-silvanus-p-thompson/"
+    },
+    {
+      "r": 74,
+      "t": "Tragedy of King Richard II (version 2)",
+      "a": "Shakespeare, William",
+      "y": "Drama|Classic Literature",
+      "h": 2,
+      "l": "https://librivox.org/tragedy-of-king-richard-ii-version-2-by-william-shakespeare/"
+    },
+    {
+      "r": 75,
+      "t": "Jane Austen's Juvenilia",
+      "a": "Austen, Jane",
+      "y": "Romance|Classic Literature",
+      "h": 5,
+      "l": "https://librivox.org/jane-austens-juvenilia-by-jane-austen/"
+    },
+    {
+      "r": 76,
+      "t": "Honeymoon in Space",
+      "a": "Griffith, George",
+      "y": "Science Fiction|Fantasy|Adventure|Romance|Classic Literature",
+      "h": 6,
+      "l": "https://librivox.org/a-honeymoon-in-space-by-george-griffith/"
+    },
+    {
+      "r": 77,
+      "t": "Misérables, Volume 1",
+      "a": "Hugo, Victor",
+      "y": "Historical Fiction|Classic Literature",
+      "h": 13,
+      "l": "https://librivox.org/les-miserables-vol-1-by-victor-hugo/"
+    },
+    {
+      "r": 78,
+      "t": "On Liberty (Version 2)",
+      "a": "Mill, John Stuart",
+      "y": "Philosophy",
+      "h": 6,
+      "l": "https://librivox.org/on-liberty-by-john-stuart-mill-2/"
+    },
+    {
+      "r": 79,
+      "t": "Misplaced Battleship",
+      "a": "Harrison, Harry",
+      "y": "Science Fiction|Fantasy|Mystery & Detective|Adventure|Classic Literature",
+      "h": 1,
+      "l": "https://librivox.org/the-misplaced-battleship-by-harry-harrison/"
+    },
+    {
+      "r": 80,
+      "t": "Canterbury Tales (Middle English)",
+      "a": "Chaucer, Geoffrey",
+      "y": "Poetry|Classic Literature",
+      "h": 24,
+      "l": "https://librivox.org/canterbury-tales-mid-eng-geoffrey-chaucer/"
+    },
+    {
+      "r": 81,
+      "t": "Yvain, or the Knight with the Lion",
+      "a": "Troyes, Chrétien de",
+      "y": "Fantasy|Adventure|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/yvain-or-the-knight-with-the-lion-by-chretien-de-troyes/"
+    },
+    {
+      "r": 82,
+      "t": "Connecticut Yankee in King Arthur's Court",
+      "a": "Twain, Mark",
+      "y": "Science Fiction|Fantasy|Humor|Classic Literature",
+      "h": 13,
+      "l": "https://librivox.org/a-connecticut-yankee-in-king-arthurs-court-by-mark-twain/"
+    },
+    {
+      "r": 83,
+      "t": "Prince and the Pauper",
+      "a": "Twain, Mark",
+      "y": "Historical Fiction|Children's|Classic Literature",
+      "h": 6,
+      "l": "https://librivox.org/the-prince-and-the-pauper-by-mark-twain/"
+    },
+    {
+      "r": 84,
+      "t": "Thuvia, Maid of Mars",
+      "a": "Burroughs, Edgar Rice",
+      "y": "Science Fiction|Fantasy|Adventure|Romance|Classic Literature",
+      "h": 5,
+      "l": "https://librivox.org/thuvia-maid-of-mars-by-edgar-rice-burroughs/"
+    },
+    {
+      "r": 85,
+      "t": "Sex Life of the Gods",
+      "a": "Knerr, Michael E.",
+      "y": "Science Fiction|Fantasy|Romance|Classic Literature",
+      "h": 3,
+      "l": "https://librivox.org/sex-life-of-the-gods-by-michael-knerr/"
+    },
+    {
+      "r": 86,
+      "t": "Monk: A Romance (Version 2)",
+      "a": "Lewis, Matthew",
+      "y": "Horror|Romance|Classic Literature",
+      "h": 14,
+      "l": "https://librivox.org/the-monk-a-romance-version-2-by-matthew-lewis/"
+    },
+    {
+      "r": 87,
+      "t": "Around the World in Eighty Days (version 3)",
+      "a": "Verne, Jules",
+      "y": "Adventure|Classic Literature",
+      "h": 6,
+      "l": "https://librivox.org/around-the-world-in-eighty-days-by-jules-verne/"
+    },
+    {
+      "r": 89,
+      "t": "King Arthur and the Knights of the Round Table",
+      "a": "Holland, Rupert S.; Malory, Sir Thomas",
+      "y": "Fantasy|Adventure|Classic Literature",
+      "h": 9,
+      "l": "https://librivox.org/king-arthur-and-the-knights-of-the-round-table-by-sir-thomas-malory/"
+    },
+    {
+      "r": 90,
+      "t": "Journey to the Centre of the Earth",
+      "a": "Verne, Jules",
+      "y": "Science Fiction|Fantasy|Adventure|Classic Literature",
+      "h": 10,
+      "l": "https://librivox.org/journey-to-the-centre-of-the-earth-by-jules-verne-griffith-and-farran-publishers/"
+    },
+    {
+      "r": 91,
+      "t": "Henrietta Temple",
+      "a": "Disraeli, Benjamin",
+      "y": "Romance|Classic Literature",
+      "h": 17,
+      "l": "https://librivox.org/henrietta-temple-by-benjamin-disraeli/"
+    },
+    {
+      "r": 92,
+      "t": "Sorrows of Young Werther",
+      "a": "Goethe, Johann Wolfgang von",
+      "y": "Romance|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/the-sorrows-of-young-werther-by-johann-wolfgang-von-goethe/"
+    },
+    {
+      "r": 93,
+      "t": "Christmas Carol",
+      "a": "Dickens, Charles",
+      "y": "Horror|Children's|Classic Literature",
+      "h": 3,
+      "l": "https://librivox.org/a-christmas-carol-by-charles-dickens/"
+    },
+    {
+      "r": 94,
+      "t": "Republic",
+      "a": "Plato (Πλάτων)",
+      "y": "Philosophy|Non-Fiction",
+      "h": 13,
+      "l": "https://librivox.org/platos_republic/"
+    },
+    {
+      "r": 95,
+      "t": "Sign of the Four",
+      "a": "Doyle, Sir Arthur Conan",
+      "y": "Mystery & Detective|Classic Literature",
+      "h": 4,
+      "l": "https://librivox.org/the-sign-of-the-four-by-sir-arthur-conan-doyle/"
+    },
+    {
+      "r": 96,
+      "t": "Legend of Sleepy Hollow",
+      "a": "Irving, Washington",
+      "y": "Fantasy|Children's|Short Stories|Classic Literature",
+      "h": 1,
+      "l": "https://librivox.org/the-legend-of-sleepy-hollow-by-washington-irving/"
+    },
+    {
+      "r": 97,
+      "t": "Incidents in the Life of a Slave Girl, Written by Herself",
+      "a": "Jacobs, Harriet",
+      "y": "Biography",
+      "h": 7,
+      "l": "https://librivox.org/incidents-in-the-life-of-a-slave-girl-by-harriet-jacobs/"
+    },
+    {
+      "r": 98,
+      "t": "De Profundis",
+      "a": "Wilde, Oscar",
+      "y": "Essays",
+      "h": 1,
+      "l": "https://librivox.org/de-profundis-by-oscar-wilde/"
+    },
+    {
+      "r": 99,
+      "t": "Memoirs of the Court of Queen Elizabeth, Volumes I & II",
+      "a": "Aikin, Lucy",
+      "y": "History",
+      "h": 23,
+      "l": "https://librivox.org/memoirs-of-the-court-of-queen-elizabeth-by-lucy-aikin/"
+    },
+    {
+      "r": 100,
+      "t": "Monte-Cristo's Daughter",
+      "a": "Flagg, Edmund",
+      "y": "Adventure|Romance|Classic Literature",
+      "h": 9,
+      "l": "https://librivox.org/monte-cristos-daughter-by-edmund-flagg/"
+    },
+    {
+      "r": 101,
+      "t": "Murders in the Rue Morgue",
+      "a": "Poe, Edgar Allan",
+      "y": "Fantasy|Horror|Mystery & Detective|Short Stories|Poetry|Classic Literature",
+      "h": 1,
+      "l": "https://librivox.org/the-murders-in-the-rue-morgue-by-edgar-allen-poe/"
+    }
+  ]
+}

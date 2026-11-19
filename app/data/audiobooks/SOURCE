@@ -1,0 +1,17 @@
+Audiobook catalogue reference links
+
+Source: Brendan St. John, https://www.bstjohn.net/audiobooks/
+Structured source: https://www.bstjohn.net/data/audiobooks-full.json
+Source generated: 2026-05-18T14:04:50.870Z
+Snapshot retrieved: 2026-11-19
+
+Compact factual references for the first 100 available LibriVox catalogue links:
+book titles, author names, genre labels, approximate durations and source ranks.
+Entries without a catalogue link are skipped. The source automatically matches
+Project Gutenberg download popularity to LibriVox recordings; this is not a
+ranking of narrator quality. Attribution to the source is retained.
+
+No website source code, article prose, download counts, Guardian list tags,
+recordings or cover artwork are included. Source metadata is not relabelled as
+our original MIT application code. Linked works and recordings retain their own
+terms. See docs/AUDIOBOOKS.md and THIRD_PARTY.md for runtime source notices.
