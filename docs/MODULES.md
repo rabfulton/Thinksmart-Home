@@ -33,7 +33,7 @@ module registrations.
 | `audiobooks` | LibriVox widget, discovery, chapter playback and saved positions | [Audiobook guide](AUDIOBOOKS.md); no key; disabled by default |
 | `radio` | Worldwide search, genre browsing and saved favourites | [Radio guide](RADIO.md); optional curated catalogue |
 | `markets` | Watchlist, chart widget, price alerts and AI tools | No key required; [Markets guide](MARKETS.md). Free quotes may be delayed; disabled by default |
-| `weather` | Home widget and forecast | Configure weather location/timezone |
+| `weather` | Home widget and forecast | [Location picker, condition icons and sunrise/sunset](WEATHER.md) |
 | `news` | One/two configurable columns, publisher feeds and Hacker News/comments | Internet; cached daily, manual refresh; [source settings](NEWS.md) |
 | `chess` | Theme-aware board and local engine | Build/install Arasan for engine play |
 | `notes` | Notes page, dictation, routines and schedule controls | Voice dictation additionally requires Assistant; saved notes work offline |

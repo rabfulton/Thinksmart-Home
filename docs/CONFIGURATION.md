@@ -88,3 +88,7 @@ or over SSH and survive application upgrades. See [personal actions](PERSONAL.md
 TV Archive is an optional `tvarchive` widget, off by default. Add it to an existing
 page after enabling it. Its progress, autoplay and optional module-only proxy are
 described in [TV-ARCHIVE.md](TV-ARCHIVE.md).
+
+Weather location can also be changed on the device: **Weather → Location**. The
+selection is saved separately in `~thinksmart/.config/ThinkSmart/Home/weather.json`
+and takes precedence over the installed default. See [Weather](WEATHER.md).

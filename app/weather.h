@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QNetworkAccessManager>
 #include <QTimer>
+#include <QPointer>
 #include <QJsonObject>
 #include <QVariantMap>
 #include <QVariantList>
@@ -12,11 +13,14 @@ class WeatherClient : public QObject {
     Q_PROPERTY(QVariantMap current READ current NOTIFY changed)
     Q_PROPERTY(QVariantList hourly READ hourly NOTIFY changed)
     Q_PROPERTY(QVariantList daily READ daily NOTIFY changed)
-    Q_PROPERTY(QString location READ location CONSTANT)
+    Q_PROPERTY(QString location READ location NOTIFY changed)
     Q_PROPERTY(QString status READ status NOTIFY changed)
     Q_PROPERTY(QString problem READ problem NOTIFY changed)
     Q_PROPERTY(bool stale READ stale NOTIFY changed)
     Q_PROPERTY(bool busy READ busy NOTIFY changed)
+    Q_PROPERTY(QVariantList locations READ locations NOTIFY searchChanged)
+    Q_PROPERTY(QString searchProblem READ searchProblem NOTIFY searchChanged)
+    Q_PROPERTY(bool searching READ searching NOTIFY searchChanged)
 public:
     explicit WeatherClient(QObject *parent=nullptr);
     ~WeatherClient() override;
@@ -30,13 +34,27 @@ public:
     bool busy() const { return m_busy; }
     QJsonObject snapshot() const;
     Q_INVOKABLE void refresh();
+    QVariantList locations()const{return m_locations;}
+    QString searchProblem()const{return m_searchProblem;}
+    bool searching()const{return !m_searchReply.isNull();}
+    Q_INVOKABLE void searchLocations(const QString &text);
+    Q_INVOKABLE void cancelSearch();
+    Q_INVOKABLE bool selectLocation(int index);
+    Q_INVOKABLE bool resetLocation();
+    static QVariantList normalizeLocations(const QJsonObject &response);
     static QJsonObject normalize(const QJsonObject &response,qint64 now);
     static QString condition(int code);
     static QUrl forecastUrl();
 signals:
     void changed();
+    void searchChanged();
 private:
     QString cachePath() const;
+    void loadCache();
+    void locationChanged();
+    QPointer<QNetworkReply> m_forecastReply,m_searchReply;
+    QVariantList m_locations;
+    QString m_searchProblem;
     QNetworkAccessManager m_network;
     QTimer m_poll;
     QJsonObject m_data;

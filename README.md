@@ -47,7 +47,7 @@ tools used by this project, ready for your own software and interface.
 | [Assistant](docs/VOICE.md) | OpenAI Realtime/Live voice, local wake word, personalities and household context | OpenAI key; optional wake-word assets |
 | [Audiobooks](docs/AUDIOBOOKS.md) | LibriVox, Top 100 discovery, monthly picks and saved listening positions | Internet; no API key |
 | [Radio](docs/RADIO.md) | Worldwide station search, genre browsing and saved favourites | Internet; no API key |
-| [Weather](docs/MODULES.md) | Current conditions, hourly and daily forecasts from Open-Meteo | Location; no API key |
+| [Weather](docs/WEATHER.md) | Current conditions, hourly and daily forecasts from Open-Meteo | Location; no API key |
 | [Markets](docs/MARKETS.md) | Editable watchlist, focused charts, session status and price alerts | Free quotes, which may be delayed; no API key |
 | [TV Archive](docs/TV-ARCHIVE.md) | Classic British series, episode browsing, resume and optional autoplay | Internet Archive; no API key |
 | [TV / IPTV](docs/IPTV.md) | Internet TV directory, saved streams and fullscreen playback | Internet or your own stream links |

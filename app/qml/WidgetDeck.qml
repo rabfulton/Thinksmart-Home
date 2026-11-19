@@ -76,27 +76,34 @@ GridLayout {
     Component {
         id: weatherWidget
         HomeTile {
-            objectName: "weatherTile"; visible: home.modules.weather; heading: weather.location; iconName: "weather";
+            objectName: "weatherTile"; visible: home.modules.weather; heading: weather.location; iconName: "weather"
             badge: weather.stale ? "Stale" : ""; badgeColor: Theme.accent; indexLabel: weather.status.toUpperCase()
             onClicked: deck.hostWindow.selectedApp = "weather"
             ColumnLayout {
-                anchors.fill: parent; spacing: 8
-                RowLayout {
-                    BigValue { text: deck.hostWindow.weatherValue(weather.current.temperature_2m,"°") }
-                    Item { Layout.fillWidth: true }
-                    UiIcon { name: "weather"; Layout.preferredWidth: 72; Layout.preferredHeight: 72; tint: Theme.accent }
-                }
-                SmallLabel { text: weather.current.condition || "Forecast unavailable"; Layout.fillWidth: true }
-                Item { Layout.fillHeight: true }
+                anchors.fill: parent; spacing: 6
                 RowLayout {
                     Layout.fillWidth: true; spacing: 8
+                    BigValue { objectName: "weatherTemperature"; text: deck.hostWindow.weatherValue(weather.current.temperature_2m,"°") }
+                    WeatherIcon { objectName: "weatherCurrentIcon"; weatherCode: weather.current.weather_code; isDay: weather.current.is_day; Layout.preferredWidth: 62; Layout.preferredHeight: 62 }
+                    Item { Layout.fillWidth: true; Layout.minimumWidth: 4 }
+                    ColumnLayout {
+                        objectName: "weatherSummary"; Layout.preferredWidth: 144; Layout.maximumWidth: 160; spacing: 3
+                        Text { text: weather.current.condition || "Forecast unavailable"; color: Theme.ink; font.pixelSize: 17; Layout.fillWidth: true; elide: Text.ElideRight }
+                        Text { text: "Sunrise  " + (weather.daily.length ? weather.daily[0].sunriseLabel : "—"); color: Theme.muted; font.pixelSize: 15 }
+                        Text { text: "Sunset   " + (weather.daily.length ? weather.daily[0].sunsetLabel : "—"); color: Theme.muted; font.pixelSize: 15 }
+                    }
+                }
+                Item { Layout.fillHeight: true }
+                RowLayout {
+                    objectName: "weatherHourStrip"; Layout.fillWidth: true; spacing: 12
                     Repeater {
-                        model: weather.hourly.slice(0,6)
+                        model: weather.hourly.slice(0,5)
                         ColumnLayout {
                             required property var modelData
-                            Layout.fillWidth: true; Layout.preferredWidth: 1; Layout.minimumWidth: 0; spacing: 5
-                            Text { text: modelData.label; color: Theme.faint; font.pixelSize: 13; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
-                            Text { text: deck.hostWindow.weatherValue(modelData.temperature_2m,"°"); color: Theme.ink; font.pixelSize: 21; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
+                            Layout.fillWidth: true; Layout.preferredWidth: 1; Layout.minimumWidth: 0; spacing: 3
+                            Text { text: modelData.label; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
+                            WeatherIcon { weatherCode: modelData.weather_code; isDay: modelData.is_day; Layout.preferredWidth: 34; Layout.preferredHeight: 34; Layout.alignment: Qt.AlignHCenter }
+                            Text { text: deck.hostWindow.weatherValue(modelData.temperature_2m,"°"); color: Theme.ink; font.pixelSize: 23; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
                         }
                     }
                 }

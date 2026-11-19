@@ -127,3 +127,10 @@ Realtime/Live integration. Tests use synthetic metadata and no TV streams.
 when editing this adapter. The proxy tests check invalid configuration and failure
 without direct fallback; unrelated networking must remain direct. Existing
 Audiobooks proxy tests also cover the shared loopback proxy validator.
+
+Weather location lookup uses local HTTP fixtures in `weather-radio-tests`, including
+location persistence, separate caches, cancellation of an old forecast and local
+sunrise/sunset times. `weatherIconsLocationAndSolarLayout` in `home-ui-tests`
+checks WMO/day-night icon states, the location picker and card bounds in both
+orientations. Set `THINKSMART_WEATHER_SCREENSHOTS` to an output directory to render
+its synthetic forecast screens. No live geocoding or voice calls are used.

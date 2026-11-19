@@ -183,7 +183,7 @@ ApplicationWindow {
             EnergyPage { onBack: window.selectedApp = "" }
             MusicPage { active: window.selectedApp === "music"; onBack: window.selectedApp = "" }
             VideoLibraryPage { library: videoLibrary; heading: "Video"; active: window.selectedApp === "video"; onBack: window.selectedApp = "" }
-            WeatherPage { onBack: window.selectedApp = "" }
+            WeatherPage { objectName: "weatherAppPage"; hostWindow: window; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
             RadioPage { objectName: "radioAppPage"; active: window.selectedApp === "radio" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
             IptvPage { objectName: "iptvAppPage"; active: window.selectedApp === "iptv" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
             MarketsPage { objectName: "marketsAppPage"; active: window.selectedApp === "markets" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }

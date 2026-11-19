@@ -9,7 +9,8 @@ through display sleep and UI restarts while the device has network connectivity.
 
 | Location | Purpose |
 | --- | --- |
-| `/etc/thinksmart/device.json` | Deployment module defaults and weather location/timezone |
+| `/etc/thinksmart/device.json` | Deployment module defaults and default weather location/timezone |
+| `~thinksmart/.config/ThinkSmart/Home/weather.json` | Saved weather location override; see [Weather](WEATHER.md) |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home/dashboard.json` | On-device module overrides and page/widget layout; backup in `.bak` |
 | `/etc/NetworkManager/system-connections/*.nmconnection` | Your Wi-Fi profiles; root-owned, mode 600 |
 | `/etc/thinksmart/assistant/` | `system.md`, `live.md`, `backend.md`, `household.md`, `personalities/*.md`, `modules/*/*.md`, `wakeword.json` |

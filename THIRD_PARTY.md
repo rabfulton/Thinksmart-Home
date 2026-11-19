@@ -76,3 +76,5 @@ original MIT code, compiled out unless explicitly enabled.
 TV Archive fetches file metadata and programmes from the user-selected Internet
 Archive collection at runtime. No programmes, artwork or remote catalogue are
 bundled or relicensed as our code. See [TV Archive](docs/TV-ARCHIVE.md).
+
+Weather location search uses the [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api), which credits GeoNames location data. No geocoding database is bundled; users select their own per-device location.

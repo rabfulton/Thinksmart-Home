@@ -3,6 +3,7 @@
 #include "../library.h"
 #include "../jellyfinimages.h"
 #include "../weather.h"
+#include <QScopeGuard>
 #include "../news.h"
 #include "../chessgame.h"
 #include "../radio.h"
@@ -144,6 +145,7 @@ exec sleep 20
         QVERIFY(helper.waitForStarted());QTRY_VERIFY(QFile::exists(directory.filePath("control.sock")));
     }
     void init() {
+        qputenv("THINKSMART_WEATHER_CONFIG",directory.filePath("weather-location.json").toUtf8());QFile::remove(DeviceConfig::weatherPath());
         QFile::remove(directory.filePath("news-settings.json"));
         QSettings settings;settings.clear();settings.sync();warnings.clear();wifiRequests.clear();write("action","");
         qputenv("THINKSMART_DASHBOARD_CONFIG",directory.filePath("dashboard.json").toUtf8());
@@ -678,6 +680,34 @@ exec sleep 20
         click("powerButton");QTRY_VERIFY(object("powerSheet")->property("visible").toBool());
         click("shutdownMenuButton");QTRY_VERIFY(object("confirmSheet")->property("visible").toBool());
         click("confirmPowerButton");QVERIFY(screen->powerPending());QTRY_COMPARE(action(),QByteArray("halt\n"));
+    }
+    void weatherIconsLocationAndSolarLayout(){
+        const auto now=QDateTime::currentSecsSinceEpoch();QJsonArray hours,codes,daylight,temperatures,days,rise,set;
+        for(int i=0;i<13;i++){hours.append(now+i*3600);codes.append(i==0?0:i==1?61:i==2?71:3);daylight.append(i<3?0:1);temperatures.append(12-i/3);}
+        for(int i=0;i<5;i++){days.append(now+i*86400);rise.append(now-6*3600+i*86400);set.append(now+3*3600+i*86400);}
+        const auto fixture=WeatherClient::normalize({{"current",QJsonObject{{"time",now},{"temperature_2m",12},{"apparent_temperature",10},{"relative_humidity_2m",70},{"wind_speed_10m",8},{"wind_gusts_10m",14},{"weather_code",3},{"is_day",1}}},{"hourly",QJsonObject{{"time",hours},{"temperature_2m",temperatures},{"weather_code",codes},{"is_day",daylight}}},{"daily",QJsonObject{{"time",days},{"weather_code",QJsonArray{3,61,2,0,95}},{"temperature_2m_max",QJsonArray{12,13,14,12,11}},{"temperature_2m_min",QJsonArray{7,8,7,6,5}},{"sunrise",rise},{"sunset",set}}}},now);
+        const auto cacheDir=QStandardPaths::writableLocation(QStandardPaths::CacheLocation);QDir().mkpath(cacheDir);QFile cache(cacheDir+"/weather-"+DeviceConfig::weatherKey()+".json");const auto removeCache=qScopeGuard([&cache](){QFile::remove(cache.fileName());});QVERIFY(cache.open(QIODevice::WriteOnly));cache.write(QJsonDocument(fixture).toJson());cache.close();QVERIFY(weather->resetLocation());
+        QCOMPARE(weather->hourly().size(),12);QCOMPARE(weather->daily().size(),5);
+        screen->wake();window->setProperty("selectedApp","weather");QTest::qWait(50);
+        auto icon=object("weatherExpandedIcon");QVERIFY(icon);QCOMPARE(object("weatherHourIcon0")->property("kind").toString(),QString("rain"));QCOMPARE(object("weatherDayIcon0")->property("kind").toString(),QString("cloud"));
+        const QList<QPair<int,QString>> cases{{0,"sun"},{2,"partly"},{3,"cloud"},{45,"fog"},{61,"rain"},{71,"snow"},{95,"thunder"},{-1,"unknown"}};
+        for(const auto &row:cases){icon->setProperty("weatherCode",row.first);QCOMPARE(icon->property("kind").toString(),row.second);}
+        icon->setProperty("weatherCode",0);icon->setProperty("isDay",0);QCOMPARE(icon->property("kind").toString(),QString("moon"));
+        icon->setProperty("weatherCode",2);QCOMPARE(icon->property("kind").toString(),QString("partly-night"));icon->setProperty("weatherCode",3);icon->setProperty("isDay",1);
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(70);QVERIFY(qobject_cast<QQuickItem *>(icon)->width()>=100);
+            QVERIFY(object("weatherSunrise"));QVERIFY(object("weatherSunset"));
+            const auto capture=qEnvironmentVariable("THINKSMART_WEATHER_SCREENSHOTS");if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/weather-%1.png").arg(size.width())));}
+            click("weatherLocationButton");QTRY_VERIFY(object("weatherLocationDialog")->property("opened").toBool());
+            object("weatherLocationQuery")->setProperty("text","G");QVERIFY(QMetaObject::invokeMethod(object("weatherLocationQuery"),"accepted"));QVERIFY(!weather->searching());QVERIFY(!weather->searchProblem().isEmpty());
+            QMetaObject::invokeMethod(object("weatherLocationDialog"),"close");
+            window->setProperty("selectedApp",QString());QTest::qWait(100);
+            const auto tile=qobject_cast<QQuickItem *>(object("weatherTile")),strip=qobject_cast<QQuickItem *>(object("weatherHourStrip"));QVERIFY(tile);QVERIFY(strip);QVERIFY(strip->mapToItem(tile,QPointF(0,strip->height())).y()<=tile->height()-40);
+            const auto temperature=qobject_cast<QQuickItem *>(object("weatherTemperature")),currentIcon=qobject_cast<QQuickItem *>(object("weatherCurrentIcon"));QVERIFY(temperature);QVERIFY(currentIcon);QVERIFY(currentIcon->x()-(temperature->x()+temperature->width())<12);
+            if(!capture.isEmpty())QVERIFY(window->grabWindow().save(capture+QString("/weather-home-%1.png").arg(size.width())));
+            window->setProperty("selectedApp","weather");
+        }
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
     }
     void jsonToolsExposeCatalogAndStampedData() {
         auto stations=media->toolRequest({{"action","radio.list"},{"genre","folk"}});

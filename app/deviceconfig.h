@@ -7,11 +7,12 @@
 #include <QStringList>
 #include <QTimeZone>
 #include <QVariantMap>
+#include <QStandardPaths>
 #include <cmath>
 #include "dashboardconfig.h"
 
 // Public, non-secret settings. Credentials remain in the existing private files.
-// Immutable during normal operation; reload is used before constructing test fixtures.
+// Module defaults reload on restart; the private weather override can change at runtime.
 class DeviceConfig {
 public:
     static QString path(){return qEnvironmentVariable("THINKSMART_DEVICE_CONFIG","/etc/thinksmart/device.json");}
@@ -30,10 +31,18 @@ public:
         if(app=="video")return enabled("jellyfin");
         return enabled(app);
     }
+    static QString weatherPath(){return qEnvironmentVariable("THINKSMART_WEATHER_CONFIG",QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)+"/weather.json");}
+    static bool validWeather(const QJsonObject &o){
+        if(o.size()!=4||!o.value("name").isString()||o.value("name").toString().trimmed().isEmpty()||o.value("name").toString().size()>80||!o.value("timezone").isString()||!QTimeZone(o.value("timezone").toString().toUtf8()).isValid())return false;
+        for(const auto &key:{"latitude","longitude"}){const auto v=o.value(key);if(!v.isDouble()||!std::isfinite(v.toDouble())||std::abs(v.toDouble())>(QString(key)=="latitude"?90.:180.))return false;}
+        return true;
+    }
     static QJsonObject weather(){
         QJsonObject result{{"name","London"},{"latitude",51.5074},{"longitude",-0.1278},{"timezone","Europe/London"}};
         const auto configured=state().data.value("weather").toObject();
         for(auto i=configured.begin();i!=configured.end();++i)result.insert(i.key(),i.value());
+        QFile saved(weatherPath());
+        if(saved.open(QIODevice::ReadOnly)&&saved.size()<=4096){const auto override=QJsonDocument::fromJson(saved.readAll()).object();if(validWeather(override))return override;}
         return result;
     }
     static QString weatherKey(){return QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(weather()).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex().left(16));}
