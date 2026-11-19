@@ -549,6 +549,8 @@ exec sleep 20
         screen->wake();media->assistant()->setEnabled(true);window->resize(1280,800);
         auto orb=object("dashboardAssistantVisual"),pages=object("dashboardPages");QVERIFY(orb);QVERIFY(pages);
         QTRY_VERIFY(orb->property("moving").toBool());
+        const auto shaderPhase=orb->property("shaderPhase").toDouble(),angle=orb->property("rotation").toDouble();
+        QTest::qWait(220);QCOMPARE(orb->property("shaderPhase").toDouble(),shaderPhase);QVERIFY(orb->property("rotation").toDouble()!=angle);
         click("moreAppsPageButton");QTRY_VERIFY(pages->property("transitioning").toBool());
         QVERIFY(!orb->property("moving").toBool());const auto paused=orb->property("phase").toDouble();
         QTest::qWait(80);QCOMPARE(orb->property("phase").toDouble(),paused);
@@ -745,8 +747,9 @@ exec sleep 20
     }
     void assistantSettingsSaveEnableAndVoice(){
         screen->wake();window->setProperty("selectedApp","assistant");QTest::qWait(50);
-        click("assistantSettingsButton");QTest::qWait(30);
         QVERIFY(!media->assistant()->enabled());click("assistantEnableSwitch");QVERIFY(media->assistant()->enabled());
+        QVERIFY(!media->assistant()->active());click("assistantSettingsButton");QTest::qWait(30);
+        QVERIFY(!qobject_cast<QQuickItem *>(object("assistantEnableSwitch"))->isVisible());
         auto choice=object("assistantVoiceChoice");QVERIFY(choice);choice->setProperty("currentIndex",1);QVERIFY(QMetaObject::invokeMethod(choice,"activated",Q_ARG(int,1)));
         QCOMPARE(media->assistant()->voice(),QString("cedar"));QCOMPARE(QSettings().value("assistant/voices/gpt-realtime-2.1-mini").toString(),QString("cedar"));
         auto model=object("assistantModelChoice");QVERIFY(model);
@@ -758,7 +761,10 @@ exec sleep 20
         auto profile=object("assistantPersonalityChoice");QVERIFY(profile);profile->setProperty("currentIndex",0);QVERIFY(QMetaObject::invokeMethod(profile,"activated",Q_ARG(int,0)));
         QCOMPARE(media->assistant()->personality(),QString("brief"));QCOMPARE(QSettings().value("assistant/personality").toString(),QString("brief"));
         QCOMPARE(QSettings().value("assistant/enabled").toBool(),true);QVERIFY(!media->assistant()->active());
+        click("voiceBackButton");QCOMPARE(window->property("selectedApp").toString(),QString("assistant"));
+        QVERIFY(qobject_cast<QQuickItem *>(object("assistantEnableSwitch"))->isVisible());
         click("assistantEnableSwitch");QVERIFY(!media->assistant()->enabled());QTRY_VERIFY(media->assistant()->released());
+        click("voiceBackButton");QCOMPARE(window->property("selectedApp").toString(),QString());
     }
     void voiceChoicesPersistPerModelAndMigrate(){
         auto voice=media->assistant();QSettings settings;

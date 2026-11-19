@@ -80,7 +80,7 @@ worker is already installed by the shared-audio installer. Review those scripts
 before changing an existing audio setup.
 
 Start with a local echo test and local wake detection before a paid conversation.
-Assistant Settings → Enable assistant permits local listening; Start or Sheila
+The enable switch on the conversation page, immediately left of Settings, permits local listening; Start or Sheila
 opens a conversation. Realtime has VAD options; Live handles continuous listening
 and interruptions through its own protocol. Live's backend handles reasoning and
 tool selection using the allowed local actions. Sessions close on stop, screen
@@ -129,3 +129,22 @@ See [CONFIGURATION.md](CONFIGURATION.md). Live's conversation/delegation policy
 and reasoning backend instructions are separate files. Personality is supplied
 to the speaking model; household notes reach both. Tool schemas and local
 permissions are enforced in code, including the selected module flags.
+
+## Idle visual cost
+
+The home card's CPU percentage is total utilization across all cores, not the
+wake detector's process usage. Idle orb motion now rotates a cached rendering
+at 10 updates per second. Shader/Canvas deformation runs for active conversation
+states; idle rotation does not rerun the procedural field. The visual still
+pauses when hidden, during page transitions and while the screen sleeps.
+
+A short device comparison measured roughly 22% total CPU before and 9% after,
+with local wake listening enabled. Dashboard process CPU fell from about 96% to
+19% of one core. These are short CPU samples, not battery/power measurements.
+The detector-only synthetic benchmark used about 0.61% of one core; live capture,
+resampling and the shared audio graph add separate costs. Quiet-audio gating
+was not introduced for this change.
+
+Back from Assistant settings returns to the conversation view. The conversation
+page's enable switch controls both local wake listening and permission to start
+a conversation; enabling it alone does not open a cloud session.

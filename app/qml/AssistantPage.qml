@@ -24,11 +24,35 @@ Rectangle {
         return -1
     }
     component Choice: ComboBox {
-        font.pixelSize: 21
+        id: choice
+        font.family: Theme.font; font.pixelSize: 24
+        leftPadding: 16; rightPadding: 44
         palette.button: Theme.raised; palette.buttonText: Theme.ink
         palette.base: Theme.raised; palette.text: Theme.ink; palette.window: Theme.raised
         palette.highlight: Theme.tint; palette.highlightedText: Theme.accent
-        background: Rectangle { radius: 12; color: Theme.raised; border.color: Theme.border }
+        contentItem: Text { text: choice.displayText; textFormat: Text.PlainText; font: choice.font; color: Theme.ink; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
+        indicator: UiIcon { name: "back"; rotation: -90; tint: Theme.ink; width: 20; height: 20; x: choice.width-width-16; y: (choice.height-height)/2 }
+        background: Rectangle { radius: 12; color: Theme.raised; border.color: choice.activeFocus||choice.popup.visible?Theme.accent:Theme.border }
+        delegate: ItemDelegate {
+            id: option
+            required property int index
+            objectName: choice.objectName+"Option"+index
+            width: choices.width; implicitHeight: 58; leftPadding: 14; rightPadding: 14; font: choice.font
+            highlighted: choice.highlightedIndex===index
+            contentItem: Text { text: choice.textAt(option.index); textFormat: Text.PlainText; font: option.font; color: option.highlighted?Theme.accent:Theme.ink; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
+            background: Rectangle { color: option.highlighted?Theme.tint:Theme.raised; radius: 10 }
+        }
+        popup: Popup {
+            y: choice.height+6; width: choice.width; padding: 6
+            implicitHeight: Math.min(360,contentItem.implicitHeight+topPadding+bottomPadding)
+            contentItem: ListView {
+                id: choices; clip: true; implicitHeight: contentHeight
+                model: choice.popup.visible?choice.delegateModel:null
+                currentIndex: choice.highlightedIndex
+                ScrollIndicator.vertical: ScrollIndicator { }
+            }
+            background: Rectangle { color: Theme.raised; radius: 14; border.color: Theme.border }
+        }
     }
     signal back()
     color: Theme.surface; radius: Theme.radius; border.color: Theme.border
@@ -43,11 +67,15 @@ Rectangle {
         anchors.fill: parent; anchors.margins: 26; spacing: 18; visible: page.tab !== "audio"
         RowLayout {
             spacing: 20
-            UiButton { objectName: "voiceBackButton"; iconName: "back"; description: "Back"; onClicked: page.back() }
+            UiButton { objectName: "voiceBackButton"; iconName: "back"; description: "Back"; onClicked: { if(page.tab === "settings")page.tab = "conversation";else page.back() } }
             ColumnLayout {
                 Layout.fillWidth: true; spacing: 5
                 Text { text: page.tab === "settings" ? "Assistant settings" : "Sheila"; color: Theme.ink; font.pixelSize: 29 }
                 Text { text: assistant.status; color: assistant.active || assistant.wakeListening ? Theme.accent : Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; elide: Text.ElideRight }
+            }
+            Switch {
+                objectName: "assistantEnableSwitch"; visible: page.tab === "conversation"; implicitWidth: 80; implicitHeight: 54
+                checked: assistant.enabled; Accessible.name: "Enable assistant"; onToggled: assistant.enabled = checked
             }
             UiButton { objectName: "assistantSettingsButton"; text: page.tab === "settings" ? "Conversation" : "Settings"; onClicked: page.tab = page.tab === "settings" ? "conversation" : "settings" }
             UiButton { objectName: "assistantAudioTestButton"; visible: page.tab === "settings"; text: "Audio test"; onClicked: { assistant.stop(); page.tab = "audio" } }
@@ -59,15 +87,6 @@ Rectangle {
             Layout.fillWidth: true; Layout.fillHeight: true; contentWidth: availableWidth; clip: true
             ColumnLayout {
                 width: settingsScroll.availableWidth; spacing: 18
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 20
-                    ColumnLayout {
-                        Layout.fillWidth: true; spacing: 6
-                        Text { text: "Enable assistant"; color: Theme.ink; font.pixelSize: 24 }
-                        Text { text: "Allow conversations and local Sheila wake-word listening. Turning this off closes the microphone and connection."; color: Theme.muted; font.pixelSize: 17; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                    }
-                    Switch { implicitWidth: 80; implicitHeight: 54; objectName: "assistantEnableSwitch"; checked: assistant.enabled; Accessible.name: "Enable assistant"; onToggled: assistant.enabled = checked }
-                }
                 RowLayout {
                     Layout.fillWidth: true; spacing: 20
                     Text { text: "Personality"; color: Theme.ink; font.pixelSize: 21; Layout.preferredWidth: 150 }
