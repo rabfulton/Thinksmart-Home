@@ -68,3 +68,7 @@ launcher entry, dispatcher permissions and tool descriptions together. Keep
 credentials out of QML and respect the app's existing audio/display ownership.
 
 To develop a new integration, follow [MODULE-DEVELOPMENT.md](MODULE-DEVELOPMENT.md).
+
+[Recipes / AI outputs](RECIPES.md) is an optional widget/full-page module and a
+worked example of voice delegation, native Markdown, saved task lists and
+adapting a recipe demonstration into a general AI text reader.

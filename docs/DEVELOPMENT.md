@@ -140,3 +140,7 @@ readiness handling and systemd socket forwarding against a local echo fixture.
 It also checks that an open connection survives the idle timeout and that the
 forwarder exits and can be activated again after clients disconnect. No vendor
 client, microphone or external service is used. See [appliance setup](APPLIANCE.md).
+
+Recipe storage/generation tests: `recipes-tests`; reader/task-list/settings checks:
+`recipesReaderHistorySettingsAndTouchTasks`; mocked Realtime/Live tools:
+`recipesVoiceTools`. See [Recipes](RECIPES.md) for files, API behaviour and adaptation.

@@ -9,6 +9,7 @@ Rectangle {
     property string section: "pages"
     property bool editingNews: false
     function editNews() { newsEditor.begin();editingNews=true }
+    RecipeSettings { id: recipeSettings }
     property int selected: -1
     property var current: selected >= 0 && selected < editor.pages.length ? editor.pages[selected] : ({})
     signal back()
@@ -79,7 +80,7 @@ Rectangle {
                             Label { text: modelData.title }
                             Label { text: modelData.description; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
                         }
-                        UiButton { objectName: "moduleEdit_"+modelData.id; visible: modelData.id==="news"; text: "Edit"; onClicked: page.editNews() }
+                        UiButton { objectName: "moduleEdit_"+modelData.id; visible: modelData.id==="news" || modelData.id==="recipes"; text: "Edit"; enabled: modelData.id!=="recipes" || home.modules.recipes; onClicked: modelData.id==="recipes" ? recipeSettings.open() : page.editNews() }
                         Switch { objectName: "moduleSwitch_" + modelData.id; checked: !!page.editor.modules[modelData.id]; implicitHeight: 54; implicitWidth: 80; onToggled: page.editor.setModule(modelData.id,checked) }
                     }
                 }

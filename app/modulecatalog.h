@@ -22,6 +22,7 @@ public:
         {"audiobooks","Audiobooks","LibriVox books, curated picks and saved listening positions","audiobooks",{},"audiobooks.",false},
         {"tvarchive","TV Archive","Classic series, episodes and saved viewing positions","tvarchive",{},"tvarchive.",false},
         {"markets","Markets","Free price feeds, charts and price alerts","markets","markets","markets.",false},
+        {"recipes","Recipes","AI recipes and saved Markdown outputs","recipes","recipes","recipes.",false},
         {"iptv","IPTV","Live internet television and saved channels","iptv","iptv","iptv.",false}
     };}
     static QStringList names(){QStringList r;for(const auto &e:entries())r<<e.id;return r;}

@@ -45,6 +45,7 @@ tools used by this project, ready for your own software and interface.
 | Module | What it does | Setup |
 | --- | --- | --- |
 | [Assistant](docs/VOICE.md) | OpenAI Realtime/Live voice, local wake word, personalities and household context | OpenAI key; optional wake-word assets |
+| [Recipes / AI outputs](docs/RECIPES.md) | Recipes, ingredient checklists and saved Markdown outputs | OpenAI key for generation; saved outputs work offline |
 | [Audiobooks](docs/AUDIOBOOKS.md) | LibriVox, Top 100 discovery, monthly picks and saved listening positions | Internet; no API key |
 | [Radio](docs/RADIO.md) | Worldwide station search, genre browsing and saved favourites | Internet; no API key |
 | [Weather](docs/WEATHER.md) | Current conditions, hourly and daily forecasts from Open-Meteo | Location; no API key |
@@ -91,6 +92,7 @@ starting prompt and contribution workflow.
 | --- | --- |
 | ![Chess](docs/screenshots/chess.png) | ![Portrait dashboard](docs/screenshots/home-portrait.png) |
 
+![Recipes with ingredients, method and touch checklists](docs/screenshots/recipes.png)
 
 **Licence:** our original code is [MIT](LICENSE). Imported code and artwork keep
 their own licences; see [third-party notices](THIRD_PARTY.md). Linked dependencies,

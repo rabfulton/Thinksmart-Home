@@ -74,6 +74,7 @@ Canvas {
         case "close": line(6,6,18,18); line(18,6,6,18); break
         case "book": c.lineWidth=0.8; c.moveTo(12,5);c.bezierCurveTo(8,2,3,3,2,4);c.lineTo(2,20);c.bezierCurveTo(6,18,9,19,12,21);c.bezierCurveTo(15,19,18,18,22,20);c.lineTo(22,4);c.bezierCurveTo(18,2,15,3,12,5);line(12,5,12,21);line(5,8,9,9);line(15,9,19,8);line(5,12,9,13);line(15,13,19,12); break
         case "back": line(16,5,9,12); line(9,12,16,19); break
+        case "forward": line(8,5,15,12); line(15,12,8,19); break
         case "palette": c.moveTo(20,12); c.arc(12,12,9,0,Math.PI*2); c.moveTo(10,7); c.arc(9,7,1,0,Math.PI*2); c.moveTo(17,10); c.arc(16,10,1,0,Math.PI*2); c.moveTo(9,16); c.arc(8,16,1,0,Math.PI*2); break
         default: line(5,12,19,12); line(13,6,19,12); line(19,12,13,18)
         }

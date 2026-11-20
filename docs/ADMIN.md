@@ -16,6 +16,8 @@ through display sleep and UI restarts while the device has network connectivity.
 | `/etc/thinksmart/assistant/` | `system.md`, `live.md`, `backend.md`, `household.md`, `personalities/*.md`, `modules/*/*.md`, `wakeword.json` |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home/voice.json` | Private API configuration |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home/media.json` | Private Navidrome/Jellyfin connections |
+| `/var/lib/thinksmart-home/.config/ThinkSmart/Home/recipes.json` | Text model, font and purpose; see [Recipes](RECIPES.md) |
+| `/var/lib/thinksmart-home/.local/share/ThinkSmart/Home/recipes/history.json` | Saved Markdown outputs and checkbox selections |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home/vrm.json` | Private VRM connection |
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home.conf` | Saved theme, volume, display, model/personality and per-model voice preferences |
 | `/etc/thinksmart/radio-catalog.json` | Curated stations/genres |

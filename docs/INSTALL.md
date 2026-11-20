@@ -71,7 +71,7 @@ Edit `private/ssh.env` for your device/key and `private/device.json` for your
 modules and weather location. See [CONFIGURATION.md](CONFIGURATION.md) for
 initial host-key verification and [MODULES.md](MODULES.md) for dependencies.
 The example enables several integrations for compatibility; turn off those you
-do not want. IPTV, Markets, Audiobooks and TV Archive start disabled. A voice API key is needed only if
+do not want. IPTV, Markets, Audiobooks, TV Archive and Recipes start disabled. A voice API key is needed only if
 you choose cloud voice, not for the dashboard or the free radio/weather/market feeds.
 
 ```sh

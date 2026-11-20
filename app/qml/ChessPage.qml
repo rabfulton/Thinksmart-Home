@@ -63,21 +63,21 @@ Rectangle {
         ColumnLayout {
             Layout.preferredWidth: page.wide ? 230 : page.boardSize
             Layout.fillWidth: true; spacing: 14
-            Text { text: chessGame.status; color: Theme.ink; font.pixelSize: 26; Layout.fillWidth: true; wrapMode: Text.WordWrap; horizontalAlignment: page.wide ? Text.AlignLeft : Text.AlignHCenter }
-            Text { text: "You play " + (chessGame.playerWhite ? "White" : "Black") + "\n" + (chessGame.playerWhite ? "Black" : "White") + " · Arasan"; color: Theme.muted; font.pixelSize: 16; lineHeight: 1.25; Layout.fillWidth: true; horizontalAlignment: page.wide ? Text.AlignLeft : Text.AlignHCenter }
+            Text { text: chessGame.status; color: Theme.ink; font.pixelSize: 26; Layout.fillWidth: true; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter }
+            Text { text: "You play " + (chessGame.playerWhite ? "White" : "Black") + "\n" + (chessGame.playerWhite ? "Black" : "White") + " · Arasan"; color: Theme.muted; font.pixelSize: 16; lineHeight: 1.25; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
             RowLayout {
                 spacing: 6
-                Layout.alignment: page.wide ? Qt.AlignLeft : Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter
                 UiButton { objectName: "chessRatingDownButton"; text: "−"; description: "Lower engine rating"; implicitWidth: 48; implicitHeight: 48; enabled: chessGame.rating > 1000; onClicked: chessGame.rating = Math.max(1000, Math.ceil(chessGame.rating / 100) * 100 - 100) }
                 Text { text: chessGame.rating; color: Theme.ink; font.pixelSize: 19; Layout.preferredWidth: 56; horizontalAlignment: Text.AlignHCenter }
                 UiButton { objectName: "chessRatingUpButton"; text: "+"; description: "Raise engine rating"; implicitWidth: 48; implicitHeight: 48; enabled: chessGame.rating < 2400; onClicked: chessGame.rating = Math.min(2400, Math.floor(chessGame.rating / 100) * 100 + 100) }
             }
-            Text { text: chessGame.lastMove; color: Theme.accent; font.pixelSize: 15; Layout.minimumHeight: 20; Layout.fillWidth: true; horizontalAlignment: page.wide ? Text.AlignLeft : Text.AlignHCenter }
-            Text { text: chessGame.error; visible: text.length > 0; color: Theme.danger; font.pixelSize: 15; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+            Text { text: chessGame.lastMove; color: Theme.accent; font.pixelSize: 15; Layout.minimumHeight: 20; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter }
+            Text { text: chessGame.error; visible: text.length > 0; color: Theme.danger; font.pixelSize: 15; Layout.fillWidth: true; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter }
             GridLayout {
                 columns: page.wide ? 1 : 3; columnSpacing: 12; rowSpacing: 12
                 uniformCellWidths: true
-                Layout.alignment: page.wide ? Qt.AlignLeft : Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter
                 UiButton { objectName: "chessNewGameButton"; text: "New game"; Layout.fillWidth: true; onClicked: chessGame.moveCount > 0 ? newGameConfirm.open() : chessGame.newGame() }
                 UiButton { objectName: "chessUndoButton"; text: "Undo"; Layout.fillWidth: true; enabled: chessGame.canUndo; onClicked: chessGame.undo() }
                 UiButton { objectName: "chessSwitchSidesButton"; text: "Switch sides"; Layout.fillWidth: true; onClicked: chessGame.switchSides() }

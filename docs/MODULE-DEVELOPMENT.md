@@ -151,3 +151,7 @@ exporter's tool allowlist. Review any included assets for rights and private
 content. Our original code is MIT; preserve licences and notices for imported
 code/artwork and the distribution terms of linked libraries. Submit a focused PR
 with the behaviour, setup requirements and relevant validation results.
+
+[Recipes / AI outputs](RECIPES.md) is an optional widget/full-page module and a
+worked example of voice delegation, native Markdown, saved task lists and
+adapting a recipe demonstration into a general AI text reader.

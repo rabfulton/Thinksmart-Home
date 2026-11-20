@@ -23,6 +23,7 @@
 
 QString Controller::socketPath(){return qEnvironmentVariable("THINKSMART_CONTROL_SOCKET","/run/thinksmart-ui/control.sock");}
 Controller::Controller(ScreenController *display,QObject *parent):QObject(parent),m_display(display),m_audioLab(this,display),m_assistant(this,display),m_videoPlayer(this){
+    connect(&m_recipes,&RecipeBook::openRequested,this,[this](){m_display->wake();emit openAppRequested("recipes");});
     connect(&m_audiobooks,&AudiobooksClient::interruptPlayback,this,&Controller::stop);
     connect(&m_audiobooks,&AudiobooksClient::playRequested,this,[this](const QUrl &url,const QString &title,const QString &subtitle,const QString &key,double start){playMedia("audiobooks",url,title,subtitle,{},false,key,start);});
     connect(this,&Controller::playbackEvent,&m_audiobooks,&AudiobooksClient::report);
@@ -249,7 +250,7 @@ void Controller::handleClient(QLocalSocket *client){
         else if(request=="next")next();else if(request=="previous")previous();
         else if(request.startsWith("open-app ")) {
             const QString app=request.mid(9);
-            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes","iptv","markets","audiobooks","tvarchive"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
+            if(QStringList{"assistant","weather","solar","radio","music","video","news","home","chess","notes","iptv","markets","audiobooks","tvarchive","recipes"}.contains(app)&&DeviceConfig::appEnabled(app)){m_display->wake();emit openAppRequested(app);}else valid=false;
         }
         else if(request=="screen-off")m_display->sleep();
         else if(request=="wake")m_display->wake();
@@ -323,6 +324,7 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
             QJsonObject{{"action","radio.random"},{"required",QJsonArray{"genre"}}},
             QJsonObject{{"action","iptv.search"},{"optional",QJsonArray{"search","country","category"}},{"limit",5}},
             QJsonObject{{"action","tvarchive.list"},{"optional",QJsonArray{"id","search"}}},QJsonObject{{"action","tvarchive.refresh"}},QJsonObject{{"action","tvarchive.status"}},QJsonObject{{"action","tvarchive.play"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","tvarchive.resume"},{"optional",QJsonArray{"id"}}},QJsonObject{{"action","tvarchive.random"},{"optional",QJsonArray{"id"}}},QJsonObject{{"action","tvarchive.autoplay"},{"required",QJsonArray{"enabled"}}},
+            QJsonObject{{"action","recipes.list"}},QJsonObject{{"action","recipes.get"},{"optional",QJsonArray{"id"}}},QJsonObject{{"action","recipes.compose"},{"required",QJsonArray{"request"}},{"optional",QJsonArray{"id"}}},QJsonObject{{"action","recipes.show"},{"required",QJsonArray{"title","left","right"}}},QJsonObject{{"action","recipes.delete"},{"optional",QJsonArray{"id"}}},
             QJsonObject{{"action","audiobooks.list"}},QJsonObject{{"action","audiobooks.status"}},QJsonObject{{"action","audiobooks.search"},{"required",QJsonArray{"search"}},{"optional",QJsonArray{"category"}}},
             QJsonObject{{"action","audiobooks.play"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","audiobooks.resume"}},QJsonObject{{"action","audiobooks.next"}},QJsonObject{{"action","audiobooks.previous"}},
             QJsonObject{{"action","audiobooks.save"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","audiobooks.remove"},{"required",QJsonArray{"id"}}},
@@ -347,6 +349,8 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         result=m_tvArchive.request(request);
     }else if(action.startsWith("audiobooks.")){
         result=m_audiobooks.request(request);
+    }else if(action.startsWith("recipes.")){
+        result=m_recipes.request(request);
     }else if(action.startsWith("markets.")){
         result=m_markets.request(request);
         if(action=="markets.focus"&&result.value("ok").toBool())emit openAppRequested("markets");

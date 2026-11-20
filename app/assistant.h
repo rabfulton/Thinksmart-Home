@@ -109,7 +109,7 @@ public:
     double outputLevel()const{return m_outputLevel;}
     QVariantList transcript()const{return m_transcript;}
     Q_INVOKABLE void start();
-    Q_INVOKABLE void stop();
+    Q_INVOKABLE void stop(const QString &reason=QStringLiteral("user_request"));
     Q_INVOKABLE void interrupt();
     Q_INVOKABLE void beginTurn();
     Q_INVOKABLE void endTurn();
@@ -186,7 +186,7 @@ private:
     QMap<int,Truncation> m_truncations;
     QSet<QString> m_ignoredResponses,m_calls;
     QVariantList m_transcript;
-    QJsonObject m_pendingAction,m_lastTool;
+    QJsonObject m_pendingAction,m_lastTool,m_lastStop,m_lastResponse,m_lastInterrupt;
     bool m_handoffReady=false,m_mediaDucked=false,m_noteDictation=false,m_noteSaved=false;
     bool m_enabled=false,m_configured=false,m_active=false,m_sessionReady=false,m_responseActive=false,m_playing=false,m_userSpeaking=false,m_manualTurn=false;
     double m_inputLevel=0,m_outputLevel=0;

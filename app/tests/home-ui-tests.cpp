@@ -10,6 +10,9 @@
 #include "radio-server.h"
 #include "../controller.h"
 #include <QtTest>
+#include <QTextBlock>
+#include <QTextBlockFormat>
+#include <QAbstractTextDocumentLayout>
 #include <QQuickWindow>
 #include <QQuickItem>
 #include <QQmlApplicationEngine>
@@ -159,6 +162,9 @@ exec sleep 20
             QFETCH(QStringList,enabledModules);for(const auto &name:DeviceConfig::names())modules.insert(name,enabledModules.contains(name));
         }
         if(QByteArray(QTest::currentTestFunction())=="moduleSpeechSchemas")for(const auto &id:{"radio","weather","vrm","notes","iptv"})modules.insert(id,false);
+        qputenv("THINKSMART_RECIPES_FILE",directory.filePath("recipes.json").toUtf8());qputenv("THINKSMART_RECIPES_CONFIG",directory.filePath("recipe-settings.json").toUtf8());
+        QFile::remove(directory.filePath("recipes.json"));QFile::remove(directory.filePath("recipe-settings.json"));
+        if(QByteArray(QTest::currentTestFunction()).startsWith("recipes"))modules.insert("recipes",true);
         qputenv("THINKSMART_MARKETS_FILE",directory.filePath("markets.json").toUtf8());qputenv("THINKSMART_MARKETS_CACHE",directory.filePath("markets-cache.json").toUtf8());
         QFile::remove(directory.filePath("markets.json"));QFile::remove(directory.filePath("markets-cache.json"));
         if(QByteArray(QTest::currentTestFunction()).startsWith("markets"))modules.insert("markets",true);
@@ -196,6 +202,9 @@ exec sleep 20
         }
         if(QByteArray(QTest::currentTestFunction()).startsWith("audiobooks")){
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","dev-books"},{"title","Dev"},{"kind","widgets"},{"widgets",QJsonArray{"audiobooks"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
+        }
+        if(QByteArray(QTest::currentTestFunction()).startsWith("recipes")){
+            auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","dev-recipes"},{"title","Dev"},{"kind","widgets"},{"widgets",QJsonArray{"recipes"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
         }
         if(QByteArray(QTest::currentTestFunction()).startsWith("tvArchive")){
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","dev-tv"},{"title","Dev"},{"kind","widgets"},{"widgets",QJsonArray{"tvarchive"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
@@ -321,6 +330,74 @@ exec sleep 20
             click("marketsAddAlert");QTRY_VERIFY(object("marketsAlertDialog")->property("opened").toBool());click("marketsAlertPrice");QTRY_VERIFY(qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("virtualEnterKey");QTRY_VERIFY(!qobject_cast<QQuickItem *>(object("virtualKeyboard"))->isVisible());click("marketsSaveAlert");QTRY_VERIFY(!object("marketsAlertDialog")->property("visible").toBool());
         }
         QCOMPARE(media->markets()->alerts().size(),2);
+    }
+    void recipesReaderHistorySettingsAndTouchTasks(){
+        screen->wake();window->resize(1280,800);QTest::qWait(100);click("pageButton_dev-recipes");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);QTRY_VERIFY(!object("dashboardPages")->property("transitioning").toBool());QTRY_VERIFY(object("recipesTile"));click("recipesTile");QTRY_COMPARE(window->property("selectedApp").toString(),QString("recipes"));auto book=media->recipes();
+        const QJsonObject content{{"action","recipes.show"},{"title","Lentil soup"},{"left","## Ingredients\n- [ ] 200 g lentils\n- [ ] 1 onion\n\nServes **four**."},{"right","## Method\n1. Rinse the lentils.\n2. Simmer until tender."}};
+        QVERIFY(book->request(content).value("ok").toBool());QTRY_COMPARE(window->property("selectedApp").toString(),QString("recipes"));QTRY_VERIFY(object("recipeText_left"));
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(100);QCOMPARE(object("recipePanes")->property("columns").toInt(),size.width()>size.height()?2:1);
+            auto ingredients=qobject_cast<QQuickItem *>(object("recipeIngredients"));QVERIFY(ingredients);QVERIFY(ingredients->height()>250);
+        }
+        window->resize(1280,800);QTest::qWait(100);
+        auto editor=qobject_cast<QQuickItem *>(object("recipeText_left"));QVERIFY(editor);
+        auto quickDoc=qvariant_cast<QQuickTextDocument *>(editor->property("textDocument"));QVERIFY(quickDoc);
+        QCOMPARE(object("recipeTitle_left")->property("text").toString(),QString("Lentil soup"));
+        QVERIFY(object("recipeTitle_left")->property("font").value<QFont>().pixelSize()>book->fontSize());
+        const auto heading=quickDoc->textDocument()->begin();QVERIFY(heading.blockFormat().headingLevel()>0);
+        const auto headingStyle=heading.begin().fragment().charFormat();QVERIFY(headingStyle.property(QTextFormat::FontPixelSize).toInt()>book->fontSize());
+        QVERIFY(headingStyle.foreground().color()!=editor->property("color").value<QColor>());QVERIFY(heading.blockFormat().bottomMargin()>0);
+        bool foundBold=false;
+        for(auto block=quickDoc->textDocument()->begin();block.isValid();block=block.next())if(!block.blockFormat().headingLevel())for(auto fragment=block.begin();!fragment.atEnd();++fragment){const auto span=fragment.fragment();if(span.charFormat().fontWeight()>=QFont::DemiBold){foundBold=true;QVERIFY(span.charFormat().foreground().color()!=editor->property("color").value<QColor>());}}
+        QVERIFY(foundBold);const auto savedMarkdown=book->current().value("left");const auto originalHeadingColor=headingStyle.foreground().color();
+        media->setTheme("tide");QTRY_VERIFY(quickDoc->textDocument()->begin().begin().fragment().charFormat().foreground().color()!=originalHeadingColor);QCOMPARE(book->current().value("left"),savedMarkdown);media->setTheme("ember");QTest::qWait(30);
+        QTextBlock task;for(auto block=quickDoc->textDocument()->begin();block.isValid();block=block.next())if(block.blockFormat().marker()==QTextBlockFormat::MarkerType::Unchecked){task=block;break;}
+        QVERIFY(task.isValid());const auto rect=quickDoc->textDocument()->documentLayout()->blockBoundingRect(task);
+        QTest::mouseClick(window,Qt::LeftButton,Qt::NoModifier,editor->mapToScene(QPointF(22,rect.center().y()+2)).toPoint());
+        QTRY_VERIFY(book->current().value("left").toString().contains("[x]"));RecipeBook restored;QVERIFY(restored.current().value("left").toString().contains("[x]"));
+        QTest::mouseClick(window,Qt::LeftButton,Qt::NoModifier,editor->mapToScene(QPointF(22,rect.center().y()+2)).toPoint());
+        QTRY_VERIFY(!book->current().value("left").toString().contains("[x]"));QVERIFY(!book->current().value("left").toString().contains("<span"));QVERIFY(!book->current().value("left").toString().contains("Lentil soup"));
+        auto second=content;second.insert("title","Vegetable stew");QVERIFY(book->request(second).value("ok").toBool());click("recipeOlder");QCOMPARE(book->current().value("title").toString(),QString("Lentil soup"));click("recipeNewer");QCOMPARE(book->current().value("title").toString(),QString("Vegetable stew"));
+        click("recipeSettingsButton");QTRY_VERIFY(object("recipeSettings")->property("opened").toBool());QVERIFY(object("recipeFontSize")->setProperty("value",30));click("recipeSaveSettings");QCOMPARE(book->fontSize(),30);
+        click("recipeDelete");QTest::qWait(80);click("recipeConfirmDelete");QCOMPARE(book->count(),1);QCOMPARE(book->current().value("title").toString(),QString("Lentil soup"));
+        const auto capture=qEnvironmentVariable("THINKSMART_RECIPE_SCREENSHOTS");if(!capture.isEmpty())for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(120);QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/recipes-%1.png").arg(size.width())));}
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void recipesVoiceTools_data(){
+        QTest::addColumn<bool>("live");QTest::addColumn<bool>("compose");
+        QTest::newRow("realtime-show")<<false<<false;QTest::newRow("live-show")<<true<<false;
+        QTest::newRow("realtime-second-recipe")<<false<<true;QTest::newRow("live-second-recipe")<<true<<true;
+    }
+    void recipesVoiceTools(){
+        QFETCH(bool,compose);QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto restore=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        QWebSocketServer server("mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QTcpServer textServer;int textCalls=0;
+        auto resetTextEndpoint=qScopeGuard([](){qunsetenv("THINKSMART_RECIPES_TEST_ENDPOINT");});
+        if(compose){
+            QVERIFY(textServer.listen(QHostAddress::LocalHost));qputenv("THINKSMART_RECIPES_TEST_ENDPOINT",QString("http://127.0.0.1:%1/v1/responses").arg(textServer.serverPort()).toUtf8());
+            connect(&textServer,&QTcpServer::newConnection,this,[&](){auto socket=textServer.nextPendingConnection();connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);connect(socket,&QTcpSocket::readyRead,this,[&,socket](){
+                const auto bytes=socket->property("input").toByteArray()+socket->readAll();socket->setProperty("input",bytes);const int boundary=bytes.indexOf("\r\n\r\n");if(boundary<0||socket->property("handled").toBool())return;
+                const auto length=QRegularExpression("content-length: (\\d+)",QRegularExpression::CaseInsensitiveOption).match(QString::fromLatin1(bytes.left(boundary)));if(!length.hasMatch()||bytes.size()-boundary-4<length.captured(1).toInt())return;
+                socket->setProperty("handled",true);textCalls++;
+                const auto input=QJsonDocument::fromJson(bytes.mid(boundary+4)).object();const auto request=QJsonDocument::fromJson(input.value("input").toString().toUtf8()).object();QVERIFY(request.value("previousOutput").toObject().isEmpty());
+                const QJsonObject doc{{"title","Croatian stew"},{"left","## Ingredients\n- [ ] Vegetables"},{"right","## Method\n1. Simmer."}};
+                const auto body=QJsonDocument(QJsonObject{{"status","completed"},{"output",QJsonArray{QJsonObject{{"type","message"},{"content",QJsonArray{QJsonObject{{"type","output_text"},{"text",QString::fromUtf8(QJsonDocument(doc).toJson())}}}}}}}}).toJson();
+                QTimer::singleShot(200,socket,[socket,body](){socket->write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: "+QByteArray::number(body.size())+"\r\n\r\n"+body);socket->disconnectFromHost();});
+            });});
+            QVERIFY(media->recipes()->request({{"action","recipes.show"},{"title","First recipe"},{"left","- [x] Lentils"},{"right","1. Simmer."}}).value("ok").toBool());QCOMPARE(media->recipes()->count(),1);
+        }
+        QJsonObject session;QPointer<QWebSocket> peer;auto cleanup=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();if(e.value("type")=="session.update"||e.value("type")=="session.start"){session=e.value("session").toObject();peer->sendTextMessage(live?"{\"type\":\"session.started\"}":"{\"type\":\"session.updated\"}");}});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        prepareWakeAssets();window->setProperty("selectedApp","assistant");QTest::qWait(40);auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
+        const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;QVERIFY(QJsonDocument(owner.value("tools").toArray()).toJson().contains("recipe_action"));QVERIFY(owner.value("instructions").toString().contains("Recipes module"));
+        const QJsonObject args=compose?QJsonObject{{"action","recipes.compose"},{"request","A classic Croatian dish"}}:QJsonObject{{"action","recipes.show"},{"title","Soup"},{"left","- [ ] Lentils"},{"right","1. Simmer."}};
+        const QJsonObject item{{"type","function_call"},{"name","recipe_action"},{"call_id","recipe-call"},{"arguments",QString::fromUtf8(QJsonDocument(args).toJson(QJsonDocument::Compact))}};
+        auto send=[&](QJsonObject e){peer->sendTextMessage(QString::fromUtf8(QJsonDocument(e).toJson(QJsonDocument::Compact)));};
+        if(live){auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","d1"},{"event",e}});};nested({{"type","response.created"},{"response",QJsonObject{{"id","r-recipe"}}}});nested({{"type","response.output_item.done"},{"response_id","r-recipe"},{"item",item}});nested({{"type","response.completed"},{"response",QJsonObject{{"id","r-recipe"}}}});}
+        else{send({{"type","response.created"},{"response",QJsonObject{{"id","r-recipe"}}}});
+            if(compose){send({{"type","response.output_audio_transcript.delta"},{"response_id","r-recipe"},{"item_id","preamble"},{"delta","Sure, let me think about a classic Croatian dish to set you up with."}});send({{"type","response.output_audio.delta"},{"response_id","r-recipe"},{"item_id","preamble"},{"content_index",0},{"delta",QString::fromLatin1(QByteArray(24000,'\0').toBase64())}});QTRY_VERIFY(!voice->transcript().isEmpty());QVERIFY(voice->active());}
+            send({{"type","response.done"},{"response",QJsonObject{{"id","r-recipe"},{"status","completed"},{"output",QJsonArray{item}}}}});}
+        QTRY_COMPARE(media->recipes()->count(),compose?2:1);QCOMPARE(media->recipes()->current().value("title").toString(),compose?QString("Croatian stew"):QString("Soup"));if(compose){QCOMPARE(textCalls,1);media->recipes()->navigate(1);QCOMPARE(media->recipes()->current().value("title").toString(),QString("First recipe"));QVERIFY(media->recipes()->current().value("left").toString().contains("[x]"));media->recipes()->navigate(-1);}QTRY_COMPARE(voice->snapshot().value("lastTool").toObject().value("function").toString(),QString("recipe_action"));QCOMPARE(window->property("selectedApp").toString(),QString("recipes"));QTest::qWait(80);QVERIFY(voice->active());QCOMPARE(peer->state(),QAbstractSocket::ConnectedState);voice->stop();QCOMPARE(voice->snapshot().value("lastStop").toObject().value("reason").toString(),QString("user_request"));QVERIFY(!QJsonDocument(voice->snapshot().value("lastStop").toObject()).toJson().contains("Croatian"));
     }
     void tvArchiveBrowserAndProgressControls(){
         screen->wake();window->resize(1280,800);QTest::qWait(60);click("pageButton_dev-tv");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);click("tvArchiveTile");QCOMPARE(window->property("selectedApp").toString(),QString("tvarchive"));QTRY_VERIFY(media->tvArchive()->active());QTRY_COMPARE(object("tvArchiveList")->property("count").toInt(),1);QTRY_VERIFY(object("tvArchiveRow0"));click("tvArchiveRow0");QCOMPARE(object("tvArchiveList")->property("count").toInt(),3);QCOMPARE(media->tvArchive()->seasons().size(),4);

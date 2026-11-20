@@ -169,6 +169,6 @@ void VoiceAssistant::receiveLive(const QJsonObject &event){
         if(std::isfinite(seconds)&&seconds>=0)m_liveSeconds=seconds;
         if(type!="session.closed")return;
         m_liveUsageFinalized=true;
-        m_sessionReady=false;stop();m_status="Live conversation ended";emit changed();
+        m_sessionReady=false;stop("live_session_closed");m_status="Live conversation ended";emit changed();
     }
 }

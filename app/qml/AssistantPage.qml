@@ -56,7 +56,14 @@ Rectangle {
     }
     signal back()
     color: Theme.surface; radius: Theme.radius; border.color: Theme.border
-    onActiveChanged: { if(!active) { audioLab.stop(); if(!backgroundPlayback)assistant.stop() } }
+    onActiveChanged: {
+        if(!active) {
+            audioLab.stop()
+            // Let navigation bindings settle before deciding whether the new
+            // view supports the ongoing conversation (Recipes and IPTV do).
+            Qt.callLater(function() { if(!page.active && !page.backgroundPlayback)assistant.stop("page_navigation") })
+        }
+    }
     onTabChanged: assistant.stopVoicePreview()
     Connections { target: home; function onAudioSetupRequested() { page.tab = "audio" } }
     AudioTestPage {

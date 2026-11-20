@@ -88,6 +88,14 @@ sleep, quiet timeout or the maximum duration.
 
 ## Ending a conversation
 
+The local `status` command includes bounded `lastStop`, `lastResponse` and
+`lastInterrupt` metadata to diagnose premature cutoffs. These live in RAM only,
+with fixed reason codes, timings and state flags; they contain no transcript,
+audio, tool arguments or credentials and cause no log-file writes. The first
+stop of an active session is retained, so later UI cleanup cannot replace its
+reason. It distinguishes page navigation, display sleep, idle/session limits,
+explicit dismissal and errors, plus Realtime response completion/cancellation.
+
 Say **“go to sleep”** to dismiss Sheila. Both Realtime and Live have an
 `end_conversation` tool that closes cloud audio and stops queued assistant speech
 without a spoken goodbye. It keeps the assistant enabled for local wake-word

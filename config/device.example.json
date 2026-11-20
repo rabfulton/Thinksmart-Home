@@ -14,7 +14,8 @@
     "iptv": false,
     "markets": false,
     "audiobooks": false,
-    "tvarchive": false
+    "tvarchive": false,
+    "recipes": false
   },
   "weather": {
     "name": "London",

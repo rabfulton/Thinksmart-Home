@@ -36,6 +36,7 @@ ApplicationWindow {
     // Services have one owner even when several pages show the same module.
     readonly property var currentPage: pageDefinitions[dashboardPages.currentIndex] || ({})
     readonly property bool browsingTv: selectedApp === "tvarchive" || selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
+    readonly property bool readingRecipe: selectedApp === "recipes" || (selectedApp === "" && currentPage.module === "recipes")
     readonly property bool pageRunning: selectedApp === "" && !dashboardPages.transitioning && !screenControl.sleeping
     Binding { target: chessGame; property: "active"; value: home.modules.chess && window.pageRunning && window.currentPage.module === "chess" }
     Binding { target: home.newsSettings; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
@@ -92,7 +93,7 @@ ApplicationWindow {
         Text { visible: home.configProblem.length > 0; text: home.configProblem; color: Theme.danger; wrapMode: Text.WordWrap; Layout.fillWidth: true }
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
-            currentIndex: window.selectedApp === "tvarchive" ? 10 : window.selectedApp === "audiobooks" ? 9 : window.selectedApp === "markets" ? 8 : window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
+            currentIndex: window.selectedApp === "recipes" ? 11 : window.selectedApp === "tvarchive" ? 10 : window.selectedApp === "audiobooks" ? 9 : window.selectedApp === "markets" ? 8 : window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
             PathView {
                 id: dashboardPages; objectName: "dashboardPages"
                 clip: true; currentIndex: window.pageIndex("home"); model: window.pageNames.length; pathItemCount: count
@@ -144,8 +145,9 @@ ApplicationWindow {
                     width: dashboardPages.width; height: dashboardPages.height
                     property var pageData: window.pageDefinitions[index] || ({})
                     property bool pageActive: window.selectedApp === "" && dashboardPages.currentIndex === index && !screenControl.sleeping
-                    sourceComponent: pageData.kind === "widgets" ? homeComponent : pageData.module === "chess" ? chessComponent : pageData.module === "news" ? newsComponent : pageData.module === "notes" ? notesComponent : pageData.module === "iptv" ? iptvComponent : pageData.module === "markets" ? marketsComponent : null
+                    sourceComponent: pageData.kind === "widgets" ? homeComponent : pageData.module === "chess" ? chessComponent : pageData.module === "news" ? newsComponent : pageData.module === "notes" ? notesComponent : pageData.module === "iptv" ? iptvComponent : pageData.module === "markets" ? marketsComponent : pageData.module === "recipes" ? recipesComponent : null
                 }
+                Component { id: recipesComponent; RecipesPage { objectName: "recipesFullPage"; active: parent.pageActive && !dashboardPages.transitioning } }
                 Component { id: marketsComponent; MarketsPage { objectName: "marketsFullPage"; active: parent.pageActive && !dashboardPages.transitioning; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.showDashboardPage(window.pageIndex("home")) } }
                 Component { id: notesComponent; NotesPage { objectName: "notesPage" } }
                 Component { id: iptvComponent; IptvPage { objectName: "iptvFullPage"; active: parent.pageActive && !dashboardPages.transitioning; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.showDashboardPage(window.pageIndex("home")) } }
@@ -177,7 +179,7 @@ ApplicationWindow {
             AssistantPage {
                 objectName: "assistantPage"
                 active: window.selectedApp === "assistant" && !screenControl.sleeping
-                backgroundPlayback: home.source === "iptv" && home.video.visible
+                backgroundPlayback: window.readingRecipe || (home.source === "iptv" && home.video.visible)
                 onBack: window.selectedApp = ""
             }
             EnergyPage { onBack: window.selectedApp = "" }
@@ -189,10 +191,11 @@ ApplicationWindow {
             MarketsPage { objectName: "marketsAppPage"; active: window.selectedApp === "markets" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp = "" }
             AudiobooksPage { objectName: "audiobooksAppPage"; active: window.selectedApp === "audiobooks" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp="" }
             TvArchivePage { objectName: "tvArchiveAppPage"; active: window.selectedApp === "tvarchive" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp="" }
+            Loader { active: window.selectedApp === "recipes"; sourceComponent: Component { RecipesPage { objectName: "recipesAppPage"; active: window.selectedApp === "recipes" && !screenControl.sleeping } } }
         }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 96
-            visible: !window.browsingTv && (home.modules.radio || home.modules.bluetooth || home.modules.navidrome || home.modules.jellyfin || home.modules.iptv)
+            visible: !window.browsingTv && !window.readingRecipe && (home.modules.radio || home.modules.bluetooth || home.modules.navidrome || home.modules.jellyfin || home.modules.iptv)
             color: Theme.surface; border.color: Theme.border; radius: Theme.radius
             RowLayout {
                 anchors.fill: parent; anchors.margins: 16; spacing: 12

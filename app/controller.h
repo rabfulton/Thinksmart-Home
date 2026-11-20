@@ -14,6 +14,7 @@
 #include "news.h"
 #include "audiobooks.h"
 #include "tvarchive.h"
+#include "recipes.h"
 #include <QObject>
 #include <QProcess>
 #include <QLocalSocket>
@@ -32,6 +33,7 @@ class Controller:public QObject {
     Q_OBJECT
     Q_PROPERTY(VideoPlayer *video READ video CONSTANT)
     Q_PROPERTY(TvArchiveClient *tvArchive READ tvArchive CONSTANT)
+    Q_PROPERTY(RecipeBook *recipes READ recipes CONSTANT)
     Q_PROPERTY(SystemStats *systemStats READ systemStats CONSTANT)
     Q_PROPERTY(QString themeName READ themeName NOTIFY themeChanged)
     Q_PROPERTY(QVariantMap themePalette READ themePalette NOTIFY themeChanged)
@@ -97,6 +99,7 @@ public:
     BluetoothAudio *phone(){return &m_phone;}
     VideoPlayer *video(){return &m_videoPlayer;}
     TvArchiveClient *tvArchive(){return &m_tvArchive;}
+    RecipeBook *recipes(){return &m_recipes;}
     SystemStats *systemStats(){return &m_systemStats;}
     AudioLab *audioLab(){return &m_audioLab;}
     VoiceAssistant *assistant(){return &m_assistant;}
@@ -145,6 +148,7 @@ private:
     NewsSettings m_newsSettings;
     AudiobooksClient m_audiobooks;
     TvArchiveClient m_tvArchive;
+    RecipeBook m_recipes;
     bool m_iptvSoftware=false;
     QJsonObject personalRequest(const QString &action,const QJsonObject &data);
     QJsonObject executeSteps(const QJsonArray &steps);
