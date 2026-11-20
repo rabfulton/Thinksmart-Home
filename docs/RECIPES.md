@@ -34,6 +34,8 @@ for confirmation. Up to 32 outputs are retained, newest first. When full, delete
 an unwanted output before generating another. Revisions create new outputs,
 keeping the original. Failed requests keep saved outputs intact. The normal
 page tabs remain available; voice and media strips do not occupy the reader.
+Swipe horizontally in either direction to close an expanded reader and return
+to its widget page. Vertical scrolling and ingredient checkboxes remain available.
 
 Settings choose a base font size (18–36 px), text model and **Recipes** or
 **General text** mode. Settings are also available at **Pages & modules →

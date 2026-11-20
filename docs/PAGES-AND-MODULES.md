@@ -36,7 +36,7 @@ navigation. News retains vertical scrolling in either view.
 Ask Sheila to open an enabled application, for example **“Open chess”**. The
 shared Realtime/Live `open_application` tool opens its existing page, or a
 transient expanded view when it has no page. No page or card is added and no
-module is enabled. Back closes the expanded view. Chess keeps its saved game,
+module is enabled. Back closes the expanded view; Recipes uses a horizontal swipe. Chess keeps its saved game,
 and its engine runs only while the chess view is active. Opening a view does not
 reset games, start media, or generate a new paid recipe.
 

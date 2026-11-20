@@ -5,8 +5,28 @@ import QtQuick.Layouts
 Item {
     id: page
     property bool active: false
+    property bool swipeToExit: false
+    signal back()
     readonly property var output: home.recipes.current
     readonly property bool wide: width>height
+    // Observe swipes without taking the grab from vertical scrolling or taps.
+    Item {
+        anchors.fill: parent; z: 5
+        PointHandler {
+            target: null
+            enabled: page.active && page.swipeToExit && !settings.visible && !removeConfirm.visible
+            property point origin: Qt.point(0,0)
+            property point lastPosition: Qt.point(0,0)
+            onPointChanged: if(active)lastPosition=point.position
+            onActiveChanged: {
+                if(active){origin=point.position;lastPosition=origin}
+                else if(enabled){
+                    const dx=lastPosition.x-origin.x,dy=lastPosition.y-origin.y
+                    if(Math.abs(dx)>Math.min(160,page.width*0.18) && Math.abs(dx)>Math.abs(dy)*1.4)page.back()
+                }
+            }
+        }
+    }
     ColumnLayout {
         anchors.fill: parent; spacing: 10
         Text { visible: home.recipes.problem.length>0 || home.recipes.busy; text: home.recipes.problem || "Preparing…"; textFormat: Text.PlainText; color: home.recipes.problem.length ? Theme.danger : Theme.muted; font.pixelSize: 18; wrapMode: Text.WordWrap; Layout.fillWidth: true }

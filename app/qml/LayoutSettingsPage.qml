@@ -38,6 +38,12 @@ Item {
     }
     function toggleRemoval(id) { const next=removals.slice();const i=next.indexOf(id);if(i<0)next.push(id);else next.splice(i,1);removals=next }
     component Label: Text { color: Theme.ink; font.pixelSize: 21; textFormat: Text.PlainText; wrapMode: Text.WordWrap }
+    component NameField: TextField {
+        implicitHeight: 60; maximumLength: 32; font.pixelSize: 22
+        color: Theme.ink; placeholderTextColor: Theme.muted
+        selectionColor: Theme.accent; selectedTextColor: Theme.accentInk
+        background: Rectangle { color: Theme.raised; radius: 12; border.color: parent.activeFocus?Theme.accent:Theme.border }
+    }
     component PickButton: Button {
         id: pick
         property string heading: ""
@@ -111,7 +117,7 @@ Item {
                 ColumnLayout {
                     visible: page.route==="new-page" || (page.route==="location" && page.displayMode==="page"); Layout.fillWidth: true; spacing: 14
                     Label { text: "Page name" }
-                    TextField { id: newPageName; objectName: "applicationNewPageName"; Layout.fillWidth: true; implicitHeight: 60; maximumLength: 32; font.pixelSize: 22; color: Theme.ink; selectByMouse: true; onAccepted: {focus=false;Qt.inputMethod.hide()} }
+                    NameField { id: newPageName; objectName: "applicationNewPageName"; Layout.fillWidth: true; selectByMouse: true; onAccepted: {focus=false;Qt.inputMethod.hide()} }
                     UiButton { objectName: "applicationFinish"; text: page.movingApplication?"Move application":"Add application"; primary: true; Layout.fillWidth: true; enabled: newPageName.text.trim().length>0; onClicked: page.finishApplication(page.displayMode,"",newPageName.text) }
                 }
                 PickButton { objectName: "applicationOnDemand"; visible: page.route==="display" || page.route==="location"; Layout.fillWidth: true; heading: "Open on request"; detail: "Keep it available to Sheila without a permanent page or card."; onClicked: page.finishApplication("ondemand","","") }
@@ -152,7 +158,7 @@ Item {
                 ColumnLayout {
                     visible: page.route==="page"; Layout.fillWidth: true; spacing: 14
                     Label { text: "Page name" }
-                    TextField { id: pageName; objectName: "layoutPageName"; Layout.fillWidth: true; implicitHeight: 60; maximumLength: 32; font.pixelSize: 22; color: Theme.ink; onAccepted: {focus=false;Qt.inputMethod.hide()} }
+                    NameField { id: pageName; objectName: "layoutPageName"; Layout.fillWidth: true; onAccepted: {focus=false;Qt.inputMethod.hide()} }
                     UiButton { text: "Save name"; onClicked: {Qt.inputMethod.hide();page.editor.renamePage(page.selected,pageName.text)} }
                     Repeater {
                         model: page.route==="page" && page.current.kind==="widgets" ? page.current.widgets : []

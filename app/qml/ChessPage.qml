@@ -5,8 +5,9 @@ import QtQuick.Layouts
 Rectangle {
     id: page
     property bool active: false
+    property real topInset: 0
     readonly property bool wide: width > height
-    readonly property real boardSize: Math.floor(Math.min(width - (wide ? 300 : 40), height - (wide ? 40 : chessGame.error.length ? 410 : 330)) / 8) * 8
+    readonly property real boardSize: Math.floor(Math.min(width - (wide ? 300 : 40), height - topInset - (wide ? 40 : chessGame.error.length ? 410 : 330)) / 8) * 8
     readonly property var cells: chessGame.squares
     color: Theme.surface; radius: Theme.radius; border.color: Theme.border
     onActiveChanged: { if(active && chessGame.promotionPending)promotion.open();else promotion.close() }
@@ -17,6 +18,7 @@ Rectangle {
     }
     GridLayout {
         anchors.centerIn: parent
+        anchors.verticalCenterOffset: page.topInset/2
         columns: page.wide ? 2 : 1
         columnSpacing: 28; rowSpacing: 20
         Rectangle {

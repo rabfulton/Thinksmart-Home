@@ -434,6 +434,27 @@ exec sleep 20
         const auto capture=qEnvironmentVariable("THINKSMART_RECIPE_SCREENSHOTS");if(!capture.isEmpty())for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(120);QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/recipes-%1.png").arg(size.width())));}
         QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
     }
+    void recipesSwipeExitsWithoutBreakingVerticalScroll(){
+        screen->wake();window->resize(1280,800);QTest::qWait(100);click("pageButton_dev-recipes");QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);QTRY_VERIFY(!object("dashboardPages")->property("transitioning").toBool());
+        QString ingredients="## Ingredients\n";for(int i=0;i<60;++i)ingredients+=QString("- Item %1 for the recipe\n").arg(i+1);
+        QVERIFY(media->recipes()->request({{"action","recipes.show"},{"title","A long recipe"},{"left",ingredients},{"right","## Method\nTake your time."}}).value("ok").toBool());
+        auto touch=QTest::createTouchDevice();
+        auto swipe=[&](QPoint from,QPoint to){
+            auto sequence=QTest::touchEvent(window,touch);sequence.press(0,from,window).commit();QTest::qWait(20);
+            for(int i=1;i<=12;++i){sequence.move(0,from+(to-from)*i/12,window).commit();QTest::qWait(20);}
+            sequence.release(0,to,window).commit();
+        };
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            media->openAppRequested("recipes");window->resize(size);QTest::qWait(100);
+            auto scroll=qobject_cast<QQuickItem *>(object("recipeScroll_left"));QVERIFY(scroll);
+            swipe(scroll->mapToScene(QPointF(scroll->width()*.7,scroll->height()*.8)).toPoint(),scroll->mapToScene(QPointF(scroll->width()*.7,scroll->height()*.25)).toPoint());
+            QTRY_VERIFY(scroll->property("contentY").toReal()>0);QCOMPARE(window->property("selectedApp").toString(),QString("recipes"));
+            auto reader=qobject_cast<QQuickItem *>(object("recipesAppPage"));QVERIFY(reader);
+            const bool left=size.width()>size.height();
+            swipe(reader->mapToScene(QPointF(reader->width()*(left?.8:.2),reader->height()*.35)).toPoint(),reader->mapToScene(QPointF(reader->width()*(left?.2:.8),reader->height()*.35)).toPoint());
+            QTRY_COMPARE(window->property("selectedApp").toString(),QString());QCOMPARE(object("dashboardPages")->property("currentIndex").toInt(),4);
+        }
+    }
     void recipesVoiceTools_data(){
         QTest::addColumn<bool>("live");QTest::addColumn<bool>("compose");
         QTest::newRow("realtime-show")<<false<<false;QTest::newRow("live-show")<<true<<false;
