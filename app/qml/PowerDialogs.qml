@@ -55,18 +55,29 @@ Item {
         id: settingsSheet
         objectName: "settingsSheet"
         property int previousBrightness: 50
+        property string previousTheme: ""
         property bool saved: false
         property bool validTimers: offChoice.currentValue === 0 || dimChoice.currentValue === 0 || dimChoice.currentValue < offChoice.currentValue
         onOpened: {
             previousBrightness = screenControl.brightness
             saved = false
+            previousTheme = home.themeName
             dimChoice.currentIndex = dimChoice.indexOfValue(screenControl.dimSeconds)
             offChoice.currentIndex = offChoice.indexOfValue(screenControl.sleepSeconds)
         }
-        onClosed: { if(!saved) screenControl.setBrightness(previousBrightness) }
+        onClosed: { if(!saved) { screenControl.setBrightness(previousBrightness); home.setTheme(previousTheme) } }
         contentItem: ColumnLayout {
             spacing: 18
             Text { text: "Display settings"; color: dialogs.ink; font.pixelSize: 30 }
+            RowLayout {
+                Layout.fillWidth: true
+                Text { text: "Theme"; color: dialogs.ink; font.pixelSize: 22; Layout.fillWidth: true }
+                ActionButton {
+                    objectName: "themeButton"; implicitWidth: 240; implicitHeight: 60
+                    iconName: "palette"; text: Theme.title
+                    onClicked: home.setTheme(Theme.names[(Theme.names.indexOf(home.themeName) + 1) % Theme.names.length])
+                }
+            }
             RowLayout {
                 Text { text: "Brightness"; color: dialogs.quiet; font.pixelSize: 22 }
                 Item { Layout.fillWidth: true }
@@ -99,7 +110,7 @@ Item {
             Text { visible: !settingsSheet.validTimers; text: "Choose an earlier dim time, or set Dim after to Never."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.danger; font.pixelSize: 19 }
             RowLayout {
                 Layout.fillWidth: true; spacing: 16
-                ActionButton { text: "Cancel"; Layout.fillWidth: true; onClicked: settingsSheet.close() }
+                ActionButton { objectName: "settingsCancelButton"; text: "Cancel"; Layout.fillWidth: true; onClicked: settingsSheet.close() }
                 ActionButton { objectName: "settingsSaveButton"; text: "Save"; primary: true; enabled: settingsSheet.validTimers; opacity: enabled ? 1 : 0.4; Layout.fillWidth: true; onClicked: { if(screenControl.setIdleTimers(dimChoice.currentValue, offChoice.currentValue)) { settingsSheet.saved = true; settingsSheet.close() } } }
             }
         }

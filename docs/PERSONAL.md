@@ -39,6 +39,10 @@ created when needed. Files use mode 600 and directories 700. No note text is
 written to routine diagnostic logs. Back up this directory to retain your data.
 Installation upgrades preserve it, including SSH-edited palettes.
 
+The built-in themes are Ember, Tide, Autumn, Spring and Dusk; all are dark.
+Cycle them with the theme button in **Settings → Display settings**. The retired
+Dawn light theme is excluded even if an older installation left its file behind.
+
 Edits reload automatically. Use valid JSON and preferably save through a temporary
 file followed by an atomic rename. For bulk edits to schedules/routines, stop
 `thinksmart-actions.service` first and avoid simultaneous assistant/UI edits.

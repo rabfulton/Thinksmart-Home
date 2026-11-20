@@ -12,16 +12,35 @@ ApplicationWindow {
     font.family: Theme.font
     readonly property bool wide: width > height
     property string selectedApp: ""
+    property var wakeReturnTarget: null
+    onSelectedAppChanged: if(selectedApp !== "assistant")wakeReturnTarget = null
     readonly property var pageNames: home.dashboardPages
     readonly property var pageDefinitions: home.pageDefinitions
     function pageForModule(name) { for(let i=0;i<pageDefinitions.length;i++)if(pageDefinitions[i].module === name)return i;return -1 }
     function pageIndex(name) { return pageNames.indexOf(name) }
     function showDashboardPage(index) { if(index < 0)return; selectedApp = ""; dashboardPages.setCurrentIndex(index) }
+    function showWakeConversation() {
+        wakeReturnTarget = selectedApp === "assistant" ? null : ({app: selectedApp, page: currentPage.id})
+        selectedApp = "assistant"
+    }
+    function returnFromWakeConversation() {
+        const target = wakeReturnTarget
+        wakeReturnTarget = null
+        if(!target || selectedApp !== "assistant")return
+        const index = pageIndex(target.page)
+        if(index >= 0 && dashboardPages.currentIndex !== index)dashboardPages.setCurrentIndex(index)
+        selectedApp = target.app
+    }
     function weatherValue(n, unit) { return typeof n === "number" && isFinite(n) ? Math.round(n) + unit : "—" }
     readonly property color ink: Theme.ink
     readonly property color quiet: Theme.muted
     readonly property color gold: Theme.accent
     Connections { target: home; function onOpenAppRequested(app) { if(window.pageIndex(app) >= 0)window.showDashboardPage(window.pageIndex(app));else if(window.pageForModule(app) >= 0)window.showDashboardPage(window.pageForModule(app));else if(["chess","news","notes"].indexOf(app) < 0)window.selectedApp = app } }
+    Connections {
+        target: assistant
+        function onWakeConversationStarted() { window.showWakeConversation() }
+        function onChanged() { if(!assistant.active)window.returnFromWakeConversation() }
+    }
     Binding { target: Theme; property: "paletteName"; value: home.themeName }
     Binding { target: Theme; property: "palette"; value: home.themePalette }
     Binding { target: Theme; property: "names"; value: home.personal.themeNames }
@@ -48,7 +67,7 @@ ApplicationWindow {
         enabled: !screenControl.sleeping && !screenControl.powerPending
         Item {
             id: topBar
-            visible: window.selectedApp !== "video" && !window.browsingTv
+            visible: window.selectedApp !== "video" && !home.video.visible
             Layout.fillWidth: true; Layout.preferredHeight: 70
             RowLayout {
                 anchors.fill: parent; spacing: 12
@@ -58,14 +77,8 @@ ApplicationWindow {
                     Text { text: home.date; color: Theme.muted; font.pixelSize: 15 }
                 }
                 Item { Layout.fillWidth: true }
-                UiButton {
-                    objectName: "themeButton"
-                    iconName: "palette"
-                    description: "Change colour theme: " + Theme.title
-                    onClicked: home.setTheme(Theme.names[(Theme.names.indexOf(home.themeName) + 1) % Theme.names.length])
-                }
-                UiButton { objectName: "powerButton"; iconName: "settings"; description: "Device settings"; onClicked: screenControl.showPowerMenu() }
-                UiButton { objectName: "screenOffButton"; iconName: "power"; description: "Screen off"; onClicked: screenControl.sleep() }
+                UiButton { objectName: "powerButton"; implicitWidth: 96; iconName: "settings"; description: "Device settings"; onClicked: screenControl.showPowerMenu() }
+                UiButton { objectName: "screenOffButton"; implicitWidth: 96; iconName: "power"; description: "Screen off"; onClicked: screenControl.sleep() }
             }
             Flickable {
                 objectName: "dashboardPageSelector"
@@ -180,7 +193,12 @@ ApplicationWindow {
                 objectName: "assistantPage"
                 active: window.selectedApp === "assistant" && !screenControl.sleeping
                 backgroundPlayback: window.readingRecipe || (home.source === "iptv" && home.video.visible)
-                onBack: window.selectedApp = ""
+                onBack: {
+                    if(window.wakeReturnTarget) {
+                        assistant.stop("page_navigation")
+                        window.returnFromWakeConversation()
+                    } else window.selectedApp = ""
+                }
             }
             EnergyPage { onBack: window.selectedApp = "" }
             MusicPage { active: window.selectedApp === "music"; onBack: window.selectedApp = "" }
@@ -213,14 +231,20 @@ ApplicationWindow {
                     }
                 }
                 UiButton { visible: home.source === "bluetooth" || home.source === "navidrome" || home.source === "audiobooks"; iconName: "previous"; description: "Previous track"; onClicked: home.previous() }
-                UiButton { objectName: "radioPlayButton"; iconName: home.state === "playing" ? "pause" : "play"; primary: true; description: home.state === "playing" ? "Pause" : "Play"; onClicked: home.toggle() }
+                UiButton {
+                    objectName: "radioPlayButton"
+                    readonly property bool stopping: home.state === "playing" || home.state === "connecting"
+                    implicitWidth: 128; primary: home.state === "connecting"
+                    iconName: stopping ? "stop" : "play"
+                    description: stopping ? "Stop playback" : "Play"
+                    onClicked: if(stopping)home.stop();else home.play()
+                }
                 UiButton { visible: home.source === "bluetooth" || home.source === "navidrome" || home.source === "audiobooks"; iconName: "next"; description: "Next track"; onClicked: home.next() }
-                UiButton { iconName: "stop"; description: "Stop playback"; onClicked: home.stop() }
                 Rectangle { width: 1; height: 36; color: Theme.border }
                 UiButton { iconName: "volume"; selected: home.muted; description: home.muted ? "Unmute" : "Mute"; onClicked: home.toggleMute() }
                 Slider {
                     id: volumeSlider
-                    Layout.preferredWidth: window.wide ? 180 : 110; Layout.minimumHeight: 64
+                    Layout.preferredWidth: window.wide ? 248 : 110; Layout.minimumHeight: 64
                     from: 0; to: 100; stepSize: 1; value: home.volume
                     onMoved: home.setVolume(Math.round(value))
                     background: Rectangle {
@@ -234,7 +258,6 @@ ApplicationWindow {
                         width: 30; height: 30; radius: 15; color: Theme.accent
                     }
                 }
-                Text { visible: window.wide; text: home.muted ? "Muted" : home.volume + "%"; color: Theme.muted; font.pixelSize: 17; Layout.preferredWidth: 56 }
             }
         }
         Text { visible: screenControl.error.length > 0; text: screenControl.error; color: Theme.danger; font.pixelSize: 15; Layout.fillWidth: true }

@@ -31,7 +31,14 @@ private slots:
         QVERIFY(f.open(QIODevice::ReadOnly));QCOMPARE(f.readAll(),QByteArray("{ broken"));
     }
     void themesAreValidatedUndoableAndReloadable(){
-        PersonalStore store;QCOMPARE(store.themeNames().size(),6);
+        PersonalStore store;QCOMPARE(store.themeNames().size(),5);
+        // Existing installs may still have a seeded Dawn file. Keep the file,
+        // but do not reintroduce the retired theme as a personal palette.
+        QFile legacy(dir->filePath("themes/dawn.json"));QVERIFY(legacy.open(QIODevice::WriteOnly));
+        legacy.write(QJsonDocument(QJsonObject{{"version",1},{"id","dawn"},{"colors",store.palette("autumn")}}).toJson());legacy.close();
+        store.reload();QVERIFY(!store.themeNames().contains("dawn"));QVERIFY(legacy.exists());
+        QVERIFY(!store.request("theme.apply",{{"id","dawn"}}).value("ok").toBool());
+        QVERIFY(!store.request("theme.save",{{"id","dawn"},{"base","ember"},{"colors",QJsonObject{{"accent","#e8b568"}}}}).value("ok").toBool());
         const auto original=store.palette("autumn");QVERIFY(!original.isEmpty());
         QVERIFY(store.request("theme.save",{{"id","plum"},{"base","dusk"},{"colors",QJsonObject{{"accent","#e8b568"}}}}).value("ok").toBool());
         QVERIFY(store.themeNames().contains("plum"));QCOMPARE(store.palette("plum").value("accent").toString(),QString("#e8b568"));

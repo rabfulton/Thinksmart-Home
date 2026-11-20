@@ -84,6 +84,8 @@ and preserve existing prompts. See [ADMIN.md](ADMIN.md) for all file locations.
 Themes, notes, routines and schedules live in
 `/var/lib/thinksmart-home/personal/`. They can be edited by the built-in assistant
 or over SSH and survive application upgrades. See [personal actions](PERSONAL.md).
+Cycle through themes with the **Theme** button in **Settings → Display settings**.
+Changes preview immediately; **Save** keeps the choice and **Cancel** restores it.
 
 TV Archive is an optional `tvarchive` widget, off by default. Add it to an existing
 page after enabling it. Its progress, autoplay and optional module-only proxy are

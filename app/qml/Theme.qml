@@ -3,7 +3,7 @@ import QtQuick
 
 QtObject {
     property string paletteName: "ember"
-    property var names: ["ember", "tide", "dawn", "autumn", "spring", "dusk"]
+    property var names: ["ember", "tide", "autumn", "spring", "dusk"]
     readonly property string title: paletteName.charAt(0).toUpperCase() + paletteName.slice(1)
     property var palette: ({
         background: "#10161c", surface: "#181f27", raised: "#222c36", border: "#303d49",

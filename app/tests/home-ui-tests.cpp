@@ -165,7 +165,7 @@ exec sleep 20
         if(QByteArray(QTest::currentTestFunction())=="moduleSpeechSchemas")for(const auto &id:{"radio","weather","vrm","notes","iptv"})modules.insert(id,false);
         qputenv("THINKSMART_RECIPES_FILE",directory.filePath("recipes.json").toUtf8());qputenv("THINKSMART_RECIPES_CONFIG",directory.filePath("recipe-settings.json").toUtf8());
         QFile::remove(directory.filePath("recipes.json"));QFile::remove(directory.filePath("recipe-settings.json"));
-        if(publicScreenshots||QByteArray(QTest::currentTestFunction()).startsWith("recipes"))modules.insert("recipes",true);
+        if(publicScreenshots||QByteArray(QTest::currentTestFunction()).startsWith("recipes")||QByteArray(QTest::currentTestFunction()).startsWith("wakeConversation"))modules.insert("recipes",true);
         qputenv("THINKSMART_MARKETS_FILE",directory.filePath("markets.json").toUtf8());qputenv("THINKSMART_MARKETS_CACHE",directory.filePath("markets-cache.json").toUtf8());
         QFile::remove(directory.filePath("markets.json"));QFile::remove(directory.filePath("markets-cache.json"));
         if(publicScreenshots||QByteArray(QTest::currentTestFunction()).startsWith("markets"))modules.insert("markets",true);
@@ -692,7 +692,7 @@ exec sleep 20
         QCOMPARE(object("dashboardPages")->property("currentIndex").toInt(),0);QVERIFY(chessGame->active());
         click("chessSquare_e2");click("chessSquare_e4");QTRY_COMPARE(chessGame->moveCount(),2);QVERIFY(chessGame->error().isEmpty());
         click("chessUndoButton");QCOMPARE(chessGame->moveCount(),0);
-        media->setTheme("dawn");QCoreApplication::processEvents();media->setTheme("tide");QCoreApplication::processEvents();
+        media->setTheme("autumn");QCoreApplication::processEvents();media->setTheme("tide");QCoreApplication::processEvents();
         window->resize(800,1280);QTest::qWait(350);auto square=qobject_cast<QQuickItem *>(object("chessSquare_e2"));QVERIFY(square);QVERIFY(square->width()>60);
         click("homePageButton");QVERIFY(!chessGame->active());QTRY_COMPARE(object("dashboardPages")->property("currentIndex").toInt(),3);
     }
@@ -708,10 +708,17 @@ exec sleep 20
     void menuSettingsAndTimerSave() {
         screen->wake();click("powerButton");QTRY_VERIFY(object("powerSheet")->property("visible").toBool());
         click("displaySettingsButton");QTRY_VERIFY(object("settingsSheet")->property("visible").toBool());
+        const auto originalTheme=media->themeName();click("themeButton");const auto chosenTheme=media->themeName();QVERIFY(chosenTheme!=originalTheme);
         QVERIFY(object("dimChoice")->setProperty("currentIndex",3));
         QVERIFY(object("offChoice")->setProperty("currentIndex",6));
         click("settingsSaveButton");QTRY_VERIFY(!object("settingsSheet")->property("visible").toBool());
         QCOMPARE(screen->dimSeconds(),120);QCOMPARE(screen->sleepSeconds(),600);
+        QCOMPARE(media->themeName(),chosenTheme);
+        window->resize(1280,800);click("powerButton");click("displaySettingsButton");
+        QTRY_VERIFY(object("settingsSheet")->property("visible").toBool());
+        click("themeButton");QVERIFY(media->themeName()!=chosenTheme);
+        click("settingsCancelButton");QTRY_VERIFY(!object("settingsSheet")->property("visible").toBool());
+        QCOMPARE(media->themeName(),chosenTheme);
     }
     void wifiDialogKeyboardAndSavedPreferences(){
         if(!media->virtualKeyboardEnabled())QSKIP("Run the isolated Wi-Fi keyboard test to avoid Qt input-context state crossing QML engines.");
@@ -968,6 +975,58 @@ exec sleep 20
         write("wake-trigger","Sheila");QTRY_VERIFY(voice->active());QTRY_COMPARE(connections,1);
         QTRY_VERIFY(!voice->released());QVERIFY(!voice->wakeListening());QVERIFY(!screen->sleeping());QCOMPARE(window->property("selectedApp").toString(),QString("assistant"));
         voice->setEnabled(false);QTRY_VERIFY(voice->released());QVERIFY(!voice->wakeListening());QTRY_VERIFY(peer->state()==QAbstractSocket::UnconnectedState);
+    }
+    void wakeConversationReturnsToPreviousView_data(){
+        QTest::addColumn<bool>("live");QTest::addColumn<QString>("scenario");
+        for(bool live:{false,true})for(const auto &scenario:{"dashboard","expanded","back","navigation","recipe","error","manual","already-assistant"})
+            QTest::newRow(qPrintable(QString(live?"live-":"realtime-")+scenario))<<live<<QString(scenario);
+    }
+    void wakeConversationReturnsToPreviousView(){
+        QFETCH(bool,live);QFETCH(QString,scenario);
+        qputenv("THINKSMART_SHARED_AUDIO","1");auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        prepareWakeAssets();screen->wake();
+        QWebSocketServer server("wake-return-mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));
+        qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QPointer<QWebSocket> peer;int connections=0;
+        auto cleanup=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){
+            ++connections;auto accepted=server.nextPendingConnection();peer=accepted;
+            connect(accepted,&QWebSocket::disconnected,accepted,&QObject::deleteLater);
+            connect(accepted,&QWebSocket::textMessageReceived,this,[accepted](const QString &message){
+                const auto type=QJsonDocument::fromJson(message.toUtf8()).object().value("type").toString();
+                if(type=="session.update")accepted->sendTextMessage("{\"type\":\"session.updated\"}");
+                if(type=="session.start")accepted->sendTextMessage("{\"type\":\"session.started\"}");
+                if(type=="session.close")accepted->sendTextMessage("{\"type\":\"session.closed\"}");
+            });
+            if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");
+        });
+        auto pages=object("dashboardPages");media->openAppRequested("news");
+        const auto newsIndex=media->dashboardPages().indexOf("news");
+        QTRY_COMPARE(pages->property("currentIndex").toInt(),newsIndex);QTRY_VERIFY(!pages->property("transitioning").toBool());
+        const bool expanded=scenario=="expanded"||scenario=="back";
+        if(expanded)media->openAppRequested("weather");
+        if(scenario=="manual"||scenario=="already-assistant")media->openAppRequested("assistant");
+        auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);
+        QTRY_VERIFY(voice->wakeListening());QCOMPARE(connections,0);
+        if(scenario=="manual")voice->start();else write("wake-trigger","Sheila");
+        QTRY_VERIFY(peer&&voice->active()&&voice->inputLevel()>0);QCOMPARE(connections,1);
+        QCOMPARE(window->property("selectedApp").toString(),QString("assistant"));
+        QString expectedApp=expanded?"weather":scenario=="manual"||scenario=="already-assistant"?"assistant":"";
+        int expectedPage=newsIndex;
+        if(scenario=="navigation"){
+            media->openAppRequested("chess");expectedPage=media->dashboardPages().indexOf("chess");
+        }else if(scenario=="recipe"){
+            QVERIFY(media->recipes()->request({{"action","recipes.show"},{"title","Soup"},{"left","## Ingredients\n- [ ] Lentils"},{"right","## Method\nSimmer."}}).value("ok").toBool());
+            QTest::qWait(60);QVERIFY(voice->active());expectedApp="recipes";voice->stop("quiet_timeout");
+        }else if(scenario=="back")click("voiceBackButton");
+        else if(scenario=="error")peer->abort();
+        else voice->stop("quiet_timeout");
+        QTRY_VERIFY(!voice->active());QTRY_COMPARE(window->property("selectedApp").toString(),expectedApp);
+        QTRY_COMPARE(pages->property("currentIndex").toInt(),expectedPage);QTRY_VERIFY(!pages->property("transitioning").toBool());
+        // Once consumed or cancelled, a later manual conversation must not use
+        // the previous wake's return target.
+        media->openAppRequested("assistant");QTRY_VERIFY(voice->wakeListening());
+        QTRY_VERIFY((voice->start(),voice->active()));voice->stop();QCOMPARE(window->property("selectedApp").toString(),QString("assistant"));
     }
     void sharedWakeSurvivesMediaAndConversations(){
         qputenv("THINKSMART_SHARED_AUDIO","1");auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
@@ -1506,7 +1565,7 @@ exec sleep 20
         if(selected=="chess"){
             media->openAppRequested("chess");
             capture("chess-landscape",1280,800);capture("chess-portrait",800,1280);
-            media->setTheme("dawn");capture("chess-dawn",1280,800);media->setTheme("tide");capture("chess-tide",1280,800);
+            media->setTheme("autumn");capture("chess-autumn",1280,800);media->setTheme("tide");capture("chess-tide",1280,800);
             chessGame->setRating(1600);chessGame->switchSides();QTRY_COMPARE(chessGame->moveCount(),1);
             capture("chess-black-landscape",1280,800);capture("chess-black-portrait",800,1280);return;
         }
@@ -1528,7 +1587,7 @@ exec sleep 20
             if(selected=="assistant"){
                 auto core=object("assistantCore");core->setProperty("active",true);core->setProperty("animate",false);core->setProperty("mode","speaking");core->setProperty("level",0.8);core->setProperty("phase",4.2);
                 capture("assistant-field-detail",1280,800);
-                media->setTheme("tide");capture("assistant-tide",1280,800);media->setTheme("dawn");capture("assistant-dawn",1280,800);media->setTheme("ember");
+                media->setTheme("tide");capture("assistant-tide",1280,800);media->setTheme("autumn");capture("assistant-autumn",1280,800);media->setTheme("ember");
                 object("assistantPage")->setProperty("tab","settings");capture("assistant-settings-landscape",1280,800);capture("assistant-settings-portrait",800,1280);}
             return;
         }
@@ -1540,8 +1599,8 @@ exec sleep 20
         object("dashboardPages")->setProperty("currentIndex",media->dashboardPages().indexOf("home"));
         media->setTheme("tide");
         capture("dashboard-tide-landscape",1280,800);
-        media->setTheme("dawn");
-        capture("dashboard-dawn-landscape",1280,800);
+        media->setTheme("autumn");
+        capture("dashboard-autumn-landscape",1280,800);
         for(const auto &theme:{"autumn","spring","dusk"}){
             media->setTheme(theme);
             capture(QString("dashboard-%1-landscape").arg(theme),1280,800);

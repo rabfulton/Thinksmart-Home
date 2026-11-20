@@ -15,7 +15,7 @@
 #include <cmath>
 
 namespace {
-QStringList builtins(){return {"ember","tide","dawn","autumn","spring","dusk"};}
+QStringList builtins(){return {"ember","tide","autumn","spring","dusk"};}
 QStringList colorKeys(){return {"background","surface","raised","border","ink","muted","faint","accent","tint","accentInk","secondary","danger"};}
 bool validId(const QString &s){return QRegularExpression("^[a-z0-9][a-z0-9-]{0,47}$").match(s).hasMatch();}
 bool text(const QJsonObject &o,const QString &key,int maximum,bool optional=false){return (optional&&!o.contains(key))||(o.value(key).isString()&&o.value(key).toString().size()<=maximum&&!o.value(key).toString().trimmed().isEmpty());}
@@ -98,7 +98,8 @@ QJsonObject PersonalStore::palette(const QString &id)const{
 }
 QStringList PersonalStore::themeNames()const{
     QStringList names=builtins();
-    for(const auto &file:QDir(directory()+"/themes").entryList({"*.json"},QDir::Files)){const auto id=file.chopped(5);if(!names.contains(id)&&!readTheme(id).isEmpty())names<<id;}
+    // Older installers copied the retired light palette into personal storage.
+    for(const auto &file:QDir(directory()+"/themes").entryList({"*.json"},QDir::Files)){const auto id=file.chopped(5);if(id!="dawn"&&!names.contains(id)&&!readTheme(id).isEmpty())names<<id;}
     return names;
 }
 QVariantList PersonalStore::rows(const QString &kind)const{
@@ -178,6 +179,7 @@ QJsonObject PersonalStore::request(const QString &action,const QJsonObject &data
             return {{"ok",true},{"themes",themes}};
         }
         const auto id=data.value("id").toString();if(!validId(id))return failure("Theme ID must be a lowercase filename slug (up to 48 characters).");
+        if(id=="dawn"&&action!="theme.delete")return failure("Dawn has been retired. Choose an available dark theme.");
         const auto path=directory()+"/themes/"+id+".json";const auto old=readTheme(id);
         if(action=="theme.apply")return old.isEmpty()?failure("Unknown or invalid theme."):QJsonObject{{"ok",true},{"id",id}};
         if(action=="theme.save"){

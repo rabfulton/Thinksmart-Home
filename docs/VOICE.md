@@ -86,6 +86,13 @@ and interruptions through its own protocol. Live's backend handles reasoning and
 tool selection using the allowed local actions. Sessions close on stop, screen
 sleep, quiet timeout or the maximum duration.
 
+When Sheila opens the conversation view after a wake word, it remembers the
+previous dashboard page or expanded app and returns there when the conversation
+ends, including a quiet timeout or “go to sleep”. Back also returns there.
+Opening another page or an output such as a recipe cancels that automatic return,
+so the new view stays open. Starting manually from the Assistant view leaves it
+open afterwards. Fullscreen video is not replaced by the conversation view.
+
 ## Ending a conversation
 
 The local `status` command includes bounded `lastStop`, `lastResponse` and

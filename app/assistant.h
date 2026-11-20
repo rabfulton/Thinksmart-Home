@@ -118,6 +118,7 @@ public:
     void suspendLocalAudio();
     QJsonObject snapshot()const;
 signals:
+    void wakeConversationStarted();
     void changed();
     void levelsChanged();
     void transcriptChanged();

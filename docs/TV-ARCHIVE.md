@@ -3,6 +3,8 @@
 An optional widget for the [classic British TV collection on Internet Archive](https://archive.org/download/classic-british-tv-pack).
 It opens a native series/episode browser and plays episodes fullscreen through
 the existing libmpv renderer. No account or API key is required.
+The top bar remains available in the expanded browser; playback hides it and
+uses the full screen.
 
 Enable `tvarchive` in **Settings → Pages & modules**, then add its widget to an
 existing page. It is disabled by default. It does not create a separate dashboard

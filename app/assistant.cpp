@@ -122,7 +122,8 @@ VoiceAssistant::VoiceAssistant(Controller *controller,ScreenController *display)
         }
         if(m_active&&sharedAudioEnabled()){interrupt();return;}
         if(!m_enabled||m_active||m_display->powerPending()||!m_controller->wakeWordAllowed())return;
-        m_display->wake();if(!m_controller->video()->visible())emit m_controller->openAppRequested("assistant");start();
+        m_display->wake();start();
+        if(m_active&&!m_controller->video()->visible())emit wakeConversationStarted();
         if(m_active&&m_wakeSoundEnabled)m_wakeChime.play();
     });
     connect(&m_wake,&WakeWord::microphone,this,[this](const QString &audio){sendMicrophone(audio);});

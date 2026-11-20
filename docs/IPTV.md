@@ -10,7 +10,8 @@ The browser has one toolbar: Back, a Saved/Suggested/All channels selector,
 search, filters and an options menu. Country/category filters open in a popup;
 Add stream and Refresh directory are in the options menu. Typing a search
 switches to All channels. Press Done to close the keyboard and view the results.
-The clock bar and media footer are hidden while browsing TV.
+The top bar stays visible while browsing, with the clock, page tabs and device
+controls. The media footer stays hidden. Playback uses the fullscreen player.
 
 **Suggested** starts with seven English-language news/business channels: France 24,
 DW, NHK World-Japan, Bloomberg, Euronews, Africanews and Al Jazeera. **All channels**
