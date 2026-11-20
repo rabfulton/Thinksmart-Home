@@ -84,7 +84,7 @@ starting prompt and contribution workflow.
 
 ## Screenshots
 
-| Voice assistant | News and Hacker News |
+| Voice assistant | News and Hacker News · Tide theme |
 | --- | --- |
 | ![Voice assistant](docs/screenshots/assistant.png) | ![News feeds](docs/screenshots/news.png) |
 

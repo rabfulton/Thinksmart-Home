@@ -1473,7 +1473,7 @@ exec sleep 20
         const auto selected=qEnvironmentVariable("THINKSMART_PUBLIC_SCREENSHOT_SET").split(',',Qt::SkipEmptyParts);
         auto capture=[&](const QString &name,int width=1280,int height=800){if(!selected.isEmpty()&&!selected.contains(name))return;window->resize(width,height);QTest::qWait(350);QVERIFY(window->grabWindow().save(destination+"/"+name+".png"));};
         capture("home-landscape");capture("home-portrait",800,1280);
-        window->resize(1280,800);media->openAppRequested("news");capture("news");
+        window->resize(1280,800);media->setTheme("tide");media->openAppRequested("news");capture("news");
         media->setTheme("dusk");media->openAppRequested("chess");capture("chess");
         media->setTheme("spring");media->openAppRequested("assistant");capture("assistant");
         const auto recipe=media->recipes()->request({{"action","recipes.show"},{"title","Harissa cauliflower & lemon couscous"},
