@@ -12,6 +12,7 @@ ApplicationWindow {
     font.family: Theme.font
     readonly property bool wide: width > height
     property string selectedApp: ""
+    property bool conversationAppOpen: false
     property var wakeReturnTarget: null
     onSelectedAppChanged: if(selectedApp !== "assistant")wakeReturnTarget = null
     readonly property var pageNames: home.dashboardPages
@@ -35,11 +36,22 @@ ApplicationWindow {
     readonly property color ink: Theme.ink
     readonly property color quiet: Theme.muted
     readonly property color gold: Theme.accent
-    Connections { target: home; function onOpenAppRequested(app) { if(window.pageIndex(app) >= 0)window.showDashboardPage(window.pageIndex(app));else if(window.pageForModule(app) >= 0)window.showDashboardPage(window.pageForModule(app));else if(["chess","news","notes"].indexOf(app) < 0)window.selectedApp = app } }
+    function openApplicationView(app) {
+        const index=pageIndex(app)>=0?pageIndex(app):pageForModule(app)
+        if(index>=0)showDashboardPage(index);else selectedApp=app
+    }
+    Connections {
+        target: home
+        function onOpenAppRequested(app) { window.openApplicationView(app) }
+        function onApplicationOpenRequested(app,fromAssistant) {
+            window.conversationAppOpen=fromAssistant && assistant.active
+            window.openApplicationView(app)
+        }
+    }
     Connections {
         target: assistant
         function onWakeConversationStarted() { window.showWakeConversation() }
-        function onChanged() { if(!assistant.active)window.returnFromWakeConversation() }
+        function onChanged() { if(!assistant.active) { window.conversationAppOpen=false;window.returnFromWakeConversation() } }
     }
     Binding { target: Theme; property: "paletteName"; value: home.themeName }
     Binding { target: Theme; property: "palette"; value: home.themePalette }
@@ -57,8 +69,8 @@ ApplicationWindow {
     readonly property bool browsingTv: selectedApp === "tvarchive" || selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
     readonly property bool readingRecipe: selectedApp === "recipes" || (selectedApp === "" && currentPage.module === "recipes")
     readonly property bool pageRunning: selectedApp === "" && !dashboardPages.transitioning && !screenControl.sleeping
-    Binding { target: chessGame; property: "active"; value: home.modules.chess && window.pageRunning && window.currentPage.module === "chess" }
-    Binding { target: home.newsSettings; property: "active"; value: home.modules.news && window.pageRunning && window.currentPage.module === "news" }
+    Binding { target: chessGame; property: "active"; value: home.modules.chess && !screenControl.sleeping && (window.selectedApp === "chess" || (window.pageRunning && window.currentPage.module === "chess")) }
+    Binding { target: home.newsSettings; property: "active"; value: home.modules.news && !screenControl.sleeping && (window.selectedApp === "news" || (window.pageRunning && window.currentPage.module === "news")) }
 
 
     ColumnLayout {
@@ -106,7 +118,7 @@ ApplicationWindow {
         Text { visible: home.configProblem.length > 0; text: home.configProblem; color: Theme.danger; wrapMode: Text.WordWrap; Layout.fillWidth: true }
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
-            currentIndex: window.selectedApp === "recipes" ? 11 : window.selectedApp === "tvarchive" ? 10 : window.selectedApp === "audiobooks" ? 9 : window.selectedApp === "markets" ? 8 : window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
+            currentIndex: window.selectedApp === "chess" ? 12 : window.selectedApp === "notes" ? 13 : window.selectedApp === "news" ? 14 : window.selectedApp === "recipes" ? 11 : window.selectedApp === "tvarchive" ? 10 : window.selectedApp === "audiobooks" ? 9 : window.selectedApp === "markets" ? 8 : window.selectedApp === "iptv" ? 7 : window.selectedApp === "solar" ? 2 : (window.selectedApp === "music" ? 3 : (window.selectedApp === "video" ? 4 : (window.selectedApp === "weather" ? 5 : (window.selectedApp === "radio" ? 6 : (window.selectedApp.length ? 1 : 0)))))
             PathView {
                 id: dashboardPages; objectName: "dashboardPages"
                 clip: true; currentIndex: window.pageIndex("home"); model: window.pageNames.length; pathItemCount: count
@@ -192,7 +204,7 @@ ApplicationWindow {
             AssistantPage {
                 objectName: "assistantPage"
                 active: window.selectedApp === "assistant" && !screenControl.sleeping
-                backgroundPlayback: window.readingRecipe || (home.source === "iptv" && home.video.visible)
+                backgroundPlayback: window.conversationAppOpen || window.readingRecipe || (home.source === "iptv" && home.video.visible)
                 onBack: {
                     if(window.wakeReturnTarget) {
                         assistant.stop("page_navigation")
@@ -210,6 +222,10 @@ ApplicationWindow {
             AudiobooksPage { objectName: "audiobooksAppPage"; active: window.selectedApp === "audiobooks" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp="" }
             TvArchivePage { objectName: "tvArchiveAppPage"; active: window.selectedApp === "tvarchive" && !screenControl.sleeping; keyboardHeight: virtualKeyboard.item ? virtualKeyboard.item.visibleHeight : 0; onBack: window.selectedApp="" }
             Loader { active: window.selectedApp === "recipes"; sourceComponent: Component { RecipesPage { objectName: "recipesAppPage"; active: window.selectedApp === "recipes" && !screenControl.sleeping } } }
+            Loader { active: home.modules.chess && window.selectedApp === "chess"; sourceComponent: Component { ExpandedApplication { title: "Chess"; onBack: window.selectedApp=""; view: Component { ChessPage { objectName: "chessAppPage"; active: !screenControl.sleeping } } } } }
+            Loader { active: home.modules.notes && window.selectedApp === "notes"; sourceComponent: Component { ExpandedApplication { title: "Notes"; onBack: window.selectedApp=""; view: Component { NotesPage { objectName: "notesAppPage" } } } } }
+            Loader { active: home.modules.news && window.selectedApp === "news"; sourceComponent: Component { ExpandedApplication { title: "News"; onBack: window.selectedApp=""; view: Component { NewsPage { objectName: "newsAppPage"; active: !screenControl.sleeping } } } } }
+
         }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 96

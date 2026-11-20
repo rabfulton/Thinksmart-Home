@@ -119,7 +119,7 @@ Cache: `~thinksmart/.cache/ThinkSmart/Home/markets.json`. Module policies:
 ## News preferences
 
 Column sources: `~thinksmart/.config/ThinkSmart/Home/news.json` (mode 600).
-Edit through Settings → Pages & modules → Modules → News → Edit. Existing
+Edit through Settings → Pages & modules → News → Edit. Existing
 World & finance / Hacker News choices are preserved. [News guide](NEWS.md).
 
 ## Audiobooks

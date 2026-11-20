@@ -37,7 +37,7 @@ page tabs remain available; voice and media strips do not occupy the reader.
 
 Settings choose a base font size (18–36 px), text model and **Recipes** or
 **General text** mode. Settings are also available at **Pages & modules →
-Modules → Recipes → Edit** once enabled/applied. Model selection is independent
+Recipes → Edit** once enabled/applied. Model selection is independent
 of voice: default GPT-6 Luna, with GPT-6 Sol also offered, matching the existing
 Live backend choices. Availability/charges depend on your account. Set a custom
 model ID over SSH in the settings file to include it in the dropdown.

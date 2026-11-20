@@ -93,6 +93,11 @@ Opening another page or an output such as a recipe cancels that automatic return
 so the new view stays open. Starting manually from the Assistant view leaves it
 open afterwards. Fullscreen video is not replaced by the conversation view.
 
+Use **open_application** to show an enabled app such as Chess, News or Notes.
+It opens an existing page or a transient expanded view without changing the
+layout. Acknowledgement can finish after navigation, and the opened app remains
+on screen when the conversation ends. See [page/application editing](PAGES-AND-MODULES.md).
+
 ## Ending a conversation
 
 The local `status` command includes bounded `lastStop`, `lastResponse` and

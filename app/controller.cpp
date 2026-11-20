@@ -307,8 +307,17 @@ void Controller::toolRequestAsync(const QJsonObject &request,std::function<void(
         result.insert("media",self->toolRequest({{"action","media.status"}}).value("media"));done(result);
     });
 }
+bool Controller::openApplication(const QString &id,bool fromAssistant){
+    if(id!="home"&&(!ModuleCatalog::names().contains(id)||!DeviceConfig::enabled(id)))return false;
+    m_display->wake();emit applicationOpenRequested(ModuleCatalog::applicationView(id),fromAssistant);return true;
+}
 QJsonObject Controller::toolRequest(const QJsonObject &request){
     const QString action=request.value("action").toString();
+    if(action=="app.open"){
+        const auto id=request.value("application").toString();
+        const bool opened=openApplication(id,true);
+        return {{"ok",opened},{"application",id},{"layoutChanged",false},{"error",opened?QString():QString("Application is unknown or disabled. Enable it in Pages & modules first.")}};
+    }
     if(PersonalStore::actions().contains(action))return personalRequest(action,request.value("data").toObject());
     if(action=="automation.execute")return executeSteps(request.value("steps").toArray());
     QJsonObject result{{"ok",true},{"version",1},{"action",action},{"asOf",QDateTime::currentSecsSinceEpoch()}};
@@ -337,6 +346,7 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
             QJsonObject{{"action","iptv.play"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","iptv.save"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","iptv.remove"},{"required",QJsonArray{"id"}}},
             QJsonObject{{"action","radio.status"}},QJsonObject{{"action","weather.get"}},
             QJsonObject{{"action","weather.refresh"}},QJsonObject{{"action","battery.get"}},
+            QJsonObject{{"action","app.open"},{"required",QJsonArray{"application"}}},
             QJsonObject{{"action","media.status"}},QJsonObject{{"action","media.stop"}},
             QJsonObject{{"action","media.pause"}},QJsonObject{{"action","media.play"}},
             QJsonObject{{"action","media.volume"},{"required",QJsonArray{"percent"}}}

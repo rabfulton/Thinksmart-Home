@@ -76,6 +76,7 @@ public:
     AudiobooksClient *audiobooks(){return &m_audiobooks;}
     QVariantList pageDefinitions()const{return DeviceConfig::pageDefinitions().toVariantList();}
     Q_INVOKABLE void editLayout();
+    Q_INVOKABLE bool openApplication(const QString &application,bool fromAssistant=false);
     bool virtualKeyboardEnabled()const{return qEnvironmentVariable("QT_IM_MODULE")=="qtvirtualkeyboard";}
     QString alarmText()const{return m_alarmText;}
     Q_INVOKABLE QVariantMap personalAction(const QString &action,const QVariantMap &data={});
@@ -136,6 +137,7 @@ signals:
     void replayRequested(const QString &source);
     void playbackEvent(const QString &key,const QString &event,double position,bool paused);
     void openAppRequested(const QString &app);
+    void applicationOpenRequested(const QString &app,bool fromAssistant);
     void audioSetupRequested();
     void dashboardRestartRequested();
 private:

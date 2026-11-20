@@ -87,6 +87,14 @@ application and relevant test targets. Module prompt resources are collected by
 the existing CMake glob. Build/installation dependencies and helpers belong in
 the documented builder/deployment scripts; preserve working device drivers.
 
+The guided editor derives display choices from the registration's widget/page
+fields. Register the native widget in `WidgetDeck.qml`, its dedicated page in
+`Main.qml`, and its expanded app route for opening without a saved placement.
+`ModuleCatalog::applicationView()` maps provider IDs to shared views (for example
+Bluetooth/Navidrome to Music). The generic `open_application` voice tool derives
+its enum from enabled module IDs; it does not enable modules or edit the layout.
+Add a native expanded route before advertising a newly registered application.
+
 ## AI actions and instructions
 
 A page title or prompt does not grant a capability. Implement native actions

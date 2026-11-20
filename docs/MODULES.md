@@ -1,18 +1,20 @@
 # Optional modules
 
-Open **Settings → Pages & modules** on the device. The Pages tab adds, names,
-reorders and removes pages and places widgets; the Modules tab enables/disables
-integrations independently of placement. **Apply & restart** saves an atomic
-configuration and restarts the dashboard; it stops current playback/conversation,
-then returns with the screen awake. Cancel discards the draft.
+Open **Settings → Pages & modules → Add application**. Choose an inactive app,
+then a widget or full-page view where offered. Widgets can use an existing page
+with a free slot or a new page; full-page views get a dedicated page. **Open on
+request** keeps an application available to Sheila without a permanent placement.
+Use **Placement** for active apps, **Remove application** to disable selected
+apps and remove their cards/pages, or **Pages** to rename/reorder pages and cards.
+Saved credentials and data are preserved. **Apply & restart** commits the draft;
+**Cancel changes** discards it. See [the guided flow](PAGES-AND-MODULES.md).
 
 Widget pages hold up to six cards (three columns in landscape, two in portrait).
-Cards retain their size when a page has empty slots. The TV and Audiobooks widgets
-open their full browsers, like the Music and Video launchers.
-Chess, Notes, News, Markets, IPTV and Audiobooks provide full-page views. Home stays available and editable;
-its widgets can all be removed. Module placements are retained while disabled.
-Removing a placement does not disable its AI/background integration. The same
-widget can be shown on different pages, sharing one native service.
+Cards retain their size on sparse pages. News, Notes, Chess, Markets, Recipes and
+IPTV offer widgets and full-page views; other media widgets open full browsers.
+Home always remains editable. Removing just a card/page leaves its integration
+active; removing the application disables it. Bluetooth and Navidrome share the
+Music card. All views share one native service per module.
 
 On-device customisation is saved in
 `/var/lib/thinksmart-home/.config/ThinkSmart/Home/dashboard.json`, mode 600.
@@ -34,9 +36,9 @@ module registrations.
 | `radio` | Worldwide search, genre browsing and saved favourites | [Radio guide](RADIO.md); optional curated catalogue |
 | `markets` | Watchlist, chart widget, price alerts and AI tools | No key required; [Markets guide](MARKETS.md). Free quotes may be delayed; disabled by default |
 | `weather` | Home widget and forecast | [Location picker, condition icons and sunrise/sunset](WEATHER.md) |
-| `news` | One/two configurable columns, publisher feeds and Hacker News/comments | Internet; cached daily, manual refresh; [source settings](NEWS.md) |
-| `chess` | Theme-aware board and local engine | Build/install Arasan for engine play |
-| `notes` | Notes page, dictation, routines and schedule controls | Voice dictation additionally requires Assistant; saved notes work offline |
+| `news` | Launcher widget or full-page feeds, configurable sources and Hacker News/comments | Internet; cached daily, manual refresh; [source settings](NEWS.md) |
+| `chess` | Launcher widget or full-page board with a local engine | Build/install Arasan for engine play |
+| `notes` | Notes widget/page, dictation, routines and schedule controls | Voice dictation additionally requires Assistant; saved notes work offline |
 | `bluetooth` | Phone speaker mode in Music | BlueZ/BlueALSA on the device |
 | `vrm` | Victron energy/battery card and tools | Read-only VRM credentials |
 | `navidrome` | Local music-library client | Server settings/credentials |
@@ -44,8 +46,8 @@ module registrations.
 | `iptv` | Live TV browser, saved streams and fullscreen libmpv playback | Optional, off by default; [IPTV guide](IPTV.md) |
 
 Home is always available. The initial layout includes the enabled News/Chess/Notes
-pages; the page editor controls placement and order thereafter. Enabling a new
-integration does not automatically add a dedicated page. One-page and two-page
+pages; Placement can turn them into widgets or make them available on request.
+A new dedicated page is created only when Full page or New page is chosen. One-page and two-page
 profiles work too. Navidrome and Bluetooth share the Music widget, with only the
 selected source tabs. Widget pages retain six grid slots, including empty ones.
 

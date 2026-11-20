@@ -4,19 +4,22 @@ Canvas {
     id: icon
     property string name: "arrow"
     property color tint: Theme.ink
+    property real strokeWidth: 0
     implicitWidth: 24; implicitHeight: 24
     onNameChanged: requestPaint()
     onTintChanged: requestPaint()
+    onStrokeWidthChanged: requestPaint()
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()
     onPaint: {
         const c = getContext("2d")
         c.reset(); c.scale(width / 24, height / 24)
-        c.strokeStyle = tint; c.fillStyle = tint; c.lineWidth = 1.7
+        c.strokeStyle = tint; c.fillStyle = tint; c.lineWidth = strokeWidth>0 ? strokeWidth : 1.7
         c.lineCap = "round"; c.lineJoin = "round"
         function line(x,y,a,b) { c.moveTo(x,y); c.lineTo(a,b) }
         c.beginPath()
         switch(name) {
+        case "news": c.lineWidth=0.65; c.rect(3,3,18,18); c.rect(6,6,5,6); line(14,6,18,6); line(14,9,18,9); line(6,15,18,15); line(6,18,18,18); break
         case "filter": line(3,5,21,5); line(21,5,14,13); line(14,13,14,20); line(14,20,10,22); line(10,22,10,13); line(10,13,3,5); break
         case "more": for(let i=0;i<3;i++){c.moveTo(13.2,5+i*7);c.arc(12,5+i*7,1.2,0,Math.PI*2)}break
         case "tv": c.lineWidth = 1.25; c.rect(2,4,20,14); line(7,22,10,18); line(14,18,17,22); break

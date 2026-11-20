@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QJsonObject>
 #include <QVariantList>
+#include <QStringList>
 class LayoutEditor:public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantList pages READ pages NOTIFY changed)
@@ -9,6 +10,8 @@ class LayoutEditor:public QObject {
     Q_PROPERTY(QVariantList catalogue READ catalogue CONSTANT)
     Q_PROPERTY(QVariantList widgets READ widgets CONSTANT)
     Q_PROPERTY(QVariantList fullPages READ fullPages CONSTANT)
+    Q_PROPERTY(QVariantList activeApplications READ activeApplications NOTIFY changed)
+    Q_PROPERTY(QVariantList availableApplications READ availableApplications NOTIFY changed)
     Q_PROPERTY(QString problem READ problem NOTIFY changed)
     Q_PROPERTY(bool dirty READ dirty NOTIFY changed)
 public:
@@ -18,6 +21,12 @@ public:
     QVariantList catalogue()const;
     QVariantList widgets()const;
     QVariantList fullPages()const;
+    QVariantList activeApplications()const;
+    QVariantList availableApplications()const;
+    Q_INVOKABLE QVariantList locations(const QString &application)const;
+    Q_INVOKABLE bool canCreatePage(const QString &application)const;
+    Q_INVOKABLE bool placeApplication(const QString &application,const QString &mode,const QString &pageId=QString(),const QString &title=QString(),bool replace=false);
+    Q_INVOKABLE bool removeApplications(const QStringList &applications);
     QString problem()const{return m_problem;}
     bool dirty()const{return m_draft!=m_initial;}
     Q_INVOKABLE void begin();
@@ -35,6 +44,8 @@ signals:
     void restartRequested();
 private:
     bool update(const QJsonObject &draft);
+    QVariantList applications(bool active)const;
+    bool reject(const QString &problem);
     QJsonObject m_initial,m_draft;
     QString m_problem;
 };

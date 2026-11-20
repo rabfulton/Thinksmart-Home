@@ -1,7 +1,7 @@
 # IPTV
 
-Enable **IPTV** under **Settings → Pages & modules → Modules**. Add an IPTV widget
-on a page with a free slot, or add an IPTV full-page view. Apply & restart. It is
+Choose **IPTV** under **Settings → Pages & modules → Add application**. Place a
+widget on a page with a free slot, or choose a dedicated full-page view. Apply & restart. It is
 an optional module, disabled by default; upgrading preserves existing layouts.
 No account or server is required. The TV widget opens the browser; use Back to
 return to its widget page. Cards keep their normal size even on a sparse page.

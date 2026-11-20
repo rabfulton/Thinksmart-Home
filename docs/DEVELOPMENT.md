@@ -147,3 +147,10 @@ client, microphone or external service is used. See [appliance setup](APPLIANCE.
 Recipe storage/generation tests: `recipes-tests`; reader/task-list/settings checks:
 `recipesReaderHistorySettingsAndTouchTasks`; mocked Realtime/Live tools:
 `recipesVoiceTools`. See [Recipes](RECIPES.md) for files, API behaviour and adaptation.
+
+`layout-tests` covers guided application placement/removal, shared Music providers,
+full pages, capacity limits and atomic drafts. `layoutEditorDraftAndApply`,
+`applicationWidgetsAndTemporaryViews` and `applicationOpenVoiceTools` cover the
+new flow, News/Notes/Chess launcher cards and expanded views in both orientations.
+The app-opening voice tests use local Realtime/Live mocks, verify disabled apps
+are absent/rejected, preserve the layout and allow acknowledgement after navigation.

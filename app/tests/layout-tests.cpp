@@ -34,6 +34,37 @@ private slots:
         editor.begin();QCOMPARE(editor.pages().size(),4);QVERIFY(!editor.dirty());editor.removePage(3);QCOMPARE(editor.pages().size(),4);QVERIFY(!editor.problem().isEmpty());
         editor.addPage("news");editor.setModule("news",false);QSignalSpy restart(&editor,&LayoutEditor::restartRequested);QVERIFY(editor.apply());QCOMPARE(restart.size(),1);DeviceConfig::reload();QVERIFY(!DeviceConfig::enabled("news"));QCOMPARE(DeviceConfig::pages().size(),3);QCOMPARE(DeviceConfig::dashboard().value("pages").toArray().size(),5);
     }
+    void guidedApplicationsPreserveDraftAndHandleCapacity(){
+        LayoutEditor editor;QVERIFY(editor.removeApplications({"chess","news","notes"}));QCOMPARE(editor.pages().size(),1);
+        QVERIFY(DeviceConfig::enabled("chess"));QVERIFY(!editor.modules().value("chess").toBool());
+        QVERIFY(!editor.placeApplication("chess","widget","home"));QVERIFY(!editor.modules().value("chess").toBool());
+        QVERIFY(!editor.placeApplication("chess","page","home"));QCOMPARE(editor.pages().size(),1);
+        QVERIFY(editor.placeApplication("chess","page",{},"Chess night"));QCOMPARE(editor.pages().size(),2);
+        const auto chessPage=editor.pages().last().toMap().value("id");
+        QVERIFY(editor.placeApplication("chess","page",{},"Chess night",true));QCOMPARE(editor.pages().last().toMap().value("id"),chessPage);
+        QCOMPARE(editor.pages().last().toMap().value("module").toString(),QString("chess"));
+        QVERIFY(!editor.placeApplication("chess","widget",{},"Duplicate"));
+        QVERIFY(!editor.placeApplication("chess","widget","home",{},true));QCOMPARE(editor.pages().size(),2);
+        QVERIFY(editor.placeApplication("chess","widget",{},"Games",true));QCOMPARE(editor.pages().size(),2);
+        const auto games=editor.pages().last().toMap().value("id").toString();
+        QVERIFY(editor.placeApplication("news","widget",games));QCOMPARE(editor.pages().last().toMap().value("widgets").toList().size(),2);
+        QVERIFY(editor.placeApplication("notes","ondemand"));QCOMPARE(editor.pages().size(),2);
+        QVERIFY(editor.removeApplications({"chess","news"}));QCOMPARE(editor.pages().size(),1);QCOMPARE(editor.pages().first().toMap().value("id").toString(),QString("home"));
+        QVERIFY(editor.modules().value("notes").toBool());QVERIFY(!QFile::exists(DashboardConfig::path()));
+        QVERIFY(editor.apply());DeviceConfig::reload();QVERIFY(!DeviceConfig::enabled("chess"));QVERIFY(DeviceConfig::enabled("notes"));
+    }
+    void guidedApplicationsShareCardsAndRespectPageLimit(){
+        LayoutEditor editor;QVERIFY(editor.removeApplications({"bluetooth","navidrome"}));
+        QVERIFY(editor.placeApplication("bluetooth","widget","home"));
+        QCOMPARE(editor.locations("navidrome").size(),1); // Reuse a shared card on a full page.
+        QVERIFY(editor.placeApplication("navidrome","widget","home"));
+        QVERIFY(editor.removeApplications({"bluetooth"}));QVERIFY(editor.pages().last().toMap().value("widgets").toList().contains("music"));
+        editor.setModule("weather",false);QVERIFY(editor.removeApplications({"navidrome"}));
+        QVERIFY(editor.pages().last().toMap().value("widgets").toList().contains("weather"));
+        for(int i=editor.pages().size();i<24;++i)editor.addPage();QCOMPARE(editor.pages().size(),24);
+        QVERIFY(!editor.placeApplication("markets","page"));QVERIFY(!editor.modules().value("markets").toBool());
+        QVERIFY(editor.placeApplication("markets","ondemand"));QCOMPARE(editor.pages().size(),24);
+    }
     void enabledModulePromptsAndNativePermissions(){
         const auto root=dir.filePath("assistant/");write(root+"household.md","Household fixture");write(root+"personalities/warm.md","Warm fixture");write(root+"system.md","Core realtime policy");write(root+"live.md","Core Live policy");write(root+"backend.md","Core backend policy");
         AssistantPrompts prompts;prompts.reload("warm");QVERIFY(prompts.ready());QVERIFY(prompts.instructions().contains("BBC Radio 4"));QVERIFY(prompts.instructions().contains("notes.add"));

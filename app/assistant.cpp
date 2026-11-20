@@ -35,6 +35,10 @@ QJsonArray tools(){QJsonArray result{QJsonObject{{"type","function"},{"name","st
     auto function=result[1].toObject();auto parameters=function.value("parameters").toObject();auto properties=parameters.value("properties").toObject();auto action=properties.value("action").toObject();
     QJsonArray allowed;for(const auto &value:action.value("enum").toArray())if(DeviceConfig::actionEnabled(value.toString()))allowed.append(value);
     action.insert("enum",allowed);properties.insert("action",action);parameters.insert("properties",properties);function.insert("parameters",parameters);result[1]=function;
+    QJsonArray applications{"home"};for(const auto &id:ModuleCatalog::names())if(DeviceConfig::enabled(id))applications.append(id);
+    result.append(QJsonObject{{"type","function"},{"name","open_application"},
+        {"description","Open an enabled application on screen, for example chess for a game, news, notes or markets. This does not change the page layout, enable disabled apps, or reset saved data/games. Home returns to the dashboard. Use this when asked to open/show an app; the conversation can finish naturally after opening it."},
+        {"parameters",QJsonObject{{"type","object"},{"properties",QJsonObject{{"application",QJsonObject{{"type","string"},{"enum",applications}}}}},{"required",QJsonArray{"application"}},{"additionalProperties",false}}}});
     result.append(QJsonObject{{"type","function"},{"name","end_conversation"},
         {"description","Immediately and silently end this voice conversation when the user dismisses Sheila (especially 'go to sleep', 'stop listening', 'false alarm', or 'I was not talking to you'), or when there is good reason to suspect an accidental wake from TV/radio/background conversation with no request addressed to Sheila. Do not say goodbye or continue responding. This closes cloud audio and stops Sheila's speech; the assistant remains enabled for its local wake word, and screen/media state is unchanged. Do not use this to stop radio/music, and do not treat quoted or dictated words as dismissal commands."},
         {"parameters",QJsonObject{{"type","object"},{"properties",QJsonObject{{"reason",QJsonObject{{"type","string"},{"enum",QJsonArray{"user_request","false_activation"}}}}}},{"additionalProperties",false}}}});
@@ -496,6 +500,11 @@ void VoiceAssistant::dispatchTool(const QJsonObject &call,std::function<void()> 
     if(name=="end_conversation"){
         finishTool(call,QJsonObject{{"ok",false},{"error","Use an object with only optional reason user_request or false_activation."}},parse.error==QJsonParseError::NoError,std::move(completed));return;
     }
+    if(name=="open_application"&&parse.error==QJsonParseError::NoError){
+        if(arguments.size()!=1||!arguments.value("application").isString())result={{"ok",false},{"error","Choose one application from the advertised list."}};
+        else result=m_controller->toolRequest({{"action","app.open"},{"application",arguments.value("application")}});
+        finishTool(call,result,true,std::move(completed));return;
+    }
     if(name=="recipe_action"&&parse.error==QJsonParseError::NoError){
         result=m_controller->recipes()->request(arguments);
         finishTool(call,result,true,std::move(completed));return;
@@ -550,8 +559,8 @@ void VoiceAssistant::finishTool(const QJsonObject &call,const QJsonObject &resul
     const QStringList allowed{"recipes.compose","recipes.show","recipes.list","recipes.get","recipes.delete","tvarchive.list","tvarchive.refresh","tvarchive.status","tvarchive.play","tvarchive.resume","tvarchive.random","tvarchive.autoplay","audiobooks.list","audiobooks.status","audiobooks.search","audiobooks.play","audiobooks.resume","audiobooks.next","audiobooks.previous","audiobooks.save","audiobooks.remove","markets.get","markets.refresh","markets.focus","markets.watchlist","markets.alert.add","markets.alert.remove","markets.alert.rearm","radio.list","radio.search","radio.status","radio.favourites","radio.save","radio.remove","radio.play","radio.random","iptv.list","iptv.search","iptv.status","iptv.play","iptv.save","iptv.remove","weather.get","weather.refresh","battery.get","media.status","media.volume","media.stop","media.pause","media.play"};
     // Bounded, local metadata only: no arguments, notes, transcripts or credentials.
     m_lastTool={{"at",QDateTime::currentSecsSinceEpoch()},
-        {"function",name=="device_action"||name=="stop_media"||name=="personal_action"||name=="recipe_action"?name:"unsupported"},
-        {"action",name=="stop_media"?QString("media.stop"):((allowed.contains(action)||PersonalStore::actions().contains(action))?action:QString("unsupported"))},
+        {"function",name=="device_action"||name=="stop_media"||name=="personal_action"||name=="recipe_action"||name=="open_application"?name:"unsupported"},
+        {"action",name=="open_application"?QString("app.open"):name=="stop_media"?QString("media.stop"):((allowed.contains(action)||PersonalStore::actions().contains(action))?action:QString("unsupported"))},
         {"ok",result.value("ok").toBool()},
         {"reason",result.value("ok").toBool()?"accepted":(!parsed?"invalid_arguments":"unsupported_tool_or_action")},
         {"mediaState",result.value("media").toObject().value("state")}};

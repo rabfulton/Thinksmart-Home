@@ -1,46 +1,49 @@
-# Configurable pages and module-owned AI integration
+# Pages and applications
 
-The on-device **Settings → Pages & modules** editor configures installed native
-modules and their views. See [MODULES.md](MODULES.md) for everyday use. This guide
-describes the configuration and extension points.
+Open **Settings → Pages & modules**. Changes are staged until **Apply & restart**;
+**Cancel changes** discards the draft. Applying restarts the dashboard and stops
+playback/conversation, while SSH stays available.
 
-## User-facing behaviour
+## Add, move and remove
 
-Settings provides a **Pages & modules** editor, accessible from the existing gear
-regardless of which modules are enabled. It has two views:
+1. **Add application** lists only inactive applications. Choose one.
+2. If it has both views, choose **Widget** or **Full page**. News, Notes, Chess,
+   Markets, Recipes and IPTV support both. A widget is a small launcher that
+   opens the full application; a full-page view fills its own dashboard page.
+3. For a widget, choose an existing widget page with room or **New page**.
+   Each page holds up to six cards. Full-page applications automatically get a
+   dedicated new page; they cannot be inserted into another application's page.
+4. **Open on request** enables an application without a permanent card or page.
+   Sheila can open it when asked. It is still an active application.
+5. **Apply & restart** saves the result.
 
-- **Pages:** add, name, reorder or remove pages. A widget page contains up to six
-  widgets, arranged in three columns in landscape and two in portrait. Widgets
-  can be added, removed and reordered. A full-page view contains one module,
-  such as Chess, Notes or News, using its existing interface.
-- **Modules:** enable or disable installed integrations independently of their
-  placement. Show whether an integration needs credentials or an optional
-  runtime in its description. Enabling an integration does not supply missing
-  dependencies. Assistant's separate master switch is preserved.
+Use **Placement** beside an active application to change its view or location.
+Use **Remove application** to select one or more active apps, then **Remove
+selected**. This disables their integrations and removes their placements while
+keeping credentials and saved data. Empty pages left by removal are cleaned up;
+Home always remains. Shared Music cards remain while Bluetooth or Navidrome still
+uses them. Applications already active do not appear in Add.
 
-The editor uses touch-friendly move buttons and a widget picker. Qt Virtual Keyboard supplies page naming. The top bar uses a bounded horizontally scrollable page selector. Swipes keep their current
-direction and circular navigation.
+**Pages** manages names, order and card order. Removing a card or page here leaves
+its application enabled for opening on request. Existing layouts, including
+manually configured duplicate placements, remain valid; the guided Placement
+flow moves an application's placements instead of silently duplicating them.
+Home can be empty; up to 24 pages are supported. Page tabs retain circular swipe
+navigation. News retains vertical scrolling in either view.
 
-The first page remains an accessible Home entry; its widgets can be edited.
-Allow an empty page with an **Add widgets** action. Keep at least one page (maximum 24) and
-keep Settings independent of layout content. Full-page modules are not squeezed
-into arbitrary grid cells. Future modules may explicitly supply both a widget
-and a full-page view.
+## Opening an application once
 
-Removing a placement does not disable its integration. This permits an assistant
-or scheduled action to use a module that has no visible widget. A widget may be
-shown on more than one page, backed by one shared service; reject duplicates
-within a single page. Disabling a module makes its placements unavailable,
-without deleting their configuration or user data. Re-enabling restores them.
-TV is normally a launcher widget opening its channel browser; older full-page
-placements remain supported. Cards keep their size on partially filled pages.
-For Music, its widget is available when either Navidrome or Bluetooth is enabled.
+Ask Sheila to open an enabled application, for example **“Open chess”**. The
+shared Realtime/Live `open_application` tool opens its existing page, or a
+transient expanded view when it has no page. No page or card is added and no
+module is enabled. Back closes the expanded view. Chess keeps its saved game,
+and its engine runs only while the chess view is active. Opening a view does not
+reset games, start media, or generate a new paid recipe.
 
-The editor works on a draft. **Cancel** discards it. **Apply & restart dashboard**
-validates and saves it atomically, then restarts the application through the
-existing session supervisor. This interrupts playback/conversation, but does
-not reboot the device or interrupt SSH. Begin with this explicit apply boundary;
-fully live reconfiguration needs separate lifecycle work.
+The conversation can complete its acknowledgement and close normally after
+opening the application. It does not pull you back to the previous screen when
+the requested app is now open. Disabled apps are omitted from the tool's choices
+and rejected by the native dispatcher. Add them in Settings first.
 
 ## One catalogue for modules and their views
 
@@ -53,7 +56,7 @@ Give every module a stable ID and a single registration describing:
 - Editable instruction files for Realtime, Live conversation and Live reasoning.
 
 The existing IDs remain: assistant, radio, weather, news, chess, notes, bluetooth,
-vrm, navidrome, jellyfin, iptv and markets. View IDs may differ: the energy widget belongs to
+vrm, navidrome, jellyfin, iptv, markets, audiobooks, tvarchive and recipes. View IDs may differ: the energy widget belongs to
 vrm; the video widget belongs to jellyfin; music can use either of two providers.
 This relationship belongs in the catalogue rather than scattered UI conditions.
 
@@ -111,7 +114,7 @@ household knowledge and personality selection.
 Retain a last-known-good configuration and expose errors. A malformed saved
 configuration must not unexpectedly enable a disabled microphone/integration:
 recover the valid backup layout with optional modules stopped, or fall back to
-a minimal Home/Settings layout. Review the switches and Apply to recover. SSH remains the independent recovery route.
+a minimal Home/Settings layout. Add the wanted applications and Apply to recover. SSH remains the independent recovery route.
 
 ## AI instructions and tools follow enabled modules
 

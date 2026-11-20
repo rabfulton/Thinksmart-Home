@@ -2,128 +2,181 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Rectangle {
+Item {
     id: page
     objectName: "layoutSettingsPage"
     readonly property var editor: home.layoutEditor
-    property string section: "pages"
-    property bool editingNews: false
-    function editNews() { newsEditor.begin();editingNews=true }
-    RecipeSettings { id: recipeSettings }
+    property string route: "main"
+    onRouteChanged: { Qt.inputMethod.hide();Qt.callLater(function(){if(scroll.contentItem)scroll.contentItem.contentY=0}) }
+    property var application: ({})
+    property bool movingApplication: false
+    property string displayMode: "widget"
+    property var removals: []
     property int selected: -1
-    property var current: selected >= 0 && selected < editor.pages.length ? editor.pages[selected] : ({})
+    property bool editingNews: false
+    readonly property var current: selected >= 0 ? editor.pages[selected] || ({}) : ({})
     signal back()
-    function widgetTitle(id) { const found = editor.widgets.find(w => w.id === id); return found ? found.title : id }
-    color: Theme.surface; radius: Theme.radius; border.color: Theme.border
-    enabled: !screenControl.sleeping && !screenControl.powerPending
-    onSelectedChanged: Qt.callLater(function() { scroll.contentItem.contentY = 0 })
-    onSectionChanged: Qt.callLater(function() { scroll.contentItem.contentY = 0 })
-    onVisibleChanged: if(!visible) { Qt.inputMethod.hide(); selected = -1; editingNews=false }
-    component Label: Text { color: Theme.ink; font.pixelSize: 20; wrapMode: Text.WordWrap }
-    component Choice: ComboBox {
-        implicitHeight: 54; font.pixelSize: 20; textRole: "title"; valueRole: "id"
-        palette.button: Theme.raised; palette.buttonText: Theme.ink; palette.base: Theme.raised; palette.text: Theme.ink; palette.window: Theme.raised
-        palette.highlight: Theme.tint; palette.highlightedText: Theme.accent
+    function widgetTitle(id) { for(const w of editor.widgets)if(w.id===id)return w.title;return id }
+    function startApplication(app, moving) {
+        application=app; movingApplication=moving
+        displayMode=app.widget ? "widget" : "page"
+        newPageName.text=moving && app.pageTitle ? app.pageTitle : app.title
+        route=app.widget && app.page ? "display" : "location"
     }
-    NewsSettingsEditor { id: newsEditor; anchors.fill: parent; visible: page.editingNews; onBack: page.editingNews=false }
+    function finishApplication(mode, location, title) {
+        Qt.inputMethod.hide()
+        if(editor.placeApplication(application.id,mode,location,title,movingApplication))route="main"
+    }
+    function goBack() {
+        Qt.inputMethod.hide()
+        if(route==="new-page")route="location"
+        else if(route==="location")route=application.widget && application.page ? "display" : movingApplication ? "main" : "add"
+        else if(route==="display")route=movingApplication ? "main" : "add"
+        else if(route==="page")route="pages"
+        else if(route!=="main")route="main"
+        else { editor.begin();page.back() }
+    }
+    function toggleRemoval(id) { const next=removals.slice();const i=next.indexOf(id);if(i<0)next.push(id);else next.splice(i,1);removals=next }
+    component Label: Text { color: Theme.ink; font.pixelSize: 21; textFormat: Text.PlainText; wrapMode: Text.WordWrap }
+    component PickButton: Button {
+        id: pick
+        property string heading: ""
+        property string detail: ""
+        implicitHeight: Math.max(78, pickContent.implicitHeight+28)
+        Accessible.name: heading
+        contentItem: Column {
+            id: pickContent; spacing: 5
+            Text { width: parent.width; text: pick.heading; textFormat: Text.PlainText; color: Theme.ink; font.pixelSize: 23; wrapMode: Text.WordWrap }
+            Text { width: parent.width; visible: text.length>0; text: pick.detail; textFormat: Text.PlainText; color: Theme.muted; font.pixelSize: 17; wrapMode: Text.WordWrap }
+        }
+        padding: 14
+        background: Rectangle { color: pick.down?Theme.tint:Theme.raised; radius: 14; border.color: pick.activeFocus?Theme.accent:Theme.border }
+    }
+    NewsSettingsEditor { anchors.fill: parent; visible: page.editingNews; onBack: page.editingNews=false }
+    RecipeSettings { id: recipeSettings }
     ColumnLayout {
-        visible: !page.editingNews
-        anchors.fill: parent; anchors.margins: 24; spacing: 14
+        anchors.fill: parent; anchors.margins: 24; spacing: 14; visible: !page.editingNews
         RowLayout {
-            UiButton { objectName: "layoutBackButton"; iconName: "back"; onClicked: { if(page.selected >= 0) { Qt.inputMethod.hide(); page.selected = -1 } else { page.editor.begin(); page.back() } } }
-            Label { text: page.selected >= 0 ? "Edit page" : "Pages & modules"; font.pixelSize: 28; Layout.fillWidth: true }
-            UiButton { visible: page.selected >= 0; text: "Page list"; onClicked: { Qt.inputMethod.hide(); page.selected = -1 } }
+            Layout.fillWidth: true
+            UiButton { objectName: "layoutBackButton"; iconName: "back"; onClicked: page.goBack() }
+            Label {
+                Layout.fillWidth: true; font.pixelSize: 28
+                text: page.route==="main"?"Pages & modules":page.route==="add"?"Choose an application":page.route==="display"?"How should it appear?":page.route==="remove"?"Remove applications":page.route==="pages"?"Pages":page.route==="page"?"Edit page":"Choose a location"
+            }
+            UiButton { objectName: "layoutPagesTab"; visible: page.route==="main"; text: "Pages"; onClicked: page.route="pages" }
         }
         RowLayout {
-            visible: page.selected < 0; spacing: 12
-            UiButton { objectName: "layoutPagesTab"; text: "Pages"; selected: page.section === "pages"; onClicked: page.section = "pages" }
-            UiButton { objectName: "layoutModulesTab"; text: "Modules"; selected: page.section === "modules"; onClicked: page.section = "modules" }
+            visible: page.route==="main"; Layout.fillWidth: true; spacing: 12
+            UiButton { objectName: "layoutAddApplication"; text: "Add application"; Layout.fillWidth: true; onClicked: page.route="add" }
+            UiButton { objectName: "layoutRemoveApplication"; text: "Remove application"; Layout.fillWidth: true; enabled: page.editor.activeApplications.length>0; onClicked: {page.removals=[];page.route="remove"} }
         }
-        Text { visible: page.editor.problem.length > 0; text: page.editor.problem; color: Theme.danger; font.pixelSize: 17; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-        RowLayout {
-            visible: page.selected < 0 && page.section === "pages"; Layout.fillWidth: true; spacing: 12
-            Choice { id: newType; objectName: "layoutNewType"; Layout.fillWidth: true; model: [{id:"",title:"Widget page"}].concat(page.editor.fullPages) }
-            UiButton { objectName: "layoutAddPage"; text: "Add page"; onClicked: page.editor.addPage(newType.currentValue) }
-        }
+        Label { visible: page.editor.problem.length>0; text: page.editor.problem; color: Theme.danger; font.pixelSize: 17; Layout.fillWidth: true }
         ScrollView {
             id: scroll; Layout.fillWidth: true; Layout.fillHeight: true; contentWidth: availableWidth; clip: true
             ColumnLayout {
                 width: scroll.availableWidth; spacing: 12
-                Label { visible: page.selected < 0 && page.section === "pages"; text: "Widget pages hold up to six cards. Chess, Notes and News use a full page."; color: Theme.muted; Layout.fillWidth: true }
+                Label { visible: page.route==="main"; text: "Active applications"; color: Theme.muted; Layout.fillWidth: true }
                 Repeater {
-                    model: page.selected < 0 && page.section === "pages" ? page.editor.pages : []
+                    model: page.route==="main" ? page.editor.activeApplications : []
+                    Rectangle {
+                        required property var modelData
+                        Layout.fillWidth: true; implicitHeight: appRow.implicitHeight+24; color: Theme.surface; radius: 14; border.color: Theme.border
+                        RowLayout {
+                            id: appRow; anchors.fill: parent; anchors.margins: 12; spacing: 12
+                            ColumnLayout {
+                                Layout.fillWidth: true; Layout.minimumWidth: 0
+                                Label { text: modelData.title; Layout.fillWidth: true }
+                                Label { text: modelData.placement; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
+                            }
+                            UiButton { objectName: "moduleEdit_"+modelData.id; visible: modelData.id==="news"||modelData.id==="recipes"; text: "Edit"; enabled: !!home.modules[modelData.id]; onClicked: modelData.id==="news" ? page.editingNews=true : recipeSettings.open() }
+                            UiButton { objectName: "applicationPlacement_"+modelData.id; text: "Placement"; onClicked: page.startApplication(modelData,true) }
+                        }
+                    }
+                }
+                Label { visible: page.route==="main" && !page.editor.activeApplications.length; text: "Add an application to get started."; color: Theme.muted; Layout.fillWidth: true }
+                Repeater {
+                    model: page.route==="add" ? page.editor.availableApplications : []
+                    PickButton { required property var modelData; objectName: "addApplication_"+modelData.id; Layout.fillWidth: true; heading: modelData.title; detail: modelData.description; onClicked: page.startApplication(modelData,false) }
+                }
+                Label { visible: page.route==="add" && !page.editor.availableApplications.length; text: "All applications are already active. Use Placement to move one, or Remove application to disable it."; color: Theme.muted; Layout.fillWidth: true }
+                Label { visible: ["display","location","new-page"].indexOf(page.route)>=0; text: page.application.title || ""; color: Theme.accent; Layout.fillWidth: true }
+                PickButton { objectName: "applicationWidgetDisplay"; visible: page.route==="display"; Layout.fillWidth: true; heading: "Widget"; detail: "A small card that opens the application."; onClicked: {page.displayMode="widget";page.route="location"} }
+                PickButton { objectName: "applicationPageDisplay"; enabled: page.editor.pages.length<24 || page.editor.canCreatePage(page.application.id||""); visible: page.route==="display"; Layout.fillWidth: true; heading: "Full page"; detail: "Give this application its own page."; onClicked: {page.displayMode="page";page.route="location"} }
+                Label { visible: page.route==="location" && page.displayMode==="page"; text: "A full-page application gets a new dedicated page."; color: Theme.muted; Layout.fillWidth: true }
+                Repeater {
+                    model: page.route==="location" && page.displayMode==="widget" ? page.editor.locations(page.application.id) : []
+                    PickButton { required property var modelData; objectName: "applicationLocation_"+modelData.id; Layout.fillWidth: true; heading: modelData.title; detail: modelData.description; onClicked: page.finishApplication("widget",modelData.id,"") }
+                }
+                PickButton { objectName: "applicationNewPage"; enabled: page.editor.pages.length<24 || page.editor.canCreatePage(page.application.id||""); visible: page.route==="location" && page.displayMode==="widget"; Layout.fillWidth: true; heading: "New page"; detail: "Create a widget page with room for more applications."; onClicked: {newPageName.text=page.application.title;page.route="new-page"} }
+                ColumnLayout {
+                    visible: page.route==="new-page" || (page.route==="location" && page.displayMode==="page"); Layout.fillWidth: true; spacing: 14
+                    Label { text: "Page name" }
+                    TextField { id: newPageName; objectName: "applicationNewPageName"; Layout.fillWidth: true; implicitHeight: 60; maximumLength: 32; font.pixelSize: 22; color: Theme.ink; selectByMouse: true; onAccepted: {focus=false;Qt.inputMethod.hide()} }
+                    UiButton { objectName: "applicationFinish"; text: page.movingApplication?"Move application":"Add application"; primary: true; Layout.fillWidth: true; enabled: newPageName.text.trim().length>0; onClicked: page.finishApplication(page.displayMode,"",newPageName.text) }
+                }
+                PickButton { objectName: "applicationOnDemand"; visible: page.route==="display" || page.route==="location"; Layout.fillWidth: true; heading: "Open on request"; detail: "Keep it available to Sheila without a permanent page or card."; onClicked: page.finishApplication("ondemand","","") }
+                Label { visible: page.route==="remove"; text: "Select applications to disable and remove from pages. Saved data and credentials are kept."; color: Theme.muted; Layout.fillWidth: true }
+                Repeater {
+                    model: page.route==="remove" ? page.editor.activeApplications : []
+                    CheckDelegate {
+                        id: removeChoice
+                        required property var modelData
+                        objectName: "removeApplication_"+modelData.id
+                        Layout.fillWidth: true; implicitHeight: 68; leftPadding: 14; rightPadding: 58
+                        text: modelData.title; font.pixelSize: 23
+                        checked: page.removals.indexOf(modelData.id)>=0; onClicked: page.toggleRemoval(modelData.id)
+                        contentItem: Text { text: removeChoice.text; textFormat: Text.PlainText; font: removeChoice.font; color: Theme.ink; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter }
+                        indicator: Rectangle {
+                            width: 28; height: 28; x: removeChoice.width-width-14; y: (removeChoice.height-height)/2; radius: 5
+                            color: removeChoice.checked?Theme.accent:Theme.raised; border.color: removeChoice.checked?Theme.accent:Theme.muted
+                            Text { anchors.centerIn: parent; visible: removeChoice.checked; text: "✓"; color: Theme.accentInk; font.pixelSize: 22 }
+                        }
+                        background: Rectangle { radius: 12; color: removeChoice.checked?Theme.tint:Theme.surface; border.color: removeChoice.checked?Theme.accent:Theme.border }
+                    }
+                }
+                Repeater {
+                    model: page.route==="pages" ? page.editor.pages : []
                     Rectangle {
                         required property var modelData
                         required property int index
-                        Layout.fillWidth: true; implicitHeight: 94; radius: 14; color: Theme.raised
+                        Layout.fillWidth: true; implicitHeight: 92; color: Theme.raised; radius: 14
                         RowLayout {
                             anchors.fill: parent; anchors.margins: 12; spacing: 10
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Label { text: modelData.title; Layout.fillWidth: true; textFormat: Text.PlainText }
-                                Label { text: modelData.kind === "widgets" ? (modelData.widgets.length + " / 6 widgets") : (page.editor.modules[modelData.module] ? "Full page" : "Module disabled"); color: Theme.muted; font.pixelSize: 16 }
-                            }
-                            UiButton { text: "↑"; implicitWidth: 48; enabled: index > 0; onClicked: page.editor.movePage(index,-1) }
-                            UiButton { text: "↓"; implicitWidth: 48; enabled: index < page.editor.pages.length-1; onClicked: page.editor.movePage(index,1) }
-                            UiButton { objectName: "layoutEditPage" + index; text: "Edit"; onClicked: page.selected = index }
+                            ColumnLayout { Layout.fillWidth: true; Label {text:modelData.title;Layout.fillWidth:true} Label {text:modelData.kind==="widgets"?modelData.widgets.length+" / 6 widgets":"Full page";color:Theme.muted;font.pixelSize:16} }
+                            UiButton { text: "↑"; implicitWidth: 48; enabled: index>0; onClicked: page.editor.movePage(index,-1) }
+                            UiButton { text: "↓"; implicitWidth: 48; enabled: index<page.editor.pages.length-1; onClicked: page.editor.movePage(index,1) }
+                            UiButton { objectName: "layoutEditPage"+index; text: "Edit"; onClicked: {page.selected=index;pageName.text=modelData.title;page.route="page"} }
                         }
-                    }
-                }
-                Label { visible: page.selected < 0 && page.section === "modules"; text: "Removing a widget leaves its module available to Sheila. Disable a module here to stop its integration and remove its AI tools. Existing data and credentials are kept."; color: Theme.muted; Layout.fillWidth: true }
-                Repeater {
-                    model: page.selected < 0 && page.section === "modules" ? page.editor.catalogue : []
-                    RowLayout {
-                        required property var modelData
-                        Layout.fillWidth: true; spacing: 16
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: modelData.title }
-                            Label { text: modelData.description; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
-                        }
-                        UiButton { objectName: "moduleEdit_"+modelData.id; visible: modelData.id==="news" || modelData.id==="recipes"; text: "Edit"; enabled: modelData.id!=="recipes" || home.modules.recipes; onClicked: modelData.id==="recipes" ? recipeSettings.open() : page.editNews() }
-                        Switch { objectName: "moduleSwitch_" + modelData.id; checked: !!page.editor.modules[modelData.id]; implicitHeight: 54; implicitWidth: 80; onToggled: page.editor.setModule(modelData.id,checked) }
                     }
                 }
                 ColumnLayout {
-                    visible: page.selected >= 0; Layout.fillWidth: true; spacing: 14
+                    visible: page.route==="page"; Layout.fillWidth: true; spacing: 14
                     Label { text: "Page name" }
-                    TextField {
-                        id: pageName; objectName: "layoutPageName"; Layout.fillWidth: true; implicitHeight: 58; font.pixelSize: 22; maximumLength: 32
-                        text: page.current.title || ""; color: Theme.ink; inputMethodHints: Qt.ImhNoPredictiveText
-                        background: Rectangle { color: Theme.raised; radius: 12; border.color: pageName.activeFocus ? Theme.accent : Theme.border }
-                        onEditingFinished: if(page.selected >= 0)page.editor.renamePage(page.selected,text)
-                        onAccepted: Qt.inputMethod.hide()
-                    }
-                    UiButton { text: "Save name"; onClicked: { Qt.inputMethod.hide(); page.editor.renamePage(page.selected,pageName.text) } }
-                    Label { visible: page.current.kind === "module"; text: "Full-page view · " + (page.current.module || ""); color: Theme.muted }
+                    TextField { id: pageName; objectName: "layoutPageName"; Layout.fillWidth: true; implicitHeight: 60; maximumLength: 32; font.pixelSize: 22; color: Theme.ink; onAccepted: {focus=false;Qt.inputMethod.hide()} }
+                    UiButton { text: "Save name"; onClicked: {Qt.inputMethod.hide();page.editor.renamePage(page.selected,pageName.text)} }
                     Repeater {
-                        model: page.current.kind === "widgets" ? page.current.widgets : []
+                        model: page.route==="page" && page.current.kind==="widgets" ? page.current.widgets : []
                         RowLayout {
                             required property string modelData
                             required property int index
-                            Layout.fillWidth: true; spacing: 10
+                            Layout.fillWidth: true
                             Label { text: page.widgetTitle(modelData); Layout.fillWidth: true }
-                            UiButton { text: "↑"; implicitWidth: 48; enabled: index > 0; onClicked: page.editor.moveWidget(page.selected,index,-1) }
-                            UiButton { text: "↓"; implicitWidth: 48; enabled: index < page.current.widgets.length-1; onClicked: page.editor.moveWidget(page.selected,index,1) }
-                            UiButton { objectName: "layoutRemoveWidget" + index; text: "Remove"; onClicked: page.editor.removeWidget(page.selected,index) }
+                            UiButton { text: "↑"; implicitWidth: 48; enabled: index>0; onClicked: page.editor.moveWidget(page.selected,index,-1) }
+                            UiButton { text: "↓"; implicitWidth: 48; enabled: index<page.current.widgets.length-1; onClicked: page.editor.moveWidget(page.selected,index,1) }
+                            UiButton { objectName: "layoutRemoveWidget"+index; text: "Remove card"; onClicked: page.editor.removeWidget(page.selected,index) }
                         }
                     }
-                    RowLayout {
-                        visible: page.current.kind === "widgets"; Layout.fillWidth: true; spacing: 12
-                        Choice { id: widgetChoice; objectName: "layoutWidgetChoice"; Layout.fillWidth: true; model: page.editor.widgets.filter(w => !(page.current.widgets || []).includes(w.id)) }
-                        UiButton { objectName: "layoutAddWidget"; text: "Add widget"; enabled: (page.current.widgets || []).length < 6 && widgetChoice.count > 0; onClicked: page.editor.addWidget(page.selected,widgetChoice.currentValue) }
-                    }
-                    Label { visible: page.current.kind === "widgets"; text: "Widgets from disabled modules stay saved and reappear when enabled."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
-                    UiButton { objectName: "layoutNewsSources"; visible: page.current.module==="news"; text: "Edit news sources"; onClicked: page.editNews() }
-                    UiButton { objectName: "layoutRemovePage"; text: "Remove page"; enabled: page.current.id !== "home"; onClicked: { page.editor.removePage(page.selected); page.selected = -1 } }
+                    Label { text: "Use application Placement to add or move cards. Removing a card leaves its application available on request."; color: Theme.muted; font.pixelSize: 17; Layout.fillWidth: true }
+                    UiButton { objectName: "layoutRemovePage"; text: "Remove page"; enabled: page.current.id!=="home"; onClicked: {page.editor.removePage(page.selected);page.route="pages";page.selected=-1} }
                 }
             }
         }
-        Label { text: "Apply restarts the dashboard and stops current playback or conversation. SSH stays available."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
+        Label { visible: ["main","pages","page"].indexOf(page.route)>=0; text: "Apply restarts the dashboard and stops playback or conversation. SSH remains available."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
         RowLayout {
             Layout.fillWidth: true; spacing: 14
-            UiButton { objectName: "layoutCancel"; text: "Cancel"; Layout.fillWidth: true; onClicked: { page.editor.begin(); page.back() } }
-            UiButton { objectName: "layoutApply"; text: "Apply & restart"; primary: true; Layout.fillWidth: true; enabled: page.editor.dirty; onClicked: { Qt.inputMethod.hide(); page.editor.apply() } }
+            UiButton { objectName: "layoutCancel"; text: "Cancel changes"; Layout.fillWidth: true; onClicked: {page.editor.begin();page.route="main";page.back()} }
+            UiButton { objectName: "applicationRemoveSelected"; visible: page.route==="remove"; text: "Remove selected"; Layout.fillWidth: true; enabled: page.removals.length>0; onClicked: {if(page.editor.removeApplications(page.removals))page.route="main"} }
+            UiButton { objectName: "layoutApply"; visible: ["main","pages","page"].indexOf(page.route)>=0; text: "Apply & restart"; primary: true; Layout.fillWidth: true; enabled: page.editor.dirty; onClicked: {Qt.inputMethod.hide();page.editor.apply()} }
         }
     }
 }

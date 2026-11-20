@@ -60,8 +60,8 @@ tools used by this project, ready for your own software and interface.
 | [Video / Jellyfin](docs/MODULES.md) | Native film browsing by category/decade, posters and fullscreen playback | Jellyfin server and credentials |
 | [Energy / Victron VRM](docs/MODULES.md) | Battery, solar and energy readings, including cached offline data | VRM installation and read-only token |
 
-Use **Settings → Pages & modules** to enable integrations and arrange widgets or
-full-page apps. One page can hold several modules; new widgets can go on an
+Use **Settings → Pages & modules → Add application** for guided setup; use
+**Placement** to move active apps between widgets, full pages or opening on request. One page can hold several modules; new widgets can go on an
 existing page. Disabling a module stops its background activity and removes its
 related AI capabilities. It remains part of the shared application binary.
 See [module setup and dependencies](docs/MODULES.md).

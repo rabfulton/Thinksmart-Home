@@ -1,7 +1,7 @@
 # News sources and columns
 
-Open **Settings → Pages & modules → Modules → News → Edit**. You can also use
-**Edit news sources** while editing a News page on the Pages tab.
+Open **Settings → Pages & modules → News → Edit**. News can be a launcher widget,
+a full-page view, or available on request; all use the same source settings.
 
 Choose one or two columns, and a source for each. A single column fills the page;
 two sit side by side in landscape and stack vertically in portrait. **Save news

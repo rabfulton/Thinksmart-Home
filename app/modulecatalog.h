@@ -12,9 +12,9 @@ public:
         {"assistant","Assistant","Voice conversations and local Sheila detection","assistant",{},{}},
         {"radio","Radio","Favourites and worldwide internet stations","radio",{},"radio."},
         {"weather","Weather","Local weather and forecasts","weather",{},"weather."},
-        {"news","News","World, finance and Hacker News",{},"news",{}},
-        {"chess","Chess","Local chess game and engine",{},"chess",{}},
-        {"notes","Notes","Notes, dictation and personal actions",{},"notes","notes."},
+        {"news","News","World, finance and Hacker News","news","news",{}},
+        {"chess","Chess","Local chess game and engine","chess","chess",{}},
+        {"notes","Notes","Notes, dictation and personal actions","notes","notes","notes."},
         {"bluetooth","Bluetooth speaker","Phone audio; needs BlueZ and BlueALSA","music",{},{}},
         {"vrm","Victron energy","Battery and solar data; needs VRM credentials","energy",{},"battery."},
         {"navidrome","Music library","Local music; needs Navidrome server settings","music",{},{}},
@@ -31,6 +31,7 @@ public:
     static QStringList widgets(){QStringList r;for(const auto &e:entries())if(!e.widget.isEmpty()&&!r.contains(e.widget))r<<e.widget;return r;}
     static QStringList fullPages(){QStringList r;for(const auto &e:entries())if(!e.page.isEmpty())r<<e.page;return r;}
     static bool widgetEnabled(const QString &id,const QVariantMap &modules){for(const auto &e:entries())if(e.widget==id&&modules.value(e.id).toBool())return true;return false;}
-    static QVariantList options(){QVariantList r;for(const auto &e:entries())r<<QVariantMap{{"id",e.id},{"title",e.title},{"description",e.description}};return r;}
+    static QString applicationView(const QString &id){return id=="vrm"?"solar":id=="navidrome"||id=="bluetooth"?"music":id=="jellyfin"?"video":id;}
+    static QVariantList options(){QVariantList r;for(const auto &e:entries())r<<QVariantMap{{"id",e.id},{"title",e.title},{"description",e.description},{"widget",e.widget},{"page",e.page}};return r;}
     static QVariantList views(){QVariantList r;for(const auto &id:widgets())r<<QVariantMap{{"id",id},{"title",id=="energy"?"Energy":id=="music"?"Music":id=="video"?"Video":title(id)}};return r;}
 };

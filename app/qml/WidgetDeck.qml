@@ -18,7 +18,7 @@ GridLayout {
         delegate: Loader {
             required property string modelData
             Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 1; Layout.preferredHeight: 1; Layout.minimumHeight: 180
-            sourceComponent: modelData === "assistant" ? assistantWidget : modelData === "weather" ? weatherWidget : modelData === "energy" ? energyWidget : modelData === "radio" ? radioWidget : modelData === "music" ? musicWidget : modelData === "video" ? videoWidget : modelData === "iptv" ? iptvWidget : modelData === "markets" ? marketsWidget : modelData === "audiobooks" ? audiobooksWidget : modelData === "tvarchive" ? tvArchiveWidget : modelData === "recipes" ? recipesWidget : null
+            sourceComponent: modelData === "news" ? newsWidget : modelData === "notes" ? notesWidget : modelData === "chess" ? chessWidget : modelData === "assistant" ? assistantWidget : modelData === "weather" ? weatherWidget : modelData === "energy" ? energyWidget : modelData === "radio" ? radioWidget : modelData === "music" ? musicWidget : modelData === "video" ? videoWidget : modelData === "iptv" ? iptvWidget : modelData === "markets" ? marketsWidget : modelData === "audiobooks" ? audiobooksWidget : modelData === "tvarchive" ? tvArchiveWidget : modelData === "recipes" ? recipesWidget : null
         }
     }
     // Retain six grid slots so a single launcher remains a card, rather than
@@ -28,6 +28,18 @@ GridLayout {
         Item { Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 1; Layout.preferredHeight: 1; Layout.minimumHeight: 180 }
     }
     Text { visible: deck.available.length === 0; text: "Add widgets in Settings → Pages & modules"; color: Theme.muted; font.pixelSize: 22; Layout.fillWidth: true; Layout.fillHeight: true; Layout.columnSpan: deck.columns; Layout.rowSpan: deck.hostWindow.wide ? 2 : 3; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; wrapMode: Text.WordWrap }
+    Component {
+        id: newsWidget
+        ApplicationWidget { objectName: "newsTile"; heading: "News"; iconName: "news"; mainText: "Latest headlines"; detailText: "Your news sources & discussions"; indexLabel: "NEWS & CURRENT AFFAIRS"; onClicked: home.openApplication("news") }
+    }
+    Component {
+        id: notesWidget
+        ApplicationWidget { objectName: "notesTile"; heading: "Notes"; iconName: "notes"; mainText: home.personal.notes.length ? (home.personal.notes[0].title || home.personal.notes[0].text) : "Your notes"; detailText: home.personal.notes.length+" saved notes"; indexLabel: "NOTES, ROUTINES & SCHEDULES"; onClicked: home.openApplication("notes") }
+    }
+    Component {
+        id: chessWidget
+        ApplicationWidget { objectName: "chessTile"; heading: "Chess"; piece: "qrc:/assets/chess/wN.svg"; mainText: chessGame.moveCount ? "Continue game" : "Play chess"; detailText: "Arasan · "+chessGame.rating; indexLabel: "YOUR NEXT MOVE"; onClicked: home.openApplication("chess") }
+    }
     Component { id: recipesWidget; RecipesWidget { objectName: "recipesTile"; onClicked: deck.hostWindow.selectedApp="recipes" } }
     Component { id: tvArchiveWidget; TvArchiveWidget { objectName: "tvArchiveTile"; running: deck.pageActive && !deck.transitioning && !screenControl.sleeping; onClicked: deck.hostWindow.selectedApp="tvarchive" } }
     Component { id: audiobooksWidget; AudiobooksWidget { objectName: "audiobooksTile"; running: deck.pageActive && !deck.transitioning && !screenControl.sleeping; onClicked: deck.hostWindow.selectedApp="audiobooks" } }

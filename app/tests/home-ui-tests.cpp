@@ -196,6 +196,10 @@ exec sleep 20
             write("iptv-favourites.json",QJsonDocument(QJsonObject{{"version",1},{"favourites",rows}}).toJson());
         }
         write("device.json",QJsonDocument(QJsonObject{{"version",1},{"modules",modules}}).toJson());DeviceConfig::reload();
+        if(QByteArray(QTest::currentTestFunction()).startsWith("application")){
+            const QJsonArray pages{QJsonObject{{"id","home"},{"title","Home"},{"kind","widgets"},{"widgets",QJsonArray{"news","notes","chess"}}}};
+            QString error;QVERIFY(DashboardConfig::write({{"version",1},{"modules",QJsonObject{}},{"pages",pages}},error));DeviceConfig::reload();
+        }
         if(QByteArray(QTest::currentTestFunction())=="iptvBrowserSavesCustomStreams"){
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();
             pages.append(QJsonObject{{"id","tv"},{"title","TV"},{"kind","widgets"},{"widgets",QJsonArray{"iptv"}}});config.insert("pages",pages);
@@ -293,13 +297,70 @@ exec sleep 20
     void layoutEditorDraftAndApply(){
         screen->wake();click("powerButton");click("modulesSettingsButton");QCOMPARE(window->property("selectedApp").toString(),QString("layout-settings"));
         auto editor=media->layoutEditor();QCOMPARE(editor->pages().size(),4);QVERIFY(!editor->dirty());
-        click("layoutAddPage");QCOMPARE(editor->pages().size(),5);click("layoutEditPage4");
-        auto name=object("layoutPageName");QVERIFY(name);name->setProperty("text","My page");QVERIFY(QMetaObject::invokeMethod(name,"editingFinished"));QCOMPARE(editor->pages()[4].toMap().value("title").toString(),QString("My page"));
-        click("layoutAddWidget");QCOMPARE(editor->pages()[4].toMap().value("widgets").toList().size(),1);QVERIFY(editor->modules().value("assistant").toBool());
+        const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");
+        auto preview=[&](const QString &name){if(capture.isEmpty())return;QDir().mkpath(capture);QTest::qWait(60);QVERIFY(window->grabWindow().save(capture+"/"+name+".png"));};
+        auto settings=object("layoutSettingsPage");
+        QTest::qWait(40);click("layoutAddApplication");QCOMPARE(settings->property("route").toString(),QString("add"));QVERIFY(!object("addApplication_chess"));preview("guided-add");
+        QTest::qWait(40);click("addApplication_iptv");QCOMPARE(settings->property("route").toString(),QString("display"));preview("guided-display");
+        QTest::qWait(40);click("applicationWidgetDisplay");QCOMPARE(settings->property("route").toString(),QString("location"));preview("guided-location");
+        QTest::qWait(40);click("applicationNewPage");QCOMPARE(settings->property("route").toString(),QString("new-page"));preview("guided-new-page");
+        object("applicationNewPageName")->setProperty("text","My page");QTest::qWait(40);click("applicationFinish");QCOMPARE(editor->pages().size(),5);
+        QCOMPARE(editor->pages()[4].toMap().value("title").toString(),QString("My page"));QCOMPARE(editor->pages()[4].toMap().value("widgets").toList().size(),1);QVERIFY(editor->modules().value("iptv").toBool());
         click("layoutCancel");QVERIFY(!editor->dirty());QCOMPARE(editor->pages().size(),4);QVERIFY(!QFile::exists(DashboardConfig::path()));
-        media->editLayout();click("layoutModulesTab");auto sw=object("moduleSwitch_radio");QVERIFY(sw);QVERIFY(QMetaObject::invokeMethod(sw,"toggle")); // QML user handler is tested through setModule below.
-        editor->setModule("radio",false);QSignalSpy restart(media.get(),&Controller::dashboardRestartRequested);click("layoutApply");QCOMPARE(restart.size(),1);QVERIFY(QFile::exists(DashboardConfig::path()));QVERIFY(DeviceConfig::enabled("radio")); // Until restart.
+        window->resize(1280,800);media->editLayout();QTest::qWait(40);click("layoutRemoveApplication");QTest::qWait(40);click("removeApplication_radio");click("removeApplication_weather");preview("guided-remove");click("applicationRemoveSelected");QVERIFY(!editor->modules().value("radio").toBool());QVERIFY(!editor->modules().value("weather").toBool());QVERIFY(editor->modules().value("assistant").toBool());
+        QSignalSpy restart(media.get(),&Controller::dashboardRestartRequested);click("layoutApply");QCOMPARE(restart.size(),1);QVERIFY(QFile::exists(DashboardConfig::path()));QVERIFY(DeviceConfig::enabled("radio")); // Until restart.
         DeviceConfig::reload();QVERIFY(!DeviceConfig::enabled("radio"));QVERIFY(!media->toolRequest({{"action","radio.play"},{"id","radio4"}}).value("ok").toBool());
+    }
+    void applicationWidgetsAndTemporaryViews(){
+        screen->wake();QFile layout(DashboardConfig::path());QVERIFY(layout.open(QIODevice::ReadOnly));const auto saved=layout.readAll();layout.close();
+        const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");if(!capture.isEmpty())QDir().mkpath(capture);
+        QVERIFY(!chessGame->active());QVERIFY(!media->newsSettings()->active());
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(100);
+            if(!capture.isEmpty())QVERIFY(window->grabWindow().save(capture+QString("/application-widgets-%1.png").arg(size.width())));
+            for(const auto &app:{"chess","notes","news"}){
+                click((QByteArray(app)+"Tile").constData());QTRY_COMPARE(window->property("selectedApp").toString(),QString(app));QVERIFY(object((QByteArray(app)+"AppPage").constData()));
+                if(QString(app)=="chess")QVERIFY(chessGame->active());
+                if(QString(app)=="news")QVERIFY(media->newsSettings()->active());
+                if(!capture.isEmpty()){QTest::qWait(60);QVERIFY(window->grabWindow().save(capture+QString("/application-%1-%2.png").arg(app).arg(size.width())));}
+                click("expandedApplicationBack");QTRY_COMPARE(window->property("selectedApp").toString(),QString());QVERIFY(!chessGame->active());QVERIFY(!media->newsSettings()->active());
+            }
+        }
+        QVERIFY(!media->toolRequest({{"action","app.open"},{"application","recipes"}}).value("ok").toBool());
+        QVERIFY(!media->toolRequest({{"action","app.open"},{"application","unknown"}}).value("ok").toBool());
+        QVERIFY(layout.open(QIODevice::ReadOnly));QCOMPARE(layout.readAll(),saved);QCOMPARE(media->dashboardPages(),QStringList{"home"});
+    }
+    void applicationOpenVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
+    void applicationOpenVoiceTools(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        prepareWakeAssets();screen->wake();window->setProperty("selectedApp","assistant");
+        QFile layout(DashboardConfig::path());QVERIFY(layout.open(QIODevice::ReadOnly));const auto saved=layout.readAll();layout.close();
+        QWebSocketServer server("app-open-mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));
+        qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QPointer<QWebSocket> peer;QJsonObject session;
+        auto cleanup=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        auto send=[&](QJsonObject event){QVERIFY(peer);peer->sendTextMessage(QString::fromUtf8(QJsonDocument(event).toJson(QJsonDocument::Compact)));};
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &message){
+            const auto e=QJsonDocument::fromJson(message.toUtf8()).object();const auto type=e.value("type").toString();
+            if(type=="session.update"||type=="session.start"){session=e.value("session").toObject();send({{"type",live?"session.started":"session.updated"}});}
+            if(type=="session.close")send({{"type","session.closed"}});
+        });if(!live)send({{"type","session.created"}});});
+        auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty()&&voice->inputLevel()>0);
+        const auto tools=(live?session.value("delegation").toObject().value("responses").toObject():session).value("tools").toArray();QJsonObject opener;
+        for(const auto &t:tools)if(t.toObject().value("name")=="open_application")opener=t.toObject();
+        const auto applications=opener.value("parameters").toObject().value("properties").toObject().value("application").toObject().value("enum").toArray();
+        QVERIFY(applications.contains("chess"));QVERIFY(!applications.contains("recipes"));
+        const QJsonObject item{{"type","function_call"},{"name","open_application"},{"call_id","open-chess"},{"arguments","{\"application\":\"chess\"}"}};
+        if(live){
+            auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","app"},{"event",e}});};
+            nested({{"type","response.created"},{"response",QJsonObject{{"id","open"}}}});nested({{"type","response.output_item.done"},{"item",item}});nested({{"type","response.completed"},{"response",QJsonObject{{"id","open"}}}});
+        }else{send({{"type","response.created"},{"response",QJsonObject{{"id","open"}}}});send({{"type","response.done"},{"response",QJsonObject{{"id","open"},{"status","completed"},{"output",QJsonArray{item}}}}});}
+        QVERIFY(!media->toolRequest({{"action","app.open"},{"application","recipes"}}).value("ok").toBool());
+        QTRY_COMPARE(window->property("selectedApp").toString(),QString("chess"));QVERIFY(chessGame->active());QTest::qWait(100);QVERIFY(voice->active());
+        QCOMPARE(voice->snapshot().value("lastTool").toObject().value("function").toString(),QString("open_application"));
+        voice->stop("quiet_timeout");QCOMPARE(window->property("selectedApp").toString(),QString("chess"));QVERIFY(chessGame->active());
+        QVERIFY(layout.open(QIODevice::ReadOnly));QCOMPARE(layout.readAll(),saved);
+        click("expandedApplicationBack");QVERIFY(!chessGame->active());
     }
     void moduleSpeechSchemas_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
     void moduleSpeechSchemas(){
@@ -652,7 +713,7 @@ exec sleep 20
         screen->sleep();QVERIFY(!orb->property("moving").toBool());
     }
     void newsColumnSettingsEditor(){
-        screen->wake();window->resize(1280,800);media->editLayout();click("layoutModulesTab");click("moduleEdit_news");QTRY_VERIFY(object("layoutSettingsPage")->property("editingNews").toBool());
+        screen->wake();window->resize(1280,800);media->editLayout();click("moduleEdit_news");QTRY_VERIFY(object("layoutSettingsPage")->property("editingNews").toBool());
         const auto defaults=QStringList{"WORLD_FINANCE","HN"};QCOMPARE(media->newsSettings()->columns(),defaults);
         click("newsOneColumn");click("newsSettingsCancel");QCOMPARE(media->newsSettings()->columns(),defaults);QVERIFY(!QFile::exists(NewsSettings::path()));
         click("moduleEdit_news");click("newsOneColumn");
@@ -660,7 +721,7 @@ exec sleep 20
         choice->setProperty("currentIndex",bbc);QVERIFY(QMetaObject::invokeMethod(choice,"activated",Q_ARG(int,bbc)));click("newsSettingsSave");QCOMPARE(media->newsSettings()->columns(),(QStringList{"BBC_WORLD"}));QVERIFY(QFile::exists(NewsSettings::path()));QVERIFY(!hackerNews->selectedFeed());
         click("layoutCancel");media->openAppRequested("news");QTest::qWait(300);QVERIFY(object("headlinesPanel"));QVERIFY(!object("hackerNewsPanel"));
         QVERIFY(media->newsSettings()->saveColumns({"BBC_WORLD","HN"}));QTest::qWait(40);QVERIFY(object("hackerNewsPanel"));
-        media->editLayout();click("layoutModulesTab");click("moduleEdit_news");
+        media->editLayout();click("moduleEdit_news");
         const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");for(const auto &size:{QSize(1280,800),QSize(800,1280)}){window->resize(size);QTest::qWait(100);if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/news-settings-%1.png").arg(size.width())));}}
         click("newsSettingsDefaults");click("newsSettingsSave");QCOMPARE(media->newsSettings()->columns(),defaults);click("layoutCancel");
         QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
