@@ -7,6 +7,7 @@ docker run --rm --network none --user "$(id -u):$(id -g)" \
   -e QT_QPA_PLATFORM=xcb -e QSG_RHI_BACKEND=opengl \
   -e LIBGL_ALWAYS_SOFTWARE=1 -e QT_QUICK_CONTROLS_STYLE=Basic -e LANG=C.UTF-8 \
   -e THINKSMART_PUBLIC_SCREENSHOTS=/workspace/docs/screenshots \
+  -e THINKSMART_PUBLIC_SCREENSHOT_SET="${THINKSMART_PUBLIC_SCREENSHOT_SET:-}" \
   thinksmart-qt-builder:debian13 sh -ec '
     Xvfb :99 -screen 0 1600x1400x24 -nolisten tcp -ac >/tmp/thinksmart-xvfb.log 2>&1 &
     render_xpid=$!

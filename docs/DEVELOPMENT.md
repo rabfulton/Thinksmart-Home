@@ -65,11 +65,14 @@ fixtures instead of relying on the developer's voice-preview collection.
 ## Public screenshots
 
 `capturePublicScreenshots` renders the real UI with synthetic London weather,
-energy readings and news fixtures. It starts no cloud conversation. Render with
+energy readings, news fixtures, example recipes and synthetic market prices.
+It starts no cloud conversation. Render with
 Xvfb/OpenGL for the GPU orb, or offscreen/software for the Canvas fallback:
 
 ```sh
 ./tools/render-screenshots.sh
+# Refresh only selected images:
+THINKSMART_PUBLIC_SCREENSHOT_SET=recipes,markets,chess ./tools/render-screenshots.sh
 ```
 
 Review the generated PNGs before publishing; use no real household data, server

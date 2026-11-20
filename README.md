@@ -88,11 +88,13 @@ starting prompt and contribution workflow.
 | --- | --- |
 | ![Voice assistant](docs/screenshots/assistant.png) | ![News feeds](docs/screenshots/news.png) |
 
-| Chess | Portrait layout |
+| Chess · Dusk theme | Portrait layout |
 | --- | --- |
 | ![Chess](docs/screenshots/chess.png) | ![Portrait dashboard](docs/screenshots/home-portrait.png) |
 
-![Recipes with ingredients, method and touch checklists](docs/screenshots/recipes.png)
+| Recipes | Markets · Autumn theme |
+| --- | --- |
+| ![Recipes with ingredients, method and touch checklists](docs/screenshots/recipes.png) | ![Expanded Markets with a synthetic NVIDIA price chart](docs/screenshots/markets.png) |
 
 **Licence:** our original code is [MIT](LICENSE). Imported code and artwork keep
 their own licences; see [third-party notices](THIRD_PARTY.md). Linked dependencies,

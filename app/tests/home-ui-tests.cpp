@@ -157,6 +157,7 @@ exec sleep 20
         qputenv("THINKSMART_WAKE_TEST_ARGUMENTS",directory.filePath("wake-arguments.json").toUtf8());
         QFile::remove(directory.filePath("assistant/wakeword.json"));
         QDir(directory.filePath("personal")).removeRecursively();
+        const bool publicScreenshots=QByteArray(QTest::currentTestFunction())=="capturePublicScreenshots";
         QJsonObject modules;
         if(QByteArray(QTest::currentTestFunction())=="moduleProfiles"){
             QFETCH(QStringList,enabledModules);for(const auto &name:DeviceConfig::names())modules.insert(name,enabledModules.contains(name));
@@ -164,10 +165,10 @@ exec sleep 20
         if(QByteArray(QTest::currentTestFunction())=="moduleSpeechSchemas")for(const auto &id:{"radio","weather","vrm","notes","iptv"})modules.insert(id,false);
         qputenv("THINKSMART_RECIPES_FILE",directory.filePath("recipes.json").toUtf8());qputenv("THINKSMART_RECIPES_CONFIG",directory.filePath("recipe-settings.json").toUtf8());
         QFile::remove(directory.filePath("recipes.json"));QFile::remove(directory.filePath("recipe-settings.json"));
-        if(QByteArray(QTest::currentTestFunction()).startsWith("recipes"))modules.insert("recipes",true);
+        if(publicScreenshots||QByteArray(QTest::currentTestFunction()).startsWith("recipes"))modules.insert("recipes",true);
         qputenv("THINKSMART_MARKETS_FILE",directory.filePath("markets.json").toUtf8());qputenv("THINKSMART_MARKETS_CACHE",directory.filePath("markets-cache.json").toUtf8());
         QFile::remove(directory.filePath("markets.json"));QFile::remove(directory.filePath("markets-cache.json"));
-        if(QByteArray(QTest::currentTestFunction()).startsWith("markets"))modules.insert("markets",true);
+        if(publicScreenshots||QByteArray(QTest::currentTestFunction()).startsWith("markets"))modules.insert("markets",true);
         qputenv("THINKSMART_AUDIOBOOKS_FILE",directory.filePath("audiobooks.json").toUtf8());qputenv("THINKSMART_AUDIOBOOKS_CACHE",directory.filePath("audiobooks-cache").toUtf8());qputenv("THINKSMART_DISABLE_AUDIOBOOKS","1");QFile::remove(directory.filePath("audiobooks.json"));QDir(directory.filePath("audiobooks-cache")).removeRecursively();
         qunsetenv("THINKSMART_MEDIA_TEST_PLAYER");
         if(QByteArray(QTest::currentTestFunction()).startsWith("audiobooks")){
@@ -211,10 +212,19 @@ exec sleep 20
         }
         if(QByteArray(QTest::currentTestFunction()).startsWith("markets")){
             auto config=DashboardConfig::defaults(DeviceConfig::modules());auto pages=config.value("pages").toArray();pages.append(QJsonObject{{"id","markets-room"},{"title","Markets"},{"kind","widgets"},{"widgets",QJsonArray{"markets"}}});config.insert("pages",pages);QString error;QVERIFY(DashboardConfig::write(config,error));DeviceConfig::reload();
+        }
+        if(publicScreenshots||QByteArray(QTest::currentTestFunction()).startsWith("markets")){
             QJsonObject quotes,charts;const auto now=QDateTime::currentSecsSinceEpoch();
             for(const auto &symbol:{"^GSPC","DX-Y.NYB","NVDA","BTC-USD","ETH-USD"}){
                 const QString name=symbol;const double value=name=="NVDA"?155.0:name=="BTC-USD"?64000.0:name=="ETH-USD"?1800.0:name=="DX-Y.NYB"?103.0:7340.0;
                 quotes.insert(name,QJsonObject{{"symbol",name},{"label",name=="^GSPC"?"S&P 500":name=="DX-Y.NYB"?"DXY":name},{"name",name=="NVDA"?"NVIDIA Corporation":name=="^GSPC"?"S&P 500":name},{"price",value},{"percent",1.23},{"currency","USD"},{"quoteTime",now},{"fetchedAt",now},{"instrumentType","CRYPTOCURRENCY"},{"changePeriod","day"}});
+                if(publicScreenshots){
+                    auto quote=quotes.value(name).toObject();
+                    quote.insert("instrumentType",name.endsWith("-USD")?"CRYPTOCURRENCY":name=="NVDA"?"EQUITY":"INDEX");
+                    quote.insert("marketStatus","Open");
+                    if(name=="DX-Y.NYB")quote.insert("percent",-0.24);
+                    quotes.insert(name,quote);
+                }
                 QJsonArray points;for(int i=0;i<40;i++)points.append(QJsonObject{{"time",now-(40-i)*300},{"value",value*(0.98+i*0.0005+std::sin(i*0.6)*0.002)}});
                 for(const auto &range:{"1D","1W","1M","1Y"})charts.insert(name+":"+range,QJsonObject{{"points",points},{"fetchedAt",now}});
             }
@@ -1460,11 +1470,17 @@ exec sleep 20
         engine->rootContext()->setContextProperty("energy",demo(energy.get(),{{"metrics",metrics},{"hasData",true},{"stale",false},{"problem",""},{"status","Demonstration data"}}));
         prepareWakeAssets();media->assistant()->setEnabled(true);QTRY_VERIFY(media->assistant()->wakeListening());
         screen->wake();media->setTheme("spring");
-        auto capture=[&](const QString &name,int width=1280,int height=800){window->resize(width,height);QTest::qWait(350);QVERIFY(window->grabWindow().save(destination+"/"+name+".png"));};
+        const auto selected=qEnvironmentVariable("THINKSMART_PUBLIC_SCREENSHOT_SET").split(',',Qt::SkipEmptyParts);
+        auto capture=[&](const QString &name,int width=1280,int height=800){if(!selected.isEmpty()&&!selected.contains(name))return;window->resize(width,height);QTest::qWait(350);QVERIFY(window->grabWindow().save(destination+"/"+name+".png"));};
         capture("home-landscape");capture("home-portrait",800,1280);
         window->resize(1280,800);media->openAppRequested("news");capture("news");
-        media->openAppRequested("chess");capture("chess");
-        media->openAppRequested("assistant");capture("assistant");
+        media->setTheme("dusk");media->openAppRequested("chess");capture("chess");
+        media->setTheme("spring");media->openAppRequested("assistant");capture("assistant");
+        const auto recipe=media->recipes()->request({{"action","recipes.show"},{"title","Harissa cauliflower & lemon couscous"},
+            {"left",QStringLiteral("**Serves 2 · 35 minutes**\n\n## Ingredients\n\n- [x] 1 small cauliflower, cut into florets\n- [ ] 400 g tin chickpeas, drained\n- [ ] 2 tbsp olive oil\n- [ ] 1 tbsp rose harissa\n- [ ] 150 g couscous\n- [ ] 200 ml hot vegetable stock\n- [ ] 1 lemon, zest and juice\n- [ ] 3 tbsp thick yoghurt\n- [ ] Parsley & toasted almonds")},
+            {"right",QStringLiteral("## Method\n\n### 1. Roast\nHeat the oven to **220°C / 200°C fan**. Toss cauliflower and chickpeas with oil, harissa and salt. Roast **25 minutes**, turning halfway.\n\n### 2. Fluff\nCover couscous with hot stock for **5 minutes**. Fluff, then fold in lemon zest and parsley.\n\n### 3. Finish\nMix yoghurt with lemon juice. Spoon over the warm bowls and top with toasted almonds.")}});
+        QVERIFY(recipe.value("ok").toBool());media->openAppRequested("recipes");capture("recipes");
+        media->setTheme("autumn");QVERIFY(media->markets()->select("NVDA"));media->openAppRequested("markets");capture("markets");
     }
     void captureMockup() {
         const QString destination=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");
