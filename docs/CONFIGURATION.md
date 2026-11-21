@@ -55,6 +55,23 @@ not chat. Device files are owned by `thinksmart:thinksmart`, mode 600.
 Navidrome/Jellyfin and VRM do not require an OpenAI key. Disabling Assistant stops
 its microphone and API activity. OpenAI keys are needed only for cloud voice.
 
+Music and Video connections can also be edited on the device: **Settings →
+Pages & modules → Music / Navidrome or Video / Jellyfin → Edit**. Enter the full
+server URL (including `http://` or `https://` and any port). Navidrome accepts
+an account/password or API key. Jellyfin accepts an account/password or a user
+access token; account login saves its issued token, not the password, and detects
+the user ID automatically. A Tailscale server address works when reachable from
+the device; if a short hostname does not resolve, use its tailnet IP or full DNS
+name. HTTP requires the explicit private-network option.
+
+**Test connection** checks access without saving. **Save & restart** first
+checks access, then atomically updates only that service in the private
+`media.json` and restarts the dashboard, stopping current playback/conversation.
+Other connections, prompts and the page layout are preserved. Back discards
+unsaved edits. Saved secrets are never displayed; a blank credential keeps the
+saved one only for the same server/account. Changing server requires a new
+credential. Connections are not periodically tested in the background.
+
 `voice.json` supplies defaults; saved UI model and per-model voice selections
 take priority. Supported model IDs come from `VoiceAssistant::models()`; check
 availability in your own API account. New API protocols need an implementation,
@@ -80,6 +97,12 @@ conversation; Settings → Reload updates the personality list. No build is need
 Prompt files use UTF-8, at most 32 KiB each and 64 KiB per assembled prompt.
 Keep them readable by `thinksmart` and private. Upgrades seed missing defaults
 and preserve existing prompts. See [ADMIN.md](ADMIN.md) for all file locations.
+
+Learned facts and conversation handoffs use
+`/var/lib/thinksmart-home/personal/memory.md` (mode 600, 8 KiB / 32 entries).
+Sheila can list/add/patch/remove entries; Assistant settings has a confirmed
+**Reset memory** button. This is separate from your SSH-edited household file.
+See [voice memory](VOICE.md#continuity-between-conversations) for the format and limits.
 
 Themes, notes, routines and schedules live in
 `/var/lib/thinksmart-home/personal/`. They can be edited by the built-in assistant

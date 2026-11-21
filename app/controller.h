@@ -7,6 +7,7 @@
 #include "systemstats.h"
 #include "deviceconfig.h"
 #include "personal.h"
+#include "memory.h"
 #include "wifi.h"
 #include "layouteditor.h"
 #include "iptv.h"
@@ -67,6 +68,8 @@ public:
     ~Controller();
     QString themeName()const{return m_themeName;}
     QVariantMap themePalette()const{return m_personal.palette(m_themeName).toVariantMap();}
+    MemoryStore *memory(){return &m_memory;}
+    Q_INVOKABLE QVariantMap resetAssistantMemory();
     PersonalStore *personal(){return &m_personal;}
     WifiController *wifi(){return &m_wifi;}
     LayoutEditor *layoutEditor(){return &m_layoutEditor;}
@@ -76,6 +79,7 @@ public:
     AudiobooksClient *audiobooks(){return &m_audiobooks;}
     QVariantList pageDefinitions()const{return DeviceConfig::pageDefinitions().toVariantList();}
     Q_INVOKABLE void editLayout();
+    void restartDashboard();
     Q_INVOKABLE bool openApplication(const QString &application,bool fromAssistant=false);
     bool virtualKeyboardEnabled()const{return qEnvironmentVariable("QT_IM_MODULE")=="qtvirtualkeyboard";}
     QString alarmText()const{return m_alarmText;}
@@ -122,9 +126,12 @@ public:
     void playRadio(const QString &id,const QUrl &url,const QString &name,const QString &subtitle);
     void setDataSources(WeatherClient *weather,RadioCatalog *radio,VrmClient *energy);
     bool hasRadioStation(const QString &id)const;
+    void setMusicLibrary(MediaLibrary *library);
+    bool musicReady()const;
+    bool knowsMusic(const QString &id,const QString &type)const;
     void setVideoLibrary(MediaLibrary *library){m_videoLibrary=library;}
     QJsonObject toolRequest(const QJsonObject &request);
-    void toolRequestAsync(const QJsonObject &request,std::function<void(QJsonObject)> done);
+    void toolRequestAsync(const QJsonObject &request,std::function<void(QJsonObject)> done,std::function<bool()> allowed={});
     static QString socketPath();
 signals:
     void cancelDiscoveryRequested();
@@ -143,6 +150,7 @@ signals:
 private:
     bool m_restartPending=false;
     PersonalStore m_personal;
+    MemoryStore m_memory;
     WifiController m_wifi;
     LayoutEditor m_layoutEditor;
     IptvClient m_iptv;
@@ -177,7 +185,7 @@ private:
     WeatherClient *m_weather=nullptr;
     RadioCatalog *m_radio=nullptr;
     VrmClient *m_energy=nullptr;
-    MediaLibrary *m_videoLibrary=nullptr;
+    MediaLibrary *m_videoLibrary=nullptr,*m_musicLibrary=nullptr;
     QString m_radioId="radio4";
     AudioLab m_audioLab;
     VoiceAssistant m_assistant;

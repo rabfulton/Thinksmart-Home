@@ -5,25 +5,30 @@ Rectangle {
     id: page
     property bool active: true
     property bool phoneTab: home.modules.bluetooth && (!home.modules.navidrome || !musicLibrary.configured)
+    property bool queueTab: false
     signal back()
     color: Theme.surface; radius: Theme.radius; border.color: Theme.border
     ColumnLayout {
-        anchors.fill: parent; anchors.margins: 26; spacing: 18
-        RowLayout {
-            spacing: 20
-            UiButton { iconName: "back"; description: "Back"; onClicked: !page.phoneTab && musicLibrary.canBack ? musicLibrary.back() : page.back() }
-            ColumnLayout {
-                Layout.fillWidth: true; spacing: 4
+        anchors.fill: parent; anchors.margins: 20; spacing: 12
+        Item {
+            Layout.fillWidth: true; Layout.preferredHeight: 64
+            RowLayout {
+                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 20
+                UiButton { objectName: "musicBackButton"; iconName: "back"; description: "Back"; onClicked: !page.phoneTab && !page.queueTab && musicLibrary.canBack ? musicLibrary.back() : page.back() }
                 Text { text: "Music"; color: Theme.ink; font.pixelSize: 29 }
-                Text { text: "Your library and audio from your phone"; color: Theme.muted; font.pixelSize: 16 }
             }
-            UiButton { visible: home.modules.navidrome; text: "Library"; selected: !page.phoneTab; onClicked: page.phoneTab = false }
-            UiButton { visible: home.modules.bluetooth; text: "Phone"; selected: page.phoneTab; onClicked: page.phoneTab = true }
+            RowLayout {
+                objectName: "musicSourceTabs"
+                anchors.centerIn: parent; spacing: 12
+                UiButton { objectName: "musicLibraryTab"; visible: home.modules.navidrome; text: "Library"; selected: !page.phoneTab && !page.queueTab; onClicked: {page.phoneTab=false;page.queueTab=false} }
+                UiButton { objectName: "musicPhoneTab"; visible: home.modules.bluetooth; text: "Phone"; selected: page.phoneTab; onClicked: {page.phoneTab=true;page.queueTab=false} }
+                UiButton { objectName: "musicQueueTab"; visible: home.modules.navidrome; text: "Queue"; selected: page.queueTab; onClicked: {page.phoneTab=false;page.queueTab=true} }
+            }
         }
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
-            currentIndex: page.phoneTab ? 1 : 0
-            LibraryPanel { library: musicLibrary; active: page.active && !page.phoneTab }
+            currentIndex: page.queueTab ? 2 : page.phoneTab ? 1 : 0
+            LibraryPanel { library: musicLibrary; active: page.active && !page.phoneTab && !page.queueTab }
             ScrollView {
                 id: scroll
                 contentWidth: availableWidth; clip: true
@@ -65,6 +70,7 @@ Rectangle {
                     Item { Layout.preferredHeight: 8 }
                 }
             }
+            MusicQueuePage { library: musicLibrary }
         }
     }
     Connections {

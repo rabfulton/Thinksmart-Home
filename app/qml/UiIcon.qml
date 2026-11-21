@@ -73,6 +73,7 @@ Canvas {
         case "pause": line(8,5,8,19); line(16,5,16,19); c.lineWidth = 3; break
         case "stop": c.rect(6,6,12,12); break
         case "volume": c.moveTo(3,9); c.lineTo(7,9); c.lineTo(12,4); c.lineTo(12,20); c.lineTo(7,15); c.lineTo(3,15); c.closePath(); c.moveTo(16,7); c.quadraticCurveTo(22,12,16,17); break
+        case "add": line(12,5,12,19); line(5,12,19,12); break
         case "refresh": c.moveTo(20,9); c.arc(12,12,8,-0.4,Math.PI*1.6); line(20,3,20,9); line(14,9,20,9); break
         case "close": line(6,6,18,18); line(18,6,6,18); break
         case "book": c.lineWidth=0.8; c.moveTo(12,5);c.bezierCurveTo(8,2,3,3,2,4);c.lineTo(2,20);c.bezierCurveTo(6,18,9,19,12,21);c.bezierCurveTo(15,19,18,18,22,20);c.lineTo(22,4);c.bezierCurveTo(18,2,15,3,12,5);line(12,5,12,21);line(5,8,9,9);line(15,9,19,8);line(5,12,9,13);line(15,13,19,12); break

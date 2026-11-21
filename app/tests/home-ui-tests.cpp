@@ -48,9 +48,36 @@ class HomeUiTests : public QObject {
     std::unique_ptr<ChessGame> chessGame;
     std::unique_ptr<RadioCatalog> radio;
     std::unique_ptr<MediaLibrary> music,video;
+    std::unique_ptr<QTcpServer> musicFixture;
+    int musicRequests=0,musicDelay=0;
     std::unique_ptr<QQmlApplicationEngine> engine;
     QQuickWindow *window=nullptr;
     QStringList warnings;
+    void startMusicFixture(){
+        musicFixture=std::make_unique<QTcpServer>();QVERIFY(musicFixture->listen(QHostAddress::LocalHost));musicRequests=0;musicDelay=0;
+        connect(musicFixture.get(),&QTcpServer::newConnection,musicFixture.get(),[this](){while(musicFixture->hasPendingConnections()){
+            auto socket=musicFixture->nextPendingConnection();connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);
+            connect(socket,&QTcpSocket::readyRead,socket,[this,socket](){
+                const auto input=socket->property("input").toByteArray()+socket->readAll();socket->setProperty("input",input);if(!input.contains("\r\n\r\n"))return;
+                ++musicRequests;const QUrl url=QUrl::fromEncoded(input.split(' ').value(1));const QUrlQuery query(url);QJsonObject response{{"status","ok"}};
+                if(url.path().endsWith("getGenres.view"))response.insert("genres",QJsonObject{{"genre",QJsonArray{QJsonObject{{"value","Jazz & Blues"},{"albumCount",3}},QJsonObject{{"value","Folk"},{"albumCount",4}}}}});
+                else if(url.path().endsWith("getArtist.view"))response.insert("artist",QJsonObject{{"album",QJsonArray{QJsonObject{{"id","album-0"},{"name","Album 1"},{"artist","Fixture artist"}}}}});
+                else if(url.path().endsWith("getAlbum.view"))response.insert("album",QJsonObject{{"song",QJsonArray{QJsonObject{{"id","song-1"},{"title","First track"},{"artist","Fixture artist"}},QJsonObject{{"id","song-2"},{"title","Second track"},{"artist","Fixture artist"}}}}});
+                else {
+                    const bool search=url.path().endsWith("search3.view");const auto mode=query.queryItemValue("type");const int total=search?1:mode=="byGenre"?3:mode=="byYear"?4:130;
+                    const int offset=query.queryItemValue(search?"songOffset":"offset").toInt();QJsonArray rows;
+                    for(int i=offset;i<qMin(offset+60,total);i++)rows.append(QJsonObject{{"id",QString("%1-%2").arg(search?"song":"album").arg(i)},{"name",QString("Album %1").arg(i+1)},{"title",search?QString("A search result"):QString("Album %1").arg(i+1)},{"artist",QString("Artist %1").arg(i%8+1)}});
+                    QJsonObject found{{search?"song":"album",rows}};
+                    if(search){found.insert("artist",QJsonArray{QJsonObject{{"id","artist-1"},{"name","Fixture artist"}}});found.insert("album",QJsonArray{QJsonObject{{"id","album-0"},{"name","Album 1"},{"artist","Fixture artist"}}});}
+                    response.insert(search?"searchResult3":"albumList2",found);
+                }
+                const auto body=QJsonDocument(QJsonObject{{"subsonic-response",response}}).toJson(QJsonDocument::Compact);
+                const QByteArray reply="HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: "+QByteArray::number(body.size())+"\r\n\r\n"+body;
+                QTimer::singleShot(musicDelay,socket,[socket,reply](){socket->write(reply);socket->disconnectFromHost();});
+            });
+        }});
+        write("no-media.json",QJsonDocument(QJsonObject{{"navidrome",QJsonObject{{"url",QString("http://127.0.0.1:%1/").arg(musicFixture->serverPort())},{"apiKey","fixture-music-key"},{"allowHttp",true}}}}).toJson());QFile::setPermissions(directory.filePath("no-media.json"),QFile::ReadOwner|QFile::WriteOwner);
+    }
     void seedNews(){
         const auto path=QStandardPaths::writableLocation(QStandardPaths::CacheLocation)+"/news/";QDir().mkpath(path);
         auto save=[&](const QString &name,const QJsonObject &o){QFile f(path+name+".json");if(f.open(QIODevice::WriteOnly)){f.setPermissions(QFile::ReadOwner|QFile::WriteOwner);f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));}};
@@ -162,7 +189,7 @@ exec sleep 20
         if(QByteArray(QTest::currentTestFunction())=="moduleProfiles"){
             QFETCH(QStringList,enabledModules);for(const auto &name:DeviceConfig::names())modules.insert(name,enabledModules.contains(name));
         }
-        if(QByteArray(QTest::currentTestFunction())=="moduleSpeechSchemas")for(const auto &id:{"radio","weather","vrm","notes","iptv"})modules.insert(id,false);
+        if(QByteArray(QTest::currentTestFunction())=="moduleSpeechSchemas")for(const auto &id:{"radio","weather","vrm","notes","iptv","navidrome"})modules.insert(id,false);
         qputenv("THINKSMART_RECIPES_FILE",directory.filePath("recipes.json").toUtf8());qputenv("THINKSMART_RECIPES_CONFIG",directory.filePath("recipe-settings.json").toUtf8());
         QFile::remove(directory.filePath("recipes.json"));QFile::remove(directory.filePath("recipe-settings.json"));
         if(publicScreenshots||QByteArray(QTest::currentTestFunction()).startsWith("recipes")||QByteArray(QTest::currentTestFunction()).startsWith("wakeConversation"))modules.insert("recipes",true);
@@ -258,6 +285,7 @@ exec sleep 20
         QFile backendPolicy(QFINDTESTDATA("../deploy/assistant/backend.md"));QVERIFY(backendPolicy.open(QIODevice::ReadOnly));write("assistant/backend.md",backendPolicy.readAll());
         write("assistant/personalities/warm.md","# Warm companion\nBe warm and considerate.\n");
         write("assistant/personalities/brief.md","# Brief and practical\nBe very brief.\n");
+        if(QByteArray(QTest::currentTestFunction())=="musicLibraryCompactBrowsing"||QByteArray(QTest::currentTestFunction())=="musicQueueControls"||QByteArray(QTest::currentTestFunction())=="musicVoiceTools")startMusicFixture();
         screen=std::make_unique<ScreenController>();media=std::make_unique<Controller>(screen.get());
         energy=std::make_unique<VrmClient>();
         weather=std::make_unique<WeatherClient>();radio=std::make_unique<RadioCatalog>();
@@ -265,7 +293,8 @@ exec sleep 20
         media->newsSettings()->setClients(headlines.get(),hackerNews.get());
         chessGame=std::make_unique<ChessGame>();chessGame->newGame();if(!chessGame->playerWhite())chessGame->switchSides();chessGame->setRating(1200);
         media->setDataSources(weather.get(),radio.get(),energy.get());
-        music=std::make_unique<MediaLibrary>("navidrome");video=std::make_unique<MediaLibrary>("jellyfin");media->setVideoLibrary(video.get());
+        music=std::make_unique<MediaLibrary>("navidrome");video=std::make_unique<MediaLibrary>("jellyfin");media->setVideoLibrary(video.get());media->setMusicLibrary(music.get());
+        for(auto library:{music.get(),video.get()})connect(library,&MediaLibrary::connectionSaved,media.get(),&Controller::restartDashboard);
         engine=std::make_unique<QQmlApplicationEngine>();
         engine->addImageProvider("jellyfin",new JellyfinImages(video->imageSettings()));
         connect(engine.get(),&QQmlApplicationEngine::warnings,this,[this](const QList<QQmlError> &errors){for(const auto &error:errors)warnings<<error.toString();});
@@ -370,10 +399,10 @@ exec sleep 20
         connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){const auto e=QJsonDocument::fromJson(text.toUtf8()).object();if(e.value("type")=="session.update"||e.value("type")=="session.start")session=e.value("session").toObject();});if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
         prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty());
         const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;
-        const auto instructions=session.value("instructions").toString()+owner.value("instructions").toString();for(const auto &marker:{"Radio module","Weather module","Vrm module","Notes module","IPTV module","Markets module","markets.get","iptv.search","notes.add","radio.search"})QVERIFY(!instructions.contains(marker));
+        const auto instructions=session.value("instructions").toString()+owner.value("instructions").toString();for(const auto &marker:{"Radio module","Weather module","Vrm module","Notes module","IPTV module","Markets module","markets.get","iptv.search","notes.add","radio.search","Navidrome music module"})QVERIFY(!instructions.contains(marker));
         bool device=false,personal=false;
         for(const auto &v:owner.value("tools").toArray()){
-            const auto f=v.toObject();const auto props=f.value("parameters").toObject().value("properties").toObject();
+            const auto f=v.toObject();const auto props=f.value("parameters").toObject().value("properties").toObject();QVERIFY(f.value("name")!="music_action");
             if(f.value("name")=="device_action"||f.value("name")=="personal_action"){
                 for(const auto &a:props.value("action").toObject().value("enum").toArray())for(const auto &prefix:{"radio.","weather.","battery.","notes.","iptv.","markets."})QVERIFY(!a.toString().startsWith(prefix));
                 if(f.value("name")=="device_action")device=true;
@@ -732,6 +761,141 @@ exec sleep 20
         const auto hidden=orb->property("phase").toDouble();QTest::qWait(100);QCOMPARE(orb->property("phase").toDouble(),hidden);
         window->setProperty("selectedApp","");QTRY_VERIFY(orb->property("moving").toBool());
         screen->sleep();QVERIFY(!orb->property("moving").toBool());
+    }
+    void musicLibraryCompactBrowsing(){
+        screen->wake();window->resize(1280,800);media->openAppRequested("music");QTRY_VERIFY(!music->busy());QTRY_COMPARE(music->genres().size(),2);
+        auto list=qobject_cast<QQuickItem *>(object("musicLibraryList"));QVERIFY(list);QTRY_COMPARE(list->property("count").toInt(),60);
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(80);music->setMusicBrowse("all");QTRY_VERIFY(!music->busy());QTRY_COMPARE(list->property("count").toInt(),60);
+            QVERIFY(list->height()>(size.width()>size.height()?300:650));
+            auto input=qobject_cast<QQuickItem *>(object("musicSearchInput")),reload=qobject_cast<QQuickItem *>(object("musicReloadButton"));QVERIFY(input&&reload);QVERIFY(qAbs(input->mapToScene(QPointF()).y()-reload->mapToScene(QPointF()).y())<5);
+            list->setProperty("contentY",list->property("contentHeight").toReal()-list->height()-80);QTRY_COMPARE(list->property("count").toInt(),120);QVERIFY(list->property("contentY").toReal()>100);
+            list->setProperty("contentY",list->property("contentHeight").toReal()-list->height()-80);QTRY_COMPARE(list->property("count").toInt(),130);QVERIFY(!music->canNext());
+            auto mode=object("musicBrowseMode");QVERIFY(mode);mode->setProperty("currentIndex",7);QVERIFY(QMetaObject::invokeMethod(mode,"activated",Q_ARG(int,7)));QTRY_VERIFY(!music->busy());QCOMPARE(music->section(),QString("byGenre"));QCOMPARE(list->property("count").toInt(),3);QVERIFY(object("musicGenre")->property("visible").toBool());
+            click("musicLibraryRow0");QTRY_VERIFY(!music->busy());QVERIFY(music->inAlbum());QCOMPARE(list->property("count").toInt(),2);click("musicBackButton");QTRY_VERIFY(!music->busy());QVERIFY(!music->inAlbum());QCOMPARE(music->section(),QString("byGenre"));
+            mode->setProperty("currentIndex",8);QVERIFY(QMetaObject::invokeMethod(mode,"activated",Q_ARG(int,8)));QTRY_VERIFY(!music->busy());QVERIFY(object("musicDecade")->property("visible").toBool());auto decade=object("musicDecade");const int n=(QDate::currentDate().year()/10*10-1990)/10;QVERIFY(n>=0);decade->setProperty("currentIndex",n);QVERIFY(QMetaObject::invokeMethod(decade,"activated",Q_ARG(int,n)));QTRY_VERIFY(!music->busy());QCOMPARE(music->decade(),1990);
+            const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/music-browser-%1.png").arg(size.width())));}
+            object("musicSearchInput")->setProperty("text","A search");QVERIFY(QMetaObject::invokeMethod(object("musicSearchInput"),"accepted"));QTRY_VERIFY(!music->busy());QVERIFY(music->searching());QCOMPARE(list->property("count").toInt(),1);QVERIFY(!object("musicSearchInput")->property("activeFocus").toBool());
+        }
+        media->openAppRequested("home");const int count=musicRequests;QTest::qWait(60);QCOMPARE(musicRequests,count);QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void musicQueueControls(){
+        qputenv("THINKSMART_MEDIA_TEST_PLAYER","/usr/bin/true");
+        connect(music.get(),&MediaLibrary::playRequested,media.get(),&Controller::playMedia);connect(media.get(),&Controller::advanceRequested,music.get(),&MediaLibrary::advance);connect(media.get(),&Controller::playbackEvent,music.get(),&MediaLibrary::report);
+        screen->wake();window->resize(1280,800);media->openAppRequested("music");QTRY_VERIFY(!music->busy());
+        QSignalSpy play(music.get(),&MediaLibrary::playRequested);click("musicLibraryRow0");QTRY_VERIFY(!music->busy());QVERIFY(music->inAlbum());
+        media->playRadio("radio4",QUrl("http://127.0.0.1:9/radio"),"Fixture radio","Live radio");QCOMPARE(media->source(),QString("radio"));
+        click("musicLibraryRow0");QCOMPARE(play.size(),1);QCOMPARE(media->source(),QString("navidrome"));QCOMPARE(media->title(),QString("First track"));
+        click("musicLibraryRow1");QCOMPARE(music->queueCount(),2);QCOMPARE(play.size(),1);QCOMPARE(music->queueIndex(),0);
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(80);click("musicQueueTab");QCOMPARE(object("musicQueueList")->property("count").toInt(),2);click("musicQueuePlay");QCOMPARE(music->queueIndex(),0);QCOMPARE(media->source(),QString("navidrome"));
+            const int before=play.size();click("mediaNextButton");QCOMPARE(music->queueIndex(),1);QCOMPARE(play.size(),before+1);click("mediaPreviousButton");QCOMPARE(music->queueIndex(),0);click("musicQueueRow1");QCOMPARE(music->queueIndex(),1);click("musicQueueReplay");QCOMPARE(music->queueIndex(),0);
+            const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/music-queue-%1.png").arg(size.width())));}
+        }
+        click("musicQueueClear");QCOMPARE(music->queueCount(),0);QCOMPARE(media->state(),QString("stopped"));QCOMPARE(object("musicQueueList")->property("count").toInt(),0);const int count=play.size();click("radioPlayButton");QCOMPARE(play.size(),count);
+        click("musicLibraryTab");click("musicQueueAlbum");QCOMPARE(music->queueCount(),2);QCOMPARE(play.size(),count+1);QCOMPARE(music->queueIndex(),0);
+        media->stop();click("musicLibraryRow1");QCOMPARE(play.size(),count+2);QCOMPARE(music->queueCount(),3);QCOMPARE(media->source(),QString("navidrome"));media->stop();
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
+    }
+    void memoryVoiceTools_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
+    void memoryVoiceTools(){
+        QFETCH(bool,live);qputenv("THINKSMART_SHARED_AUDIO","1");auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        QWebSocketServer server("memory-mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QJsonObject session;QList<QJsonObject> messages;QPointer<QWebSocket> peer;QList<QPointer<QWebSocket>> peers;
+        auto cleanup=qScopeGuard([&](){for(auto p:peers)if(p){p->disconnect(this);delete p.data();}});
+        auto send=[&](QJsonObject event){QVERIFY(peer);peer->sendTextMessage(QString::fromUtf8(QJsonDocument(event).toJson(QJsonDocument::Compact)));};
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();peers.append(peer);const auto socket=peer;
+            connect(socket,&QWebSocket::textMessageReceived,this,[&,socket](const QString &text){const auto event=QJsonDocument::fromJson(text.toUtf8()).object();messages.append(event);const auto type=event.value("type").toString();
+                QJsonObject ack;if(type=="session.update"||type=="session.start"){session=event.value("session").toObject();ack={{"type",live?"session.started":"session.updated"}};}if(type=="session.close")ack={{"type","session.closed"}};
+                if(!ack.isEmpty())socket->sendTextMessage(QString::fromUtf8(QJsonDocument(ack).toJson(QJsonDocument::Compact)));
+            });if(!live)send({{"type","session.created"}});
+        });
+        prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty()&&voice->inputLevel()>0);
+        auto owner=[&](){return live?session.value("delegation").toObject().value("responses").toObject():session;};
+        QVERIFY(QJsonDocument(owner().value("tools").toArray()).toJson().contains("memory_action"));QVERIFY(owner().value("instructions").toString().contains("8 KiB"));
+        auto dispatch=[&](const QString &id,QJsonObject args){const QJsonObject item{{"type","function_call"},{"call_id",id},{"name","memory_action"},{"arguments",QString::fromUtf8(QJsonDocument(args).toJson(QJsonDocument::Compact))}};
+            if(live){auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","memory"},{"event",e}});};nested({{"type","response.created"},{"response",QJsonObject{{"id",id}}}});nested({{"type","response.output_item.done"},{"response_id",id},{"item",item}});nested({{"type","response.completed"},{"response",QJsonObject{{"id",id}}}});}
+            else{send({{"type","response.created"},{"response",QJsonObject{{"id",id}}}});send({{"type","response.done"},{"response",QJsonObject{{"id",id},{"status","completed"},{"output",QJsonArray{item}}}}});}
+        };
+        auto result=[&](const QString &id){QJsonObject found;for(const auto &event:messages){const auto item=event.value("item").toObject();if(item.value("call_id")==id)found=QJsonDocument::fromJson(item.value("output").toString().toUtf8()).object();}return found;};
+        dispatch("save",{{"action","memory.add"},{"id","preferences"},{"text","Prefers fixture folk music."}});QTRY_VERIFY(!result("save").isEmpty());QVERIFY(result("save").value("ok").toBool());
+        dispatch("patch",{{"action","memory.patch"},{"id","preferences"},{"old_text","folk"},{"new_text","jazz"}});QTRY_VERIFY(!result("patch").isEmpty());QVERIFY(result("patch").value("ok").toBool());
+        QVERIFY(!media->resetAssistantMemory().value("ok").toBool());
+        voice->setEnabled(false);QTRY_VERIFY(voice->released());session={};voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty()&&voice->inputLevel()>0);
+        QVERIFY(owner().value("instructions").toString().contains("Prefers fixture jazz music."));if(live)QVERIFY(session.value("instructions").toString().contains("Prefers fixture jazz music."));
+        dispatch("bad-reset",{{"action","memory.reset"}});QTRY_VERIFY(!result("bad-reset").isEmpty());QVERIFY(!result("bad-reset").value("ok").toBool());
+        dispatch("reset",{{"action","memory.reset"},{"confirm",true}});QTRY_VERIFY(!result("reset").isEmpty());QVERIFY(result("reset").value("ok").toBool());QCOMPARE(media->memory()->request({{"action","memory.list"}}).value("count").toInt(),0);
+        voice->setEnabled(false);QTRY_VERIFY(voice->released());session={};voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty()&&voice->inputLevel()>0);QVERIFY(!owner().value("instructions").toString().contains("Prefers fixture jazz music."));
+        voice->setEnabled(false);QTRY_VERIFY(voice->released());
+    }
+    void assistantMemoryResetButton(){
+        auto save=[&](){return media->memory()->request({{"action","memory.add"},{"text","Fixture preference"}}).value("ok").toBool();};
+        QVERIFY(save());screen->wake();window->setProperty("selectedApp","assistant");QTest::qWait(50);click("assistantSettingsButton");
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(50);auto button=object("assistantMemoryResetButton");QVERIFY(button);QVERIFY(QMetaObject::invokeMethod(button,"clicked"));
+            auto dialog=object("assistantMemoryResetDialog");QVERIFY(dialog);QTRY_VERIFY(dialog->property("visible").toBool());click("assistantMemoryResetCancel");QCOMPARE(media->memory()->request({{"action","memory.list"}}).value("count").toInt(),1);
+            QVERIFY(QMetaObject::invokeMethod(button,"clicked"));QTRY_VERIFY(dialog->property("visible").toBool());click("assistantMemoryResetConfirm");QCOMPARE(media->memory()->request({{"action","memory.list"}}).value("count").toInt(),0);QVERIFY(save());
+        }
+    }
+    void musicVoiceTools_data(){QTest::addColumn<bool>("live");QTest::addColumn<bool>("shared");QTest::newRow("realtime")<<false<<true;QTest::newRow("live")<<true<<true;QTest::newRow("realtime-audio-handoff")<<false<<false;}
+    void musicVoiceTools(){
+        QFETCH(bool,live);QFETCH(bool,shared);if(shared)qputenv("THINKSMART_SHARED_AUDIO","1");else qunsetenv("THINKSMART_SHARED_AUDIO");auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");});
+        qputenv("THINKSMART_MEDIA_TEST_PLAYER","/usr/bin/true");connect(music.get(),&MediaLibrary::playRequested,media.get(),&Controller::playMedia);connect(media.get(),&Controller::playbackEvent,music.get(),&MediaLibrary::report);
+        QWebSocketServer server("music-mock",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));qputenv("THINKSMART_VOICE_TEST_URL",QString("ws://127.0.0.1:%1").arg(server.serverPort()).toUtf8());
+        QJsonObject session;QList<QJsonObject> messages;QPointer<QWebSocket> peer;auto cleanup=qScopeGuard([&](){if(peer){peer->disconnect(this);delete peer.data();}});
+        auto send=[&](QJsonObject event){QVERIFY(peer);peer->sendTextMessage(QString::fromUtf8(QJsonDocument(event).toJson(QJsonDocument::Compact)));};
+        connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &text){
+            const auto event=QJsonDocument::fromJson(text.toUtf8()).object();messages.append(event);const auto type=event.value("type").toString();
+            if(type=="session.update"||type=="session.start"){session=event.value("session").toObject();send({{"type",live?"session.started":"session.updated"}});}if(type=="session.close")send({{"type","session.closed"}});
+        });if(!live)send({{"type","session.created"}});});
+        prepareWakeAssets();screen->wake();auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(!session.isEmpty()&&voice->inputLevel()>0);
+        const auto owner=live?session.value("delegation").toObject().value("responses").toObject():session;QVERIFY(owner.value("instructions").toString().contains("Navidrome music module"));QVERIFY(QJsonDocument(owner.value("tools").toArray()).toJson().contains("music_action"));
+        auto dispatch=[&](const QString &id,QJsonObject args){
+            const QJsonObject item{{"type","function_call"},{"call_id",id},{"name","music_action"},{"arguments",QString::fromUtf8(QJsonDocument(args).toJson(QJsonDocument::Compact))}};
+            if(live){auto nested=[&](QJsonObject e){send({{"type","response.event"},{"delegation_id","music"},{"event",e}});};nested({{"type","response.created"},{"response",QJsonObject{{"id",id}}}});nested({{"type","response.output_item.done"},{"response_id",id},{"item",item}});nested({{"type","response.completed"},{"response",QJsonObject{{"id",id}}}});}
+            else {send({{"type","response.created"},{"response",QJsonObject{{"id",id}}}});send({{"type","response.done"},{"response",QJsonObject{{"id",id},{"status","completed"},{"output",QJsonArray{item}}}}});}
+        };
+        auto result=[&](const QString &id){QJsonObject found;for(const auto &event:messages){const auto item=event.value("item").toObject();if(item.value("call_id")==id)found=QJsonDocument::fromJson(item.value("output").toString().toUtf8()).object();}return found;};
+        dispatch("search",{{"action","music.search"},{"search","Fixture artist"}});QTRY_VERIFY(!result("search").isEmpty());QVERIFY(result("search").value("ok").toBool());QCOMPARE(result("search").value("items").toArray().size(),3);QCOMPARE(music->queueCount(),0);
+        dispatch("artist",{{"action","music.artist"},{"id","artist-1"}});QTRY_VERIFY(!result("artist").isEmpty());QVERIFY(result("artist").value("ok").toBool());QCOMPARE(result("artist").value("items").toArray().size(),1);
+        dispatch("play",{{"action","music.play"},{"id","album-0"},{"type","album"}});QTRY_VERIFY(!result("play").isEmpty());QVERIFY(result("play").value("ok").toBool());
+        if(!shared){QVERIFY(result("play").value("queued").toBool());QCOMPARE(music->queueCount(),0);send({{"type","response.created"},{"response",QJsonObject{{"id","ack"}}}});send({{"type","response.done"},{"response",QJsonObject{{"id","ack"},{"status","completed"},{"output",QJsonArray{}}}}});QTRY_COMPARE(music->queueCount(),2);QTRY_VERIFY(!voice->active());voice->setEnabled(false);return;}
+        QTRY_COMPARE(music->queueCount(),2);QCOMPARE(media->source(),QString("navidrome"));QVERIFY(voice->active());QVERIFY(!QJsonDocument(result("play")).toJson().contains("fixture-music-key"));
+        dispatch("next",{{"action","music.next"}});QTRY_VERIFY(!result("next").isEmpty());QVERIFY(result("next").value("ok").toBool());QCOMPARE(music->queueIndex(),1);
+        dispatch("bad",{{"action","music.play"},{"id","invented-id"},{"type","song"}});QTRY_VERIFY(!result("bad").isEmpty());QVERIFY(!result("bad").value("ok").toBool());QCOMPARE(music->queueCount(),2);
+        musicDelay=160;const int before=musicRequests;dispatch("late",{{"action","music.play"},{"id","album-0"},{"type","album"}});QTRY_COMPARE(musicRequests,before+1);voice->setEnabled(false);QTest::qWait(210);QCOMPARE(music->queueCount(),2);QCOMPARE(music->queueIndex(),1);QVERIFY(result("late").isEmpty());media->stop();
+    }
+    void mediaConnectionSettingsEditor(){
+        const auto file=directory.filePath("no-media.json");const QJsonObject nav{{"url","http://127.0.0.1:9/"},{"apiKey","fixture-hidden-music-key"},{"allowHttp",true}},jelly{{"url","http://127.0.0.1:9/"},{"accessToken","fixture-hidden-video-key"},{"userId","fixture-user"},{"allowHttp",true}};
+        const auto original=QJsonDocument(QJsonObject{{"navidrome",nav},{"jellyfin",jelly}}).toJson();write("no-media.json",original);QFile::setPermissions(file,QFile::ReadOwner|QFile::WriteOwner);
+        auto showEditor=[&](const char *button){
+            auto scroll=qobject_cast<QQuickItem *>(object("layoutApplicationScroll")->property("contentItem").value<QObject *>());QVERIFY(scroll);auto item=qobject_cast<QQuickItem *>(object(button));QVERIFY(item);
+            scroll->setProperty("contentY",qMax(0.,scroll->property("contentY").toReal()+item->mapToItem(scroll,QPointF()).y()-scroll->height()/2));QTest::qWait(50);click(button);
+        };
+        screen->wake();media->editLayout();QSignalSpy restart(media.get(),&Controller::dashboardRestartRequested);
+        for(const auto &size:{QSize(1280,800),QSize(800,1280)}){
+            window->resize(size);QTest::qWait(50);showEditor("moduleEdit_navidrome");QTRY_VERIFY(object("layoutSettingsPage")->property("editingMedia").toBool());
+            QCOMPARE(object("mediaSecret")->property("text").toString(),QString());QVERIFY(!object("mediaSecret")->property("placeholderText").toString().contains("fixture-hidden"));QCOMPARE(object("mediaSecret")->property("echoMode").toInt(),2);
+            object("mediaServerUrl")->setProperty("text","not a server");click("mediaTestConnection");QVERIFY(!music->connectionBusy());QVERIFY(!music->connectionSucceeded());QVERIFY(!object("mediaConnectionMessage")->property("text").toString().isEmpty());
+            click("mediaAccountMode");object("mediaUsername")->setProperty("text","new-account");object("mediaSecret")->setProperty("text","new-unsaved-secret");
+            auto editor=qobject_cast<QQuickItem *>(object("layoutSettingsPage"));QVERIFY(editor);const auto fullHeight=editor->height();editor->setHeight(fullHeight-280);auto input=qobject_cast<QQuickItem *>(object("mediaSecret"));QVERIFY(input);input->forceActiveFocus();QTest::qWait(60);
+            auto fields=qobject_cast<QQuickItem *>(object("mediaConnectionFields"));QVERIFY(fields);const auto position=input->mapToItem(fields,QPointF());QVERIFY(position.y()>=-1);QVERIFY(position.y()+input->height()<=fields->height()+1);editor->setHeight(fullHeight);
+            click("mediaSettingsBack");QVERIFY(!object("layoutSettingsPage")->property("editingMedia").toBool());QCOMPARE(object("mediaSecret")->property("text").toString(),QString());QCOMPARE(restart.size(),0);
+            showEditor("moduleEdit_jellyfin");QTRY_VERIFY(object("layoutSettingsPage")->property("editingMedia").toBool());QCOMPARE(object("mediaSecret")->property("text").toString(),QString());QVERIFY(object("mediaTokenMode")->property("checked").toBool());
+            const auto capture=qEnvironmentVariable("THINKSMART_CAPTURE_DIR");if(!capture.isEmpty()){QDir().mkpath(capture);QVERIFY(window->grabWindow().save(capture+QString("/media-settings-%1.png").arg(size.width())));}
+            click("mediaSettingsBack");
+        }
+        QFile unchanged(file);QVERIFY(unchanged.open(QIODevice::ReadOnly));QCOMPARE(unchanged.readAll(),original);unchanged.close();QCOMPARE(restart.size(),0);
+        QTcpServer server;QVERIFY(server.listen(QHostAddress::LocalHost));
+        connect(&server,&QTcpServer::newConnection,this,[&](){while(server.hasPendingConnections()){
+            auto socket=server.nextPendingConnection();connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);
+            connect(socket,&QTcpSocket::readyRead,socket,[socket](){const auto bytes=socket->property("input").toByteArray()+socket->readAll();socket->setProperty("input",bytes);if(!bytes.contains("\r\n\r\n"))return;
+                const QByteArray body=R"({"subsonic-response":{"status":"ok","albumList2":{"album":[]}}})";
+                socket->write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: "+QByteArray::number(body.size())+"\r\n\r\n"+body);socket->disconnectFromHost();});
+        }});
+        showEditor("moduleEdit_navidrome");object("mediaServerUrl")->setProperty("text",QString("http://127.0.0.1:%1/").arg(server.serverPort()));click("mediaAccountMode");object("mediaUsername")->setProperty("text","fixture-user");object("mediaSecret")->setProperty("text","fixture-password");click("mediaSaveConnection");QTRY_COMPARE(restart.size(),1);QVERIFY(music->connectionSucceeded());
+        QFile updated(file);QVERIFY(updated.open(QIODevice::ReadOnly));const auto all=QJsonDocument::fromJson(updated.readAll()).object();QCOMPARE(all.value("jellyfin").toObject(),jelly);QCOMPARE(all.value("navidrome").toObject().value("username").toString(),QString("fixture-user"));
+        QVERIFY2(warnings.isEmpty(),qPrintable(warnings.join("\n")));
     }
     void newsColumnSettingsEditor(){
         screen->wake();window->resize(1280,800);media->editLayout();click("moduleEdit_news");QTRY_VERIFY(object("layoutSettingsPage")->property("editingNews").toBool());
@@ -1375,7 +1539,9 @@ exec sleep 20
         const auto volume=media->volume();voice->setEnabled(false);QTRY_VERIFY(voice->released());QTRY_VERIFY(peer->state()==QAbstractSocket::UnconnectedState);
         QCOMPARE(media->volume(),volume);QCOMPARE(voice->snapshot().value("liveUsageSeconds").toDouble(),7.5);QVERIFY(voice->snapshot().value("liveUsageFinalized").toBool());
     }
+    void liveSilenceDoesNotHoldMediaOrIdleSession_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
     void liveSilenceDoesNotHoldMediaOrIdleSession(){
+        QFETCH(bool,live);
         qputenv("THINKSMART_SHARED_AUDIO","1");qputenv("THINKSMART_VOICE_TEST_SILENT","1");
         auto reset=qScopeGuard([](){qunsetenv("THINKSMART_SHARED_AUDIO");qunsetenv("THINKSMART_VOICE_TEST_SILENT");});
         prepareWakeAssets();screen->wake();
@@ -1385,12 +1551,14 @@ exec sleep 20
         connect(&server,&QWebSocketServer::newConnection,this,[&](){peer=server.nextPendingConnection();connect(peer,&QWebSocket::textMessageReceived,this,[&](const QString &m){
             auto type=QJsonDocument::fromJson(m.toUtf8()).object().value("type").toString();
             if(type=="session.start")peer->sendTextMessage("{\"type\":\"session.started\"}");
+            if(type=="session.update")peer->sendTextMessage("{\"type\":\"session.updated\"}");
             if(type=="session.close")peer->sendTextMessage("{\"type\":\"session.closed\",\"usage\":{\"seconds\":20}}");
-        });});
-        auto voice=media->assistant();voice->setModel("gpt-live-1");voice->setEnabled(true);voice->start();QTRY_VERIFY(peer&&voice->active());
-        QTimer silence;silence.setInterval(50);connect(&silence,&QTimer::timeout,this,[&](){if(peer&&peer->state()==QAbstractSocket::ConnectedState)peer->sendTextMessage(QString::fromUtf8(QJsonDocument(QJsonObject{{"type","session.output_audio.delta"},{"delta",QString::fromLatin1(QByteArray(2400,'\0').toBase64())}}).toJson(QJsonDocument::Compact)));});silence.start();
+        });if(!live)peer->sendTextMessage("{\"type\":\"session.created\"}");});
+        auto voice=media->assistant();voice->setModel(live?"gpt-live-1":"gpt-realtime-2.1-mini");voice->setEnabled(true);voice->start();QTRY_VERIFY(peer&&voice->active());
+        QTimer silence;silence.setInterval(50);connect(&silence,&QTimer::timeout,this,[&](){if(live&&peer&&peer->state()==QAbstractSocket::ConnectedState)peer->sendTextMessage(QString::fromUtf8(QJsonDocument(QJsonObject{{"type","session.output_audio.delta"},{"delta",QString::fromLatin1(QByteArray(2400,'\0').toBase64())}}).toJson(QJsonDocument::Compact)));});silence.start();
         QTRY_VERIFY_WITH_TIMEOUT(!voice->snapshot().value("mediaDucked").toBool(),2000);
-        QTRY_VERIFY_WITH_TIMEOUT(!voice->active(),23000);silence.stop();
+        QTRY_VERIFY_WITH_TIMEOUT(!voice->active(),10000);silence.stop();
+        const auto stopped=voice->snapshot().value("lastStop").toObject();QCOMPARE(stopped.value("reason").toString(),QString("quiet_timeout"));QVERIFY(stopped.value("elapsedMs").toInt()>=8000);QVERIFY(stopped.value("elapsedMs").toInt()<11000);
         QTRY_VERIFY(peer->state()==QAbstractSocket::UnconnectedState);QVERIFY(voice->wakeListening());QVERIFY(!voice->snapshot().value("mediaDucked").toBool());
     }
     void radioDirectoryToolsWaitForResults_data(){QTest::addColumn<bool>("live");QTest::newRow("realtime")<<false;QTest::newRow("live")<<true;}
@@ -1437,7 +1605,7 @@ exec sleep 20
     }
     void voiceDismissal_data(){
         QTest::addColumn<bool>("live");QTest::addColumn<QString>("method");
-        for(bool live:{false,true})for(const auto &method:{"transcript","early-tool","batched-tool","false-activation","invalid-arguments"})
+        for(bool live:{false,true})for(const auto &method:{"transcript","early-tool","batched-tool","false-activation","not-addressed","conversation-complete","invalid-arguments"})
             QTest::newRow(qPrintable(QString(live?"live-":"realtime-")+method))<<live<<QString(method);
     }
     void voiceDismissal(){
@@ -1465,7 +1633,7 @@ exec sleep 20
         const auto toolOwner=live?session.value("delegation").toObject().value("responses").toObject():session;
         const auto tools=toolOwner.value("tools").toArray();
         QVERIFY(std::any_of(tools.cbegin(),tools.cend(),[](auto v){return v.toObject().value("name")=="end_conversation";}));
-        QVERIFY(session.value("instructions").toString().contains("go to sleep"));QVERIFY(toolOwner.value("instructions").toString().contains("TV, radio or background conversation"));
+        QVERIFY(session.value("instructions").toString().contains("go to sleep"));QVERIFY(toolOwner.value("instructions").toString().contains("TV, radio or background conversation"));QVERIFY(toolOwner.value("instructions").toString().contains("Even after a genuine exchange"));
         const auto volume=media->volume();const auto source=media->source(),station=media->radioId();
         QSignalSpy stopMedia(media.get(),&Controller::cancelDiscoveryRequested);
         const auto audio=QString::fromLatin1(QByteArray(24000,'\0').toBase64());
@@ -1490,7 +1658,8 @@ exec sleep 20
                 QTest::qWait(60);QVERIFY(voice->active());transcript("command","Sheila, please go to sleep.",6000);
             }
         }else{
-            const QString args=method=="false-activation"?"{\"reason\":\"false_activation\"}":"{\"reason\":\"user_request\"}";
+            const QString reason=method=="false-activation"?"false_activation":method=="not-addressed"?"not_addressed":method=="conversation-complete"?"conversation_complete":"user_request";
+            const QString args=QString::fromUtf8(QJsonDocument(QJsonObject{{"reason",reason}}).toJson(QJsonDocument::Compact));
             if(method=="invalid-arguments"){
                 auto invalid=call("invalid","end_conversation","{\"reason\":\"shutdown\"}");
                 if(live){nested({{"type","response.created"},{"response",QJsonObject{{"id","invalid"}}}});nested({{"type","response.output_item.done"},{"item",invalid}});nested({{"type","response.completed"},{"response",QJsonObject{{"id","invalid"}}}});}
@@ -1513,7 +1682,7 @@ exec sleep 20
         QVERIFY(!screen->sleeping());QCOMPARE(media->volume(),volume);QCOMPARE(media->source(),source);QCOMPARE(media->radioId(),station);QCOMPARE(stopMedia.count(),0);
         QCOMPARE(voice->outputLevel(),0.);QVERIFY(!voice->snapshot().value("mediaDucked").toBool());
         const auto diagnostic=voice->snapshot().value("lastTool").toObject();QCOMPARE(diagnostic.value("action").toString(),QString("conversation.end"));
-        QCOMPARE(diagnostic.value("reason").toString(),method=="false-activation"?QString("false_activation"):QString("user_request"));
+        QCOMPARE(diagnostic.value("reason").toString(),method=="false-activation"?QString("false_activation"):method=="not-addressed"?QString("not_addressed"):method=="conversation-complete"?QString("conversation_complete"):QString("user_request"));
         QTRY_VERIFY(peer->state()==QAbstractSocket::UnconnectedState);
         QVERIFY(!std::any_of(requests.cbegin(),requests.cend(),[](auto r){return r.value("type")=="response.create";}));
         const auto count=requests.size();QTest::qWait(80);QCOMPARE(requests.size(),count);
@@ -1694,7 +1863,7 @@ exec sleep 20
     }
     void cleanup() {
         const auto savedWarnings=warnings;
-        engine.reset();chessGame.reset();headlines.reset();hackerNews.reset();weather.reset();radio.reset();music.reset();video.reset();energy.reset();media.reset();screen.reset();window=nullptr;
+        engine.reset();chessGame.reset();headlines.reset();hackerNews.reset();weather.reset();radio.reset();music.reset();video.reset();musicFixture.reset();energy.reset();media.reset();screen.reset();window=nullptr;
         QVERIFY2(savedWarnings.isEmpty(),qPrintable(savedWarnings.join('\n')));
     }
     void cleanupTestCase() {helper.terminate();QVERIFY(helper.waitForFinished(3000));}

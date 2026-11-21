@@ -46,6 +46,10 @@ done
 install -m 755 /opt/thinksmart/staging/thinksmart-home /usr/local/bin/thinksmart-home
 # Keep personal notes, schedules, routines and SSH-edited palettes on upgrades.
 install -d -o thinksmart -g thinksmart -m 700 /var/lib/thinksmart-home/personal /var/lib/thinksmart-home/personal/themes
+# Seed a blank learned-memory file once; never replace the user's memories.
+if [ ! -e /var/lib/thinksmart-home/personal/memory.md ] && [ ! -L /var/lib/thinksmart-home/personal/memory.md ]; then
+    printf '# Sheila memory\n' | install -o thinksmart -g thinksmart -m 600 /dev/stdin /var/lib/thinksmart-home/personal/memory.md
+fi
 for source in /opt/thinksmart/staging/themes/*.json; do
     target=/var/lib/thinksmart-home/personal/themes/${source##*/}
     if [ ! -e "$target" ]; then

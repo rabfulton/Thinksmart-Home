@@ -67,6 +67,7 @@ ApplicationWindow {
     // Services have one owner even when several pages show the same module.
     readonly property var currentPage: pageDefinitions[dashboardPages.currentIndex] || ({})
     readonly property bool browsingTv: selectedApp === "tvarchive" || selectedApp === "iptv" || (selectedApp === "" && currentPage.module === "iptv")
+    readonly property bool musicQueueControls: home.modules.navidrome && musicLibrary.queueCount>0 && (home.source==="navidrome" || window.selectedApp==="music")
     readonly property bool readingRecipe: selectedApp === "recipes" || (selectedApp === "" && currentPage.module === "recipes")
     readonly property bool pageRunning: selectedApp === "" && !dashboardPages.transitioning && !screenControl.sleeping
     Binding { target: chessGame; property: "active"; value: home.modules.chess && !screenControl.sleeping && (window.selectedApp === "chess" || (window.pageRunning && window.currentPage.module === "chess")) }
@@ -246,16 +247,16 @@ ApplicationWindow {
                         color: home.state === "error" ? Theme.danger : Theme.muted; font.pixelSize: 15; Layout.fillWidth: true; elide: Text.ElideRight
                     }
                 }
-                UiButton { visible: home.source === "bluetooth" || home.source === "navidrome" || home.source === "audiobooks"; iconName: "previous"; description: "Previous track"; onClicked: home.previous() }
+                UiButton { objectName: "mediaPreviousButton"; visible: window.musicQueueControls || home.source === "bluetooth" || home.source === "navidrome" || home.source === "audiobooks"; enabled: home.source!=="navidrome" || musicLibrary.queueCanPrevious; iconName: "previous"; description: "Previous track"; onClicked: if(window.musicQueueControls)musicLibrary.advance(-1);else home.previous() }
                 UiButton {
                     objectName: "radioPlayButton"
                     readonly property bool stopping: home.state === "playing" || home.state === "connecting"
                     implicitWidth: 128; primary: home.state === "connecting"
                     iconName: stopping ? "stop" : "play"
                     description: stopping ? "Stop playback" : "Play"
-                    onClicked: if(stopping)home.stop();else home.play()
+                    onClicked: if(stopping)home.stop();else if(window.musicQueueControls)musicLibrary.playQueue();else home.play()
                 }
-                UiButton { visible: home.source === "bluetooth" || home.source === "navidrome" || home.source === "audiobooks"; iconName: "next"; description: "Next track"; onClicked: home.next() }
+                UiButton { objectName: "mediaNextButton"; visible: window.musicQueueControls || home.source === "bluetooth" || home.source === "navidrome" || home.source === "audiobooks"; enabled: home.source!=="navidrome" || musicLibrary.queueCanNext; iconName: "next"; description: "Next track"; onClicked: if(window.musicQueueControls)musicLibrary.advance(1);else home.next() }
                 Rectangle { width: 1; height: 36; color: Theme.border }
                 UiButton { iconName: "volume"; selected: home.muted; description: home.muted ? "Unmute" : "Mute"; onClicked: home.toggleMute() }
                 Slider {

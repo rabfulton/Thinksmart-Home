@@ -22,6 +22,7 @@ through display sleep and UI restarts while the device has network connectivity.
 | `/var/lib/thinksmart-home/.config/ThinkSmart/Home.conf` | Saved theme, volume, display, model/personality and per-model voice preferences |
 | `/etc/thinksmart/radio-catalog.json` | Curated stations/genres |
 | `/etc/thinksmart/stations.json` | Default/legacy radio URLs |
+| `/var/lib/thinksmart-home/personal/memory.md` | Agent-managed learned facts; mode 600, 8 KiB / 32 entries. Reset in Assistant settings; [format](VOICE.md#continuity-between-conversations) |
 | `/var/lib/thinksmart-home/personal/` | Editable themes, notes, routines and schedules; see [personal actions](PERSONAL.md) |
 | `/usr/local/share/thinksmart/voice-previews/` | Optional local WAV previews |
 | `/etc/asound.conf`, `/etc/thinksmart/shared-audio/` | Audio routing and PipeWire graph |
@@ -141,3 +142,7 @@ TV Archive keeps episode/series progress and autoplay in
 catalogue in `~thinksmart/.cache/ThinkSmart/Home/tvarchive/catalogue.json`. Preserve
 the former during upgrades. Its optional local proxy is configured independently
 with `THINKSMART_TVARCHIVE_PROXY`; see [TV Archive](TV-ARCHIVE.md).
+
+Navidrome music queues: `~thinksmart/.local/share/ThinkSmart/Home/music/queue-*.json`
+(private metadata and selected track index, separated by server/account). They
+survive app upgrades and are managed under Music → Queue. See [Music](MUSIC.md).

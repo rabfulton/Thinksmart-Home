@@ -154,3 +154,50 @@ full pages, capacity limits and atomic drafts. `layoutEditorDraftAndApply`,
 new flow, News/Notes/Chess launcher cards and expanded views in both orientations.
 The app-opening voice tests use local Realtime/Live mocks, verify disabled apps
 are absent/rejected, preserve the layout and allow acknowledgement after navigation.
+
+`library-tests` covers Navidrome authentication/queues and Jellyfin playback, plus
+private connection edits, account-to-token login, cancellation and preserving
+the other server configuration. `mediaConnectionSettingsEditor` in `home-ui-tests`
+checks masked fields, cancellation, validation and keyboard-sized layouts in both
+orientations. All use local fixtures, with no real server credentials.
+
+Music browsing: `navidromeLazyLoadingFiltersAndSearch` in `library-tests` covers
+append-only album/search paging, genre and year-range parameters, album return,
+end-of-list and failed loads with private cached entries. `musicLibraryCompactBrowsing`
+in `home-ui-tests` checks both orientations, stable scrolling, compact controls,
+genre/decade selection, album Back navigation and search submission using local fixtures.
+
+Music queues: `musicQueuePersistsReplaysAndClears` in `library-tests` checks
+append-only selections, duplicates, browsing independence, completion versus
+manual navigation, stale completion events, account separation, private atomic
+persistence and failed clears. `musicQueueControls` in `home-ui-tests` exercises
+track/album enqueue, automatic startup/radio handoff, append without restarting
+active music, the Queue tab, bottom transport, replay and clear in both
+orientations. A dummy media process is used, with no speaker or cloud calls.
+
+`vrm-tests` also checks widget freshness with current battery/solar and retired
+AC readings, old or unknown battery timestamps, and solar-only fallback. These
+cache fixtures enter no network event loop and do not contact VRM.
+
+`musicAgentSearchSelectionAndCancellation` in `library-tests` covers bounded
+artist/album/song discovery, typed IDs, queue replacement versus append, genre
+filtering, malformed IDs, network failures and cancelled lookups preserving the
+queue. `musicVoiceTools` exercises Realtime, Live delegation and legacy Realtime
+audio handoff through mock WebSockets and a dummy player. It also checks that
+ending a conversation discards a late playback result. `moduleSpeechSchemas`
+and `layout-tests` verify disabled-module tools and prompt filtering. No paid
+speech calls or real microphone tests are used.
+
+`voiceDismissal` covers explicit dismissal, false activation, dialogue no longer
+addressed to Sheila and clear conversation completion through both Realtime/Live
+mock protocols. `liveSilenceDoesNotHoldMediaOrIdleSession` now exercises both
+providers and checks the actual eight-second quiet cutoff and return to local
+wake listening, including silent Live output packets. No cloud calls are made.
+
+`memory-tests` covers bounded UTF-8 Markdown persistence, exact patches, external
+SSH edits, malformed-file preservation, confirmed reset scope, locking, private
+permissions, symlinks, credential-pattern rejection and disabled-module gating.
+`memoryVoiceTools` tests both mock voice protocols across successive sessions:
+save/patch, load the next wake, reject an unconfirmed reset, clear, then verify
+the next session excludes the erased fact. `assistantMemoryResetButton` covers
+cancel/confirm in both orientations with local temporary files.

@@ -125,7 +125,15 @@ trigger the wake word. They may end silently with reason `false_activation` when
 there is good reason to think no one is addressing Sheila. “False alarm” and
 “I wasn't talking to you” are also explicit dismissal requests. Classification is
 model judgement, not a guaranteed distinction between TV and a real request.
-The ordinary quiet timeout and wake sensitivity are unchanged. Dismissal metadata
+The idle follow-up window is **8 seconds** after activity ends. Active answers,
+backend/tool work, manual turns and genuine Realtime speech are protected from
+that idle cutoff. Background speech can still look like activity, so both models
+are also instructed to end promptly when speech is no longer addressed to Sheila,
+even after a genuine exchange (`not_addressed`), or when the user clearly finishes
+(`conversation_complete`). These are silent immediate endings; requested answers
+must finish first. The model must not extend the exchange with unsolicited
+“anything else?” questions. This remains model judgement, not speaker recognition.
+Wake sensitivity is unchanged. Dismissal metadata
 records only a bounded reason/source, not audio or transcripts. The policy is
 supplied by the application, preserving SSH-edited prompt files.
 
@@ -168,3 +176,65 @@ was not introduced for this change.
 Back from Assistant settings returns to the conversation view. The conversation
 page's enable switch controls both local wake listening and permission to start
 a conversation; enabling it alone does not open a cloud session.
+
+## Continuity between conversations
+
+Each wake or manual Start creates a new cloud session and clears the previous
+on-screen transcript. Provider conversation IDs and full dialogue are not replayed.
+Household notes, personalities and module policies reload each time. Saved app
+state remains accessible through its tools.
+
+Sheila can also retain **selected facts and useful context** in
+`/var/lib/thinksmart-home/personal/memory.md`. This UTF-8 Markdown file is loaded
+into each new Realtime session and both GPT Live roles as reference data, not
+instructions. Notes dictation excludes it. No background summariser, transcript
+recording, extra model call or idle polling is added. Saving a memory is model
+judgement, so complete recall is not guaranteed. Use “remember …” for an explicit
+request; important static household information still belongs in `household.md`.
+
+The native `memory_action` tool supports:
+
+- `memory.list`: optional `id` or `search`.
+- `memory.add`: `text`, optional short `id` (otherwise generated).
+- `memory.patch`: `id`, exact `old_text` matching once, and `new_text`.
+- `memory.remove`: `id`.
+- `memory.reset`: `confirm: true`, only for an explicit request to forget all
+  learned memory. It never clears prompts, notes, recipes or other app data.
+
+**Assistant settings → Reset memory** offers the same reset with a confirmation
+dialog. It is disabled during a conversation so an active session cannot continue
+using the erased facts. A voice-requested reset clears the file immediately;
+older context already sent to the provider disappears at the next conversation.
+The model is told not to recreate erased entries from that old context.
+
+Limits are **8 KiB total, 32 entries and 1 KiB of UTF-8 text per entry**. Writes
+that exceed a limit fail without truncation or eviction; Sheila can consolidate
+or remove obsolete entries first. The policy favours concise preferences and
+ongoing plans, with an optional dated `recent_context` handoff rather than a
+transcript. It forbids learning from background/TV speech, quoted or dictated
+material and uncertain speaker attribution, and storing credentials. Native
+writes also reject common credential patterns; this is not a general secret
+classifier. Memory contents are sent to the configured voice provider.
+
+SSH edits reload at the next conversation/tool read without a build. Keep the
+file owned by `thinksmart`, mode **600**, in its private mode-700 directory:
+
+```markdown
+# Sheila memory
+
+## favourite_radio
+Prefers BBC Radio 4.
+
+## recent_context
+2026-11-21: Planning a vegetable soup for four people.
+```
+
+Entry IDs contain up to 48 letters, digits, underscores or hyphens. Optional
+`<!-- updated: ISO-8601 timestamp -->` lines are maintained by the tool. Ordinary
+paragraphs and bullets are allowed within an entry; `##` headings start entries.
+Malformed/oversized files are preserved and ordinary writes fail; explicit reset
+can recover them. Symlinks and files readable/writable by other users are refused.
+Atomic locked writes detect concurrent SSH edits and do not rewrite unchanged
+content. Memory has no background service and is unavailable when the Assistant
+module is disabled. Each device has independent learned memory; no tailnet sync
+is implied.

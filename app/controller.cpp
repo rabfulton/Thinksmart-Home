@@ -39,13 +39,7 @@ Controller::Controller(ScreenController *display,QObject *parent):QObject(parent
     connect(this,&Controller::playbackEvent,this,[this](const QString &key,const QString &event,double position,bool paused){m_tvArchive.report(key,event,position,m_duration,paused);});
     connect(&m_markets,&MarketsClient::alertTriggered,this,[this](const QString &,bool chime){m_display->wake();if(chime&&!m_muted)playTone();});
     connect(&m_iptv,&IptvClient::playRequested,this,[this](const QUrl &url,const QString &name,bool software){m_iptvSoftware=software;playMedia("iptv",url,name,"Live TV",{},true,{},0);});
-    connect(&m_layoutEditor,&LayoutEditor::restartRequested,this,[this](){
-        m_restartPending=true;stop();m_assistant.suspendLocalAudio();emit dashboardRestartRequested();
-#ifndef THINKSMART_VOICE_TESTING
-        QFile wake(socketPath()+".wake");if(wake.open(QIODevice::WriteOnly)){wake.setPermissions(QFile::ReadOwner|QFile::WriteOwner);wake.write("wake");}
-        QTimer::singleShot(150,QCoreApplication::instance(),&QCoreApplication::quit);
-#endif
-    });
+    connect(&m_layoutEditor,&LayoutEditor::restartRequested,this,&Controller::restartDashboard);
     connect(&m_videoPlayer,&VideoPlayer::event,this,&Controller::handlePlayerEvent);
     connect(display,&ScreenController::stopping,this,&Controller::stop);
     connect(&m_phone,&BluetoothAudio::changed,this,&Controller::changed);
@@ -145,6 +139,7 @@ void Controller::play(){
     if(m_source=="audiobooks"){m_audiobooks.resume();return;}
     if(m_source=="tvarchive"){m_tvArchive.resume();return;}
     if(m_source=="iptv"&&!m_iptv.lastChannel().isEmpty()){m_iptv.play(m_iptv.lastChannel().value("id").toString());return;}
+    if(m_source=="navidrome"&&m_musicLibrary){m_musicLibrary->playQueue();return;}
     if(m_source=="jellyfin"){emit replayRequested(m_source);return;}
     if(m_source=="radio"&&m_radio&&(m_radioId=="commons"||m_radioId=="lords")){emit radioRequested(m_radioId);return;}
     if(m_url.isEmpty()){setState("error","No stream is configured");return;}
@@ -189,7 +184,7 @@ void Controller::handlePlayerEvent(const QJsonObject &o){
         if(event=="end-file"&&m_wantPlay&&!m_switching){
             const auto finishedKey=m_playbackKey;finishPlayback();m_wantPlay=false;m_loadTimer.stop();QString reason=o.value("reason").toString();
             setState(reason=="error"?"error":"stopped",reason=="error"?"Stream unavailable. Try again.":"Playback finished");
-            if(m_video)m_player.terminate();if(reason=="eof"&&m_source=="navidrome")emit advanceRequested(1);if(reason=="eof"&&m_source=="audiobooks")m_audiobooks.completed(finishedKey);
+            if(m_video)m_player.terminate();if(reason=="eof"&&m_source=="navidrome"){if(m_musicLibrary)m_musicLibrary->completed(finishedKey);else emit advanceRequested(1);}if(reason=="eof"&&m_source=="audiobooks")m_audiobooks.completed(finishedKey);
             if(reason=="eof"&&m_source=="tvarchive")m_tvArchive.completed(finishedKey);
         }
 }
@@ -226,7 +221,7 @@ void Controller::handleClient(QLocalSocket *client){
                 client->write("{\"ok\":false,\"error\":\"Expected one JSON request object\"}\n");client->disconnectFromServer();return;
             }
             const QPointer<QLocalSocket> socket(client);
-            toolRequestAsync(json.object(),[socket](QJsonObject result){if(!socket)return;socket->write(QJsonDocument(result).toJson(QJsonDocument::Compact)+'\n');socket->disconnectFromServer();});return;
+            toolRequestAsync(json.object(),[socket](QJsonObject result){if(!socket)return;socket->write(QJsonDocument(result).toJson(QJsonDocument::Compact)+'\n');socket->disconnectFromServer();},[socket](){return socket&&socket->state()==QLocalSocket::ConnectedState;});return;
         }
         bool valid=true;
         if(request=="play")play();else if(request=="pause")pause();else if(request=="stop")stop();else if(request=="toggle")toggle();
@@ -286,7 +281,15 @@ void Controller::setDataSources(WeatherClient *weather,RadioCatalog *radio,VrmCl
     m_weather=weather;m_radio=radio;m_energy=energy;
 }
 bool Controller::hasRadioStation(const QString &id)const{return m_radio&&m_radio->knows(id);}
-void Controller::toolRequestAsync(const QJsonObject &request,std::function<void(QJsonObject)> done){
+void Controller::toolRequestAsync(const QJsonObject &request,std::function<void(QJsonObject)> done,std::function<bool()> allowed){
+    if(request.value("action").toString().startsWith("music.")&&m_musicLibrary){
+        const QPointer<Controller> self(this);
+        m_musicLibrary->musicRequest(request,[self,request,done=std::move(done)](QJsonObject result){
+            if(!self)return;result.insert("action",request.value("action"));result.insert("version",1);result.insert("asOf",QDateTime::currentSecsSinceEpoch());
+            if(request.contains("requestId"))result.insert("requestId",request.value("requestId"));
+            result.insert("media",self->toolRequest({{"action","media.status"}}).value("media"));done(result);
+        },std::move(allowed));return;
+    }
     if(request.value("action")=="audiobooks.search"&&DeviceConfig::enabled("audiobooks")){m_audiobooks.searchRequest(request,std::move(done));return;}
     if(request.value("action")=="iptv.search"&&DeviceConfig::enabled("iptv")){
         const QPointer<Controller> self(this);
@@ -307,6 +310,30 @@ void Controller::toolRequestAsync(const QJsonObject &request,std::function<void(
         result.insert("media",self->toolRequest({{"action","media.status"}}).value("media"));done(result);
     });
 }
+bool Controller::musicReady()const{return DeviceConfig::enabled("navidrome")&&m_musicLibrary&&m_musicLibrary->configured();}
+bool Controller::knowsMusic(const QString &id,const QString &type)const{return musicReady()&&m_musicLibrary->knowsMusic(id,type);}
+void Controller::setMusicLibrary(MediaLibrary *library){
+    m_musicLibrary=library;
+    connect(this,&Controller::cancelDiscoveryRequested,library,&MediaLibrary::cancelMusicRequests);
+    connect(library,&MediaLibrary::queueAppended,this,[this,library](){
+        if(m_source=="navidrome"&&(m_switching||state()=="connecting"||state()=="playing"))return;
+        if(m_source=="navidrome"&&state()=="paused"){play();return;}
+        library->playQueue();
+    });
+    connect(library,&MediaLibrary::queueCleared,this,[this](){
+        if(m_source!="navidrome")return;
+        if(m_wantPlay||m_switching||state()=="playing"||state()=="paused"||state()=="connecting")stop();
+        m_url.clear();m_title="Music";m_subtitle="Queue is empty";m_playbackKey.clear();m_position=0;m_duration=0;emit changed();
+    });
+}
+void Controller::restartDashboard(){
+    if(m_restartPending)return;
+    m_restartPending=true;stop();m_assistant.suspendLocalAudio();emit dashboardRestartRequested();
+#ifndef THINKSMART_VOICE_TESTING
+    QFile wake(socketPath()+".wake");if(wake.open(QIODevice::WriteOnly)){wake.setPermissions(QFile::ReadOwner|QFile::WriteOwner);wake.write("wake");}
+    QTimer::singleShot(150,QCoreApplication::instance(),&QCoreApplication::quit);
+#endif
+}
 bool Controller::openApplication(const QString &id,bool fromAssistant){
     if(id!="home"&&(!ModuleCatalog::names().contains(id)||!DeviceConfig::enabled(id)))return false;
     m_display->wake();emit applicationOpenRequested(ModuleCatalog::applicationView(id),fromAssistant);return true;
@@ -318,6 +345,7 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
         const bool opened=openApplication(id,true);
         return {{"ok",opened},{"application",id},{"layoutChanged",false},{"error",opened?QString():QString("Application is unknown or disabled. Enable it in Pages & modules first.")}};
     }
+    if(action.startsWith("memory."))return m_memory.request(request);
     if(PersonalStore::actions().contains(action))return personalRequest(action,request.value("data").toObject());
     if(action=="automation.execute")return executeSteps(request.value("steps").toArray());
     QJsonObject result{{"ok",true},{"version",1},{"action",action},{"asOf",QDateTime::currentSecsSinceEpoch()}};
@@ -326,6 +354,11 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
     if(!DeviceConfig::actionEnabled(action)){error("This module is disabled in device.json");return result;}
     if(action=="system.capabilities"){
         result.insert("actions",QJsonArray{
+            QJsonObject{{"action","memory.list"},{"optional",QJsonArray{"id","search"}}},QJsonObject{{"action","memory.add"},{"required",QJsonArray{"text"}}},
+            QJsonObject{{"action","memory.patch"},{"required",QJsonArray{"id","old_text","new_text"}}},QJsonObject{{"action","memory.remove"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","memory.reset"},{"required",QJsonArray{"confirm"}}},
+            QJsonObject{{"action","music.search"},{"required",QJsonArray{"search"}}},QJsonObject{{"action","music.artist"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","music.album"},{"required",QJsonArray{"id"}}},
+            QJsonObject{{"action","music.browse"}},QJsonObject{{"action","music.genres"}},QJsonObject{{"action","music.play"},{"optional",QJsonArray{"id","type"}}},QJsonObject{{"action","music.enqueue"},{"required",QJsonArray{"id","type"}}},
+            QJsonObject{{"action","music.queue"}},QJsonObject{{"action","music.next"}},QJsonObject{{"action","music.previous"}},QJsonObject{{"action","music.replay"}},QJsonObject{{"action","music.clear"}},
             QJsonObject{{"action","radio.list"},{"optional",QJsonArray{"genre","search"}}},
             QJsonObject{{"action","radio.search"},{"optional",QJsonArray{"country","language","tag","search"}},{"limit",5}},
             QJsonObject{{"action","radio.favourites"}},QJsonObject{{"action","radio.save"},{"required",QJsonArray{"id"}}},QJsonObject{{"action","radio.remove"},{"required",QJsonArray{"id"}}},
@@ -351,10 +384,12 @@ QJsonObject Controller::toolRequest(const QJsonObject &request){
             QJsonObject{{"action","media.pause"}},QJsonObject{{"action","media.play"}},
             QJsonObject{{"action","media.volume"},{"required",QJsonArray{"percent"}}}
         });
-        QJsonArray available;for(const auto &value:result.value("actions").toArray())if(DeviceConfig::actionEnabled(value.toObject().value("action").toString()))available.append(value);
+        QJsonArray available;for(const auto &value:result.value("actions").toArray())if(DeviceConfig::actionEnabled(value.toObject().value("action").toString())&&(!value.toObject().value("action").toString().startsWith("music.")||musicReady()))available.append(value);
         result.insert("actions",available);result.insert("modules",QJsonObject::fromVariantMap(DeviceConfig::modules()));
         for(const auto &name:PersonalStore::actions())if(DeviceConfig::actionEnabled(name))available.append(QJsonObject{{"action",name},{"optional",QJsonArray{"data"}}});
         result.insert("actions",available);
+    }else if(action.startsWith("music.")&&m_musicLibrary){
+        result=m_musicLibrary->musicControl(request);
     }else if(action.startsWith("tvarchive.")){
         result=m_tvArchive.request(request);
     }else if(action.startsWith("audiobooks.")){
@@ -481,3 +516,8 @@ void Controller::releaseAudio(bool force){
     m_assistant.suspendLocalAudio();stop();m_connectTimer.stop();m_loadTimer.stop();m_ipc.abort();m_player.terminate();
 }
 bool Controller::audioReleased()const{return m_player.state()==QProcess::NotRunning&&!m_videoPlayer.running()&&m_phone.receiverStopped()&&m_assistant.released();}
+
+QVariantMap Controller::resetAssistantMemory(){
+    if(m_assistant.active())return QVariantMap{{"ok",false},{"error","End the current conversation before resetting memory."}};
+    return m_memory.request({{"action","memory.reset"},{"confirm",true}}).toVariantMap();
+}

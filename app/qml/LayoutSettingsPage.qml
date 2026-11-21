@@ -14,6 +14,8 @@ Item {
     property var removals: []
     property int selected: -1
     property bool editingNews: false
+    property bool editingMedia: false
+    property real keyboardHeight: 0
     readonly property var current: selected >= 0 ? editor.pages[selected] || ({}) : ({})
     signal back()
     function widgetTitle(id) { for(const w of editor.widgets)if(w.id===id)return w.title;return id }
@@ -60,8 +62,9 @@ Item {
     }
     NewsSettingsEditor { anchors.fill: parent; visible: page.editingNews; onBack: page.editingNews=false }
     RecipeSettings { id: recipeSettings }
+    MediaConnectionEditor { id: mediaSettings; anchors.fill: parent; visible: page.editingMedia; keyboardHeight: page.keyboardHeight; onBack: page.editingMedia=false }
     ColumnLayout {
-        anchors.fill: parent; anchors.margins: 24; spacing: 14; visible: !page.editingNews
+        anchors.fill: parent; anchors.margins: 24; spacing: 14; visible: !page.editingNews && !page.editingMedia
         RowLayout {
             Layout.fillWidth: true
             UiButton { objectName: "layoutBackButton"; iconName: "back"; onClicked: page.goBack() }
@@ -78,7 +81,7 @@ Item {
         }
         Label { visible: page.editor.problem.length>0; text: page.editor.problem; color: Theme.danger; font.pixelSize: 17; Layout.fillWidth: true }
         ScrollView {
-            id: scroll; Layout.fillWidth: true; Layout.fillHeight: true; contentWidth: availableWidth; clip: true
+            id: scroll; objectName: "layoutApplicationScroll"; Layout.fillWidth: true; Layout.fillHeight: true; contentWidth: availableWidth; clip: true
             ColumnLayout {
                 width: scroll.availableWidth; spacing: 12
                 Label { visible: page.route==="main"; text: "Active applications"; color: Theme.muted; Layout.fillWidth: true }
@@ -94,7 +97,7 @@ Item {
                                 Label { text: modelData.title; Layout.fillWidth: true }
                                 Label { text: modelData.placement; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true }
                             }
-                            UiButton { objectName: "moduleEdit_"+modelData.id; visible: modelData.id==="news"||modelData.id==="recipes"; text: "Edit"; enabled: !!home.modules[modelData.id]; onClicked: modelData.id==="news" ? page.editingNews=true : recipeSettings.open() }
+                            UiButton { objectName: "moduleEdit_"+modelData.id; visible: ["news","recipes","navidrome","jellyfin"].indexOf(modelData.id)>=0; text: "Edit"; enabled: !!home.modules[modelData.id]; onClicked: {if(modelData.id==="news")page.editingNews=true;else if(modelData.id==="recipes")recipeSettings.open();else {mediaSettings.begin(modelData.id,modelData.id==="navidrome"?musicLibrary:videoLibrary);page.editingMedia=true}} }
                             UiButton { objectName: "applicationPlacement_"+modelData.id; text: "Placement"; onClicked: page.startApplication(modelData,true) }
                         }
                     }

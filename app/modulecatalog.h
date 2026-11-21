@@ -9,7 +9,7 @@ class ModuleCatalog {
 public:
     struct Entry {QString id,title,description,widget,page,actionPrefix;bool defaultEnabled=true;};
     static QList<Entry> entries(){return {
-        {"assistant","Assistant","Voice conversations and local Sheila detection","assistant",{},{}},
+        {"assistant","Assistant","Voice conversations and local Sheila detection","assistant",{},"memory."},
         {"radio","Radio","Favourites and worldwide internet stations","radio",{},"radio."},
         {"weather","Weather","Local weather and forecasts","weather",{},"weather."},
         {"news","News","World, finance and Hacker News","news","news",{}},
@@ -17,7 +17,7 @@ public:
         {"notes","Notes","Notes, dictation and personal actions","notes","notes","notes."},
         {"bluetooth","Bluetooth speaker","Phone audio; needs BlueZ and BlueALSA","music",{},{}},
         {"vrm","Victron energy","Battery and solar data; needs VRM credentials","energy",{},"battery."},
-        {"navidrome","Music library","Local music; needs Navidrome server settings","music",{},{}},
+        {"navidrome","Music library","Local music; needs Navidrome server settings","music",{},"music."},
         {"jellyfin","Video library","Films and series; needs Jellyfin server settings","video",{},"video."},
         {"audiobooks","Audiobooks","LibriVox books, curated picks and saved listening positions","audiobooks",{},"audiobooks.",false},
         {"tvarchive","TV Archive","Classic series, episodes and saved viewing positions","tvarchive",{},"tvarchive.",false},

@@ -31,7 +31,8 @@ int main(int argc,char **argv) {
         socket.write(request+'\n');
         socket.waitForBytesWritten(1000);
         QByteArray response;
-        const int replyTimeout=QJsonDocument::fromJson(request).object().value("action")=="radio.search"?20000:3000;
+        const auto action=QJsonDocument::fromJson(request).object().value("action").toString();
+        const int replyTimeout=action=="radio.search"||action.startsWith("music.")?20000:3000;
         QElapsedTimer timeout;timeout.start();
         while(!response.contains('\n')&&timeout.elapsed()<replyTimeout) {
             if(socket.bytesAvailable()==0&&!socket.waitForReadyRead(qMax(1,replyTimeout-int(timeout.elapsed()))))break;
@@ -68,8 +69,9 @@ int main(int argc,char **argv) {
     QObject::connect(&controller,&Controller::cancelDiscoveryRequested,&radio,&RadioCatalog::cancel);
     QObject::connect(&controller,&Controller::radioRequested,&radio,&RadioCatalog::play);
     MediaLibrary music("navidrome"),video("jellyfin");
-    controller.setVideoLibrary(&video);
+    controller.setVideoLibrary(&video);controller.setMusicLibrary(&music);
     for(auto library:{&music,&video}) {
+        QObject::connect(library,&MediaLibrary::connectionSaved,&controller,&Controller::restartDashboard);
         QObject::connect(library,&MediaLibrary::playRequested,&controller,&Controller::playMedia);
         QObject::connect(&controller,&Controller::playbackEvent,library,&MediaLibrary::report);
     }

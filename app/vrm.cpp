@@ -110,19 +110,15 @@ QVariantMap VrmClient::metrics() const {
     return result;
 }
 qint64 VrmClient::reportTime() const {
-    const qint64 battery=m_readings.value("soc").toObject().value("timestamp").toVariant().toLongLong();
-    if(battery>0)return battery;
+    const auto battery=m_readings.value("soc").toObject();
+    // The card's main value is SoC. Optional/retired devices retain independent ages.
+    if(!battery.isEmpty())return battery.value("timestamp").toVariant().toLongLong();
     qint64 latest=0;
     for(const auto &key:{"solar","acLoad","batteryPower"})latest=qMax(latest,m_readings.value(key).toObject().value("timestamp").toVariant().toLongLong());
     return latest;
 }
 bool VrmClient::stale() const {
-    if(!hasData())return false;
-    for(const auto &key:{"soc","solar","acLoad"}) {
-        auto r=m_readings.value(key).toObject();
-        if(!r.isEmpty()&&old(r.value("timestamp").toVariant().toLongLong()))return true;
-    }
-    return old(reportTime());
+    return hasData()&&old(reportTime());
 }
 QString VrmClient::status() const {
     if(!configured())return "VRM not connected";

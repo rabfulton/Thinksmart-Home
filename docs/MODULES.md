@@ -41,7 +41,7 @@ module registrations.
 | `notes` | Notes widget/page, dictation, routines and schedule controls | Voice dictation additionally requires Assistant; saved notes work offline |
 | `bluetooth` | Phone speaker mode in Music | BlueZ/BlueALSA on the device |
 | `vrm` | Victron energy/battery card and tools | Read-only VRM credentials |
-| `navidrome` | Local music-library client | Server settings/credentials |
+| `navidrome` | [Music library](MUSIC.md), voice search/playback, saved queues and genre/decade browsing | Server settings/credentials |
 | `jellyfin` | Native film browser and playback | Server settings/credentials |
 | `iptv` | Live TV browser, saved streams and fullscreen libmpv playback | Optional, off by default; [IPTV guide](IPTV.md) |
 
@@ -74,3 +74,14 @@ To develop a new integration, follow [MODULE-DEVELOPMENT.md](MODULE-DEVELOPMENT.
 [Recipes / AI outputs](RECIPES.md) is an optional widget/full-page module and a
 worked example of voice delegation, native Markdown, saved task lists and
 adapting a recipe demonstration into a general AI text reader.
+
+Music and Video server connections have native **Edit** screens in
+**Settings → Pages & modules**. See [connection configuration](CONFIGURATION.md#credentials)
+for account/token login, connection tests and private storage.
+
+The Energy/VRM card’s stale badge follows its main battery SoC report (or the
+latest available power report when SoC is absent). Each metric retains its own
+measurement time in the expanded view, so an old/disconnected AC device does
+not label a current battery report as stale. Unknown or old battery timestamps
+still produce the stale badge. A successful cloud fetch alone never refreshes
+measurement timestamps.

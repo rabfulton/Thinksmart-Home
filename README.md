@@ -44,7 +44,7 @@ tools used by this project, ready for your own software and interface.
 
 | Module | What it does | Setup |
 | --- | --- | --- |
-| [Assistant](docs/VOICE.md) | OpenAI Realtime/Live voice, local wake word, personalities and household context | OpenAI key; optional wake-word assets |
+| [Assistant](docs/VOICE.md) | OpenAI Realtime/Live voice, local wake word, personalities and bounded learned memory | OpenAI key; optional wake-word assets |
 | [Recipes / AI outputs](docs/RECIPES.md) | Recipes, ingredient checklists and saved Markdown outputs | OpenAI key for generation; saved outputs work offline |
 | [Audiobooks](docs/AUDIOBOOKS.md) | LibriVox, Top 100 discovery, monthly picks and saved listening positions | Internet; no API key |
 | [Radio](docs/RADIO.md) | Worldwide station search, genre browsing and saved favourites | Internet; no API key |
@@ -56,7 +56,7 @@ tools used by this project, ready for your own software and interface.
 | [Chess](docs/MODULES.md) | Theme-aware board, adjustable engine strength and either playing side | Local Arasan engine |
 | [Notes](docs/PERSONAL.md) | Saved notes, touch deletion and optional voice dictation | Local storage; Assistant for dictation |
 | [Bluetooth speaker](docs/MODULES.md) | Play audio from your phone through the device | BlueZ and BlueALSA |
-| [Music / Navidrome](docs/MODULES.md) | Browse and play your music library | Navidrome server and credentials |
+| [Music / Navidrome](docs/MUSIC.md) | Browse, queue and ask the assistant to play your music library | Navidrome server and credentials |
 | [Video / Jellyfin](docs/MODULES.md) | Native film browsing by category/decade, posters and fullscreen playback | Jellyfin server and credentials |
 | [Energy / Victron VRM](docs/MODULES.md) | Battery, solar and energy readings, including cached offline data | VRM installation and read-only token |
 

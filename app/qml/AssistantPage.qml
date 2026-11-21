@@ -6,6 +6,8 @@ Rectangle {
     property bool active: false
     property bool backgroundPlayback: false
     property string tab: "conversation"
+    property string memoryMessage: ""
+    property bool memoryFailed: false
     readonly property var voices: assistant.voices
     readonly property var vadModes: ["semantic", "server", "manual"]
     function personalityIndex() {
@@ -52,6 +54,31 @@ Rectangle {
                 ScrollIndicator.vertical: ScrollIndicator { }
             }
             background: Rectangle { color: Theme.raised; radius: 14; border.color: Theme.border }
+        }
+    }
+    Dialog {
+        id: memoryResetDialog; objectName: "assistantMemoryResetDialog"
+        parent: Overlay.overlay; anchors.centerIn: parent
+        width: Math.min(page.width-32,560); padding: 24; modal: true; dim: true
+        background: Rectangle { color: Theme.surface; radius: Theme.radius; border.color: Theme.border }
+        Overlay.modal: Rectangle { color: Theme.scrim }
+        contentItem: ColumnLayout {
+            spacing: 20
+            Text { text: "Reset learned memory?"; font.pixelSize: 28; color: Theme.ink; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+            Text { text: "Clear everything Sheila has saved in memory.md. Your household file, personalities, notes and other app data will be kept."; font.pixelSize: 20; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight; spacing: 16
+                UiButton { objectName: "assistantMemoryResetCancel"; text: "Cancel"; onClicked: memoryResetDialog.close() }
+                UiButton {
+                    objectName: "assistantMemoryResetConfirm"; text: "Reset memory"; enabled: !assistant.active
+                    onClicked: {
+                        const result=home.resetAssistantMemory()
+                        page.memoryFailed=!result.ok
+                        page.memoryMessage=result.ok?"Learned memory cleared.":result.error
+                        memoryResetDialog.close()
+                    }
+                }
+            }
         }
     }
     signal back()
@@ -173,6 +200,13 @@ Rectangle {
                 Text { text: "Sheila is detected locally during media playback and screen sleep. Turning Assistant off closes the listener and any conversation. Only active conversations send audio to OpenAI. Conversation audio and captions are not saved. Responses use a generated AI voice."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                 Text { text: "Edit prompts over SSH: " + assistant.promptDirectory; color: Theme.accent; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WrapAnywhere }
                 Text { text: "Shared system instructions, household notes and the selected personality are read at each Start and sent to OpenAI. Add people and preferences to household.md. Reload refreshes the personality list."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 16
+                    Text { text: "Learned memory"; color: Theme.ink; font.pixelSize: 21; Layout.fillWidth: true }
+                    UiButton { objectName: "assistantMemoryResetButton"; text: "Reset memory"; enabled: !assistant.active; onClicked: memoryResetDialog.open() }
+                }
+                Text { text: "Sheila can keep concise facts and preferences between conversations in memory.md. Reset clears only this learned memory."; color: Theme.muted; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                Text { visible: page.memoryMessage.length>0; text: page.memoryMessage; color: page.memoryFailed?Theme.danger:Theme.accent; font.pixelSize: 17; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                 Text { text: "Wake word · Sheila"; color: Theme.ink; font.pixelSize: 21 }
                 RowLayout {
                     Layout.fillWidth: true
